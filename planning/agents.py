@@ -43,9 +43,6 @@ class Agent:
             # Possibly more prediction requests...
             action = coroutine.send(network_output)
 
-        The number of prediction requests should be the same across all Agents
-        in a batch.
-
         In model-based agents, the original environment state MUST be restored
         in the end of act(). This is not checked at runtime, since it would be
         a big overhead for heavier environments.

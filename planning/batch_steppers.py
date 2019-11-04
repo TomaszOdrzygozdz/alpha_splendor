@@ -1,6 +1,5 @@
 """Environment steppers."""
 
-
 from planning import data
 from planning import envs
 from planning.data import messages
@@ -103,38 +102,73 @@ class LocalBatchStepper(BatchStepper):
         self._collect_real = collect_real
 
     def _batch_coroutines(self, cors):
-        def batch(xs):
+        """Batches a list of coroutines into one.
+
+        Handles waiting for the slowest coroutine and filling blanks in
+        prediction requests.
+        """
+        # Store the final transitions in a list.
+        transition_batches = [None] * len(cors)
+        def store_transitions(i, cor):
+            message = next(cor)
+            while True:
+                if isinstance(message, messages.TransitionBatch):
+                    transition_batches[i] = message
+                    break
+                else:
+                    prediction = yield message
+                    message = cor.send(prediction)
+            # End with an infinite stream of Nones, so we don't have
+            # to deal with StopIteration later on.
+            while True:
+                yield None
+        cors = [store_transitions(i, cor) for(i, cor) in enumerate(cors)]
+
+        def batch_requests(xs):
             assert xs
-            if isinstance(xs[0], messages.PredictRequest):
-                # Stack instead of concatenate to ensure that all requests have
-                # the same shape.
-                x = data.nested_stack(xs)
-                def flatten_first_2_dims(x):
-                    return np.reshape(x, (-1,) + x.shape[2:])
-                return data.nested_map(flatten_first_2_dims, x)
 
-            assert isinstance(xs[0], messages.TransitionBatch)
-            return data.nested_concatenate(xs)
+            if all(x is None for x in xs):
+                # All coroutines have finished - return the final transitions.
+                return data.nested_concatenate(transition_batches)
 
-        def unbatch(x):
+            # PredictRequest used as a filler for coroutines that have already
+            # finished.
+            filler = next(x for x in xs if x is not None)
+            # Fill with 0s for easier debugging.
+            filler = data.nested_map(np.zeros_like, filler)
+            assert isinstance(filler, messages.PredictRequest)
+
+            # Substitute the filler for Nones.
+            xs = [x if x is not None else filler for x in xs]
+
+            # Stack instead of concatenate to ensure that all requests have
+            # the same shape.
+            x = data.nested_stack(xs)
+            def flatten_first_2_dims(x):
+                return np.reshape(x, (-1,) + x.shape[2:])
+            # (n_agents, n_requests, ...) -> (n_agents * n_requests, ...)
+            return data.nested_map(flatten_first_2_dims, x)
+
+        def unbatch_responses(x):
             def unflatten_first_2_dims(x):
                 return np.reshape(
                     x, (len(self._envs_and_agents), -1) + x.shape[1:]
                 )
+            # (n_agents * n_requests, ...) -> (n_agents, n_requests, ...)
             return data.nested_unstack(
                 data.nested_map(unflatten_first_2_dims, x)
             )
 
-        # TODO(koz4k): Handle different lengths of episodes.
-        try:
-            inputs = yield batch([next(cor) for (i, cor) in enumerate(cors)])
-            while True:
-                inputs = yield batch([
-                    cor.send(inp)
-                    for (i, (cor, inp)) in enumerate(zip(cors, unbatch(inputs)))
-                ])
-        except StopIteration:
-            assert i == 0, 'Coroutines finished at different times.'
+        inputs = yield batch_requests([
+            next(cor) for (i, cor) in enumerate(cors)
+        ])
+        while True:
+            inputs = yield batch_requests([
+                cor.send(inp)
+                for (i, (cor, inp)) in enumerate(
+                    zip(cors, unbatch_responses(inputs))
+                )
+            ])
 
     def run_episode_batch(self, params):
         self._network.params = params
