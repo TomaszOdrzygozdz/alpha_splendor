@@ -9,6 +9,7 @@ import pytest
 
 from planning import agents
 from planning import batch_steppers
+from planning import data
 from planning import networks
 from planning.data import messages
 
@@ -48,12 +49,12 @@ class _TestEnv(gym.Env):
         return (obs, reward, done, {})
 
 
-class _TestAgent(agents.Agent):
+class _TestAgent(agents.OnlineAgent):
 
     def __init__(
-        self, env, observations, max_n_requests, requests, responses, actions
+        self, observations, max_n_requests, requests, responses, actions
     ):
-        super().__init__(env)
+        super().__init__()
         self._observations = observations
         self._max_n_requests = max_n_requests
         self._requests = requests
@@ -137,7 +138,8 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
         n_envs=n_envs,
         collect_real=True,
     )
-    transition_batch = stepper.run_episode_batch(params=None)
+    episodes = stepper.run_episode_batch(params=None)
+    transition_batch = data.nested_concatenate(episodes)
 
     # Assert that all data got passed around correctly.
     assert len(actual_obs) >= n_envs

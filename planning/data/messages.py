@@ -10,6 +10,6 @@ import collections
 
 PredictRequest = collections.namedtuple('PredictRequest', ['inputs'])
 Action = collections.namedtuple('Action', ['action'])
-TransitionBatch = collections.namedtuple(
-    'TransitionBatch', ['transition_batch']
+Episode = collections.namedtuple(
+    'Episode', ['episode']
 )
