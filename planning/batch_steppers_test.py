@@ -11,7 +11,6 @@ from planning import agents
 from planning import batch_steppers
 from planning import data
 from planning import networks
-from planning.data import messages
 
 import numpy as np
 
@@ -67,11 +66,9 @@ class _TestAgent(agents.OnlineAgent):
             # End the predictions at random times.
             if random.random() < 0.5:
                 break
-            response = yield messages.PredictRequest(
-                np.array([self._requests.pop(0)])
-            )
+            response = yield np.array([self._requests.pop(0)])
             self._responses.append(response)
-        yield messages.Action(self._actions.pop(0))
+        return self._actions.pop(0)
 
 
 class _TestNetwork(networks.DummyNetwork):

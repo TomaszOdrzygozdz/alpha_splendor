@@ -2,7 +2,6 @@
 
 from planning import data
 from planning import envs
-from planning.data import messages
 
 import numpy as np
 
@@ -62,33 +61,24 @@ class LocalBatchStepper(BatchStepper):
         # Store the final episodes in a list.
         episodes = [None] * len(cors)
         def store_transitions(i, cor):
-            message = next(cor)
-            while True:
-                if isinstance(message, messages.Episode):
-                    episodes[i] = message.episode
-                    break
-                else:
-                    prediction = yield message
-                    message = cor.send(prediction)
+            episodes[i] = yield from cor
             # End with an infinite stream of Nones, so we don't have
             # to deal with StopIteration later on.
             while True:
                 yield None
         cors = [store_transitions(i, cor) for(i, cor) in enumerate(cors)]
 
+        def all_finished(xs):
+            return all(x is None for x in xs)
+
         def batch_requests(xs):
             assert xs
 
-            if all(x is None for x in xs):
-                # All coroutines have finished - return the final episodes.
-                return messages.Episode(episodes)
-
-            # PredictRequest used as a filler for coroutines that have already
+            # Request used as a filler for coroutines that have already
             # finished.
             filler = next(x for x in xs if x is not None)
             # Fill with 0s for easier debugging.
             filler = data.nested_map(np.zeros_like, filler)
-            assert isinstance(filler, messages.PredictRequest)
 
             # Substitute the filler for Nones.
             xs = [x if x is not None else filler for x in xs]
@@ -117,16 +107,16 @@ class LocalBatchStepper(BatchStepper):
                 data.nested_map(unflatten_first_2_dims, x)
             )
 
-        inputs = yield batch_requests([
-            next(cor) for (i, cor) in enumerate(cors)
-        ])
-        while True:
-            inputs = yield batch_requests([
+        requests = [next(cor) for (i, cor) in enumerate(cors)]
+        while not all_finished(requests):
+            responses = yield batch_requests(requests)
+            requests = [
                 cor.send(inp)
                 for (i, (cor, inp)) in enumerate(
-                    zip(cors, unbatch_responses(inputs))
+                    zip(cors, unbatch_responses(responses))
                 )
-            ])
+            ]
+        return episodes
 
     def run_episode_batch(self, params):
         self._network.params = params
@@ -134,11 +124,12 @@ class LocalBatchStepper(BatchStepper):
             agent.solve(env)
             for (env, agent) in self._envs_and_agents
         ])
-        message = next(episode_cor)
-        while isinstance(message, messages.PredictRequest):
-            predictions = self._network.predict(message.inputs)
-            message = episode_cor.send(predictions)
-
-        # Return a list of completed episodes.
-        assert isinstance(message, messages.Episode)
-        return message.episode
+        try:
+            inputs = next(episode_cor)
+            while True:
+                predictions = self._network.predict(inputs)
+                inputs = episode_cor.send(predictions)
+        except StopIteration as e:
+            episodes = e.value
+            assert len(episodes) == len(self._envs_and_agents)
+            return episodes

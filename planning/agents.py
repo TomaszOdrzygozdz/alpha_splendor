@@ -1,8 +1,9 @@
 """Agents."""
 
+import asyncio
+
 from planning import data
 from planning import envs
-from planning.data import messages
 
 
 class Agent:
@@ -29,35 +30,46 @@ class Agent:
             
             def solve(self, env):
                 # Planning...
-                predictions = yield messages.PredictRequest(inputs)
+                predictions = yield inputs
                 # Planning...
-                predictions = yield messages.PredictRequest(inputs)
+                predictions = yield inputs
                 # Planning...
-                yield messages.Episode(episode)
+                return episode
 
         Example usage:
 
             coroutine = agent.solve(env)
-            prediction_request = next(coroutine)
-            network_output = process_request(prediction_request)
-            prediction_request = coroutine.send(network_output)
-            network_output = process_request(prediction_request)
-            # Possibly more prediction requests...
-            episode = coroutine.send(network_output)
+            try:
+                prediction_request = next(coroutine)
+                network_output = process_request(prediction_request)
+                prediction_request = coroutine.send(network_output)
+                # Possibly more prediction requests...
+            except StopIteration as e:
+                episode = e.value
+
+        Agents that do not use neural networks should wrap their solve() method
+        in an @asyncio.coroutine decorator, so Python knows to treat it as
+        a coroutine even though it doesn't have any yield.
 
         Args:
             env: (gym.Env) Environment to solve.
 
         Yields:
-            A stream of PredictMessages (requests for inference using the
-            network), followed by an EpisodeMessage (data collected in the
-            episode).
+            A stream of Network inputs requested for inference.
+
+        Returns:
+            (Agent/Trainer-specific) Episode object summarizing the collected
+            data for training the Network.
         """
         raise NotImplementedError
 
 
 class OnlineAgent(Agent):
-    """Base class for online agents, i.e. planning on a per-action basis."""
+    """Base class for online agents, i.e. planning on a per-action basis.
+    
+    Provides a default implementation of Agent.solve(), returning a Transition
+    object with the collected batch of transitions.
+    """
 
     def __init__(self, collect_real=False):
         self._collect_real = collect_real
@@ -75,14 +87,25 @@ class OnlineAgent(Agent):
             observation: Observation from the environment.
 
         Yields:
-            A stream of PredictMessages (requests for inference using the
-            network), followed by an ActionMessage (final action to be
-            performed).
+            A stream of Network inputs requested for inference.
+
+        Returns:
+            Action to make in the environment.
         """
         raise NotImplementedError
 
     def solve(self, env):
-        """Solves a given environment using OnlineAgent.act()."""
+        """Solves a given environment using OnlineAgent.act().
+
+        Args:
+            env: (gym.Env) Environment to solve.
+
+        Yields:
+            A stream of Network inputs requested for inference.
+
+        Returns:
+            Transition object containing a batch of collected transitions.
+        """
         # Wrap the environment in a wrapper for collecting transitions. Collection
         # is turned on/off for the Agent.act() call based on collect_real.
         self._env = envs.TransitionCollectorWrapper(env)
@@ -93,18 +116,11 @@ class OnlineAgent(Agent):
         while not done:
             # Forward network prediction requests to BatchStepper.
             self._env.collect = not self._collect_real
-            act_cor = self.act(observation)
-            message = next(act_cor)
-            while isinstance(message, messages.PredictRequest):
-                prediction = yield message
-                message = act_cor.send(prediction)
-
-            # Once an action has been determined, run it on the environment.
-            assert isinstance(message, messages.Action)
+            action = yield from self.act(observation)
             self._env.collect = self._collect_real
-            (observation, _, done, _) = self._env.step(message.action)
+            (observation, _, done, _) = self._env.step(action)
 
-        yield messages.Episode(data.nested_stack(self._env.transitions))
+        return data.nested_stack(self._env.transitions)
 
 
 class RandomAgent(OnlineAgent):
@@ -114,6 +130,7 @@ class RandomAgent(OnlineAgent):
         self._action_space = env.action_space
         return super().solve(env)
 
+    @asyncio.coroutine
     def act(self, observation):
         del observation
-        yield messages.Action(self._action_space.sample())
+        return self._action_space.sample()
