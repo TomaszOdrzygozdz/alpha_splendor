@@ -14,8 +14,8 @@ class Trainer:
         """No-op constructor just for documentation purposes."""
         del network
 
-    def add_transition_batch(self, transition_batch):
-        """Adds a batch of transitions to memory."""
+    def add_episode(self, episode):
+        """Adds an episode to memory."""
         raise NotImplementedError
 
     def train_epoch(self):
@@ -26,8 +26,8 @@ class Trainer:
 class DummyTrainer(Trainer):
     """Dummy Trainer for testing."""
 
-    def add_transition_batch(self, transition_batch):
-        del transition_batch
+    def add_episode(self, episode):
+        del episode
 
     def train_epoch(self):
         pass

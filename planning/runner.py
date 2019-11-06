@@ -44,10 +44,11 @@ class Runner:
 
     def run_epoch(self):
         """Runs a single epoch."""
-        transition_batch = self._batch_stepper.run_episode_batch(
+        episodes = self._batch_stepper.run_episode_batch(
             self._network.params
         )
-        self._trainer.add_transition_batch(transition_batch)
+        for episode in episodes:
+            self._trainer.add_episode(episode)
         self._trainer.train_epoch()
         self._epoch += 1
 
