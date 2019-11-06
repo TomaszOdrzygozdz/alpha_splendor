@@ -8,9 +8,9 @@ from planning.agents import base
 class RandomAgent(base.OnlineAgent):
     """Random agent, sampling actions from the uniform distribution."""
 
-    def solve(self, env):
-        self._action_space = env.action_space
-        return super().solve(env)
+    def __init__(self, action_space, **kwargs):
+        super().__init__(action_space, **kwargs)
+        self._action_space = action_space
 
     @asyncio.coroutine
     def act(self, observation):

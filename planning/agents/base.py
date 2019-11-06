@@ -12,9 +12,9 @@ class Agent:
     This is done using a coroutine API, explained in solve().
     """
 
-    def __init__(self):
+    def __init__(self, action_space):
         """No-op constructor just for documentation purposes."""
-        pass
+        del action_space
 
     def solve(self, env):
         """Solves a given environment.
