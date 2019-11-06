@@ -1,6 +1,4 @@
-"""Agents."""
-
-import asyncio
+"""Agent base classes."""
 
 from planning import data
 from planning import envs
@@ -117,16 +115,3 @@ class OnlineAgent(Agent):
             (observation, _, done, _) = self._env.step(action)
 
         return data.nested_stack(self._env.transitions)
-
-
-class RandomAgent(OnlineAgent):
-    """Random agent, sampling actions from the uniform distribution."""
-
-    def solve(self, env):
-        self._action_space = env.action_space
-        return super().solve(env)
-
-    @asyncio.coroutine
-    def act(self, observation):
-        del observation
-        return self._action_space.sample()
