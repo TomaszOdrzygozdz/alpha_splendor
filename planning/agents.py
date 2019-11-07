@@ -9,12 +9,9 @@ from planning import envs
 class Agent:
     """Agent base class.
 
-    Agents can be either model-free or model-based, as they take the real
-    environment as an argument in __init__ ("true model").
-
     Agents can use neural networks internally. Network prediction is run outside
     of the Agent, so it can be batched across multiple Agents for efficiency.
-    This is done using a coroutine API, explained in act().
+    This is done using a coroutine API, explained in solve().
     """
 
     def __init__(self):

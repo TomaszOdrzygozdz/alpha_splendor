@@ -4,12 +4,20 @@
 class Network:
     """Base class for networks."""
 
-    def train(self, transition_batch):
-        """Performs one step of training on a batch of transitions."""
+    def train(self, batch):
+        """Performs one step of training on a batch prepared by the Trainer.
+
+        Args:
+            batch: (Trainer-dependent) Batch of examples to run the update on.
+        """
         raise NotImplementedError
 
     def predict(self, inputs):
-        """Returns the prediction for a given input."""
+        """Returns the prediction for a given input.
+
+        Args:
+            inputs: (Agent-dependent) Batch of inputs to run prediction on.
+        """
         raise NotImplementedError
 
     @property
