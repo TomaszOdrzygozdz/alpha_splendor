@@ -147,6 +147,14 @@ class MCTSAgent(base.OnlineAgent):
         # Go back to the root state.
         self._model.restore_state(self._root_state)
 
+    def reset(self, env):
+        assert isinstance(env.action_space, gym.spaces.Discrete), (
+            'MCTSAgent only works with Discrete action spaces.'
+        )
+        self._model = env
+        # Initialize root with some quality to avoid division by zero.
+        self._root = TreeNode(init_quality=0)
+
     def act(self, observation):
         assert self._model is not None, (
             'MCTSAgent works only in model-based mode.'
@@ -157,15 +165,3 @@ class MCTSAgent(base.OnlineAgent):
         action = self._choose_action(self._root)
         self._root = self._root.children[action]
         return action
-
-    def solve(self, env):
-        assert isinstance(env.action_space, gym.spaces.Discrete), (
-            'MCTSAgent only works with Discrete action spaces.'
-        )
-        self._model = env
-        # Initialize root with some quality to avoid division by zero.
-        self._root = TreeNode(init_quality=0)
-        episode = yield from super().solve(env)
-        self._model = None
-        self._root = None
-        return episode

@@ -66,6 +66,16 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
+    def reset(self, env):
+        """Resets the agent state.
+
+        Called for every new environment to be solved. Overriding is optional.
+
+        Args:
+            env: (gym.Env) Environment to solve.
+        """
+        pass
+
     def act(self, observation):
         """Determines the next action to be performed.
 
@@ -98,20 +108,21 @@ class OnlineAgent(Agent):
         Returns:
             Transition object containing a batch of collected transitions.
         """
+        self.reset(env)
 
         # Wrap the environment in a wrapper for collecting transitions.
-        # Collection is turned on/off for the Agent.act() to collect only
+        # Collection is turned on/off for Agent.act() to collect only
         # transitions on the real environment.
-        self._env = envs.TransitionCollectorWrapper(env)
+        env = envs.TransitionCollectorWrapper(env)
 
-        self._env.collect = True
-        observation = self._env.reset()
+        env.collect = True
+        observation = env.reset()
         done = False
         while not done:
-            self._env.collect = False
+            env.collect = False
             # Forward network prediction requests to BatchStepper.
             action = yield from self.act(observation)
-            self._env.collect = True
-            (observation, _, done, _) = self._env.step(action)
+            env.collect = True
+            (observation, _, done, _) = env.step(action)
 
-        return data.nested_stack(self._env.transitions)
+        return data.nested_stack(env.transitions)
