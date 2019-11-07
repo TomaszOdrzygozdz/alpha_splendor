@@ -6,7 +6,7 @@ class Trainer:
     
     Trainer is something that can train a neural network using data from memory.
     In the most basic setup, it just samples data from a replay buffer. By
-    abstracting Trainer out, we we can also support other setups, e.g. tabular
+    abstracting Trainer out, we can also support other setups, e.g. tabular
     learning on a tree.
     """
 
