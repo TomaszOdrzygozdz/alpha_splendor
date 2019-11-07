@@ -1,6 +1,7 @@
 """Environments."""
 
 import gym
+from gym.envs import classic_control
 
 from planning import data
 
@@ -20,6 +21,16 @@ class ModelEnv(gym.Env):
     def restore_state(self, state):
         """Restores environment state."""
         raise NotImplementedError
+
+
+class CartPole(classic_control.CartPoleEnv, ModelEnv):
+    """CartPole with state clone/restore."""
+
+    def clone_state(self):
+        return (self.state, self.steps_beyond_done)
+
+    def restore_state(self, state):
+        (self.state, self.steps_beyond_done) = state
 
 
 class TransitionCollectorWrapper(gym.Wrapper):
