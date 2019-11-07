@@ -73,9 +73,19 @@ class MCTSAgent(base.OnlineAgent):
         discount=0.99,
         rate_new_leaves_fn=rate_new_leaves_with_rollouts,
     ):
+        """Initializes MCTSAgent.
+
+        Args:
+            n_passes: (int) Number of MCTS passes per act().
+            discount: (float) Discount factor.
+            rate_new_leaves: Coroutine estimating qualities of new leaves. Can
+                ask for predictions using a Network. Should return qualities for
+                every child of a given leaf node.
+                Signature: (leaf, observation, model, discount) -> [float].
+        """
         self._n_passes = n_passes
         self._discount = discount
-        self._rate_new_leaves = rate_new_leaves_with_rollouts
+        self._rate_new_leaves = rate_new_leaves_fn
         self._model = None
         self._root = None
         self._root_state = None
