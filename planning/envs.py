@@ -22,8 +22,6 @@ class ModelEnv(gym.Env):
         raise NotImplementedError
 
 
-# TODO(koz4k): Support ModelEnvs (what's the observation after restoring
-# a state?).
 class TransitionCollectorWrapper(gym.Wrapper):
     """Wrapper collecting transitions from the environment."""
 

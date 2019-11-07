@@ -13,14 +13,13 @@ class BatchStepper:
     """
 
     def __init__(
-        self, env_class, agent_class, network_class, n_envs, collect_real
+        self, env_class, agent_class, network_class, n_envs
     ):
         """No-op constructor just for documentation purposes."""
         del env_class
         del agent_class
         del network_class
         del n_envs
-        del collect_real
 
     def run_episode_batch(self, params):
         """Runs a batch of episodes using the given network parameters.
@@ -41,16 +40,13 @@ class LocalBatchStepper(BatchStepper):
     """
 
     def __init__(
-        self, env_class, agent_class, network_class, n_envs, collect_real
+        self, env_class, agent_class, network_class, n_envs
     ):
-        super().__init__(
-            env_class, agent_class, network_class, n_envs, collect_real
-        )
+        super().__init__(env_class, agent_class, network_class, n_envs)
         self._envs_and_agents = [
             (env_class(), agent_class()) for _ in range(n_envs)
         ]
         self._network = network_class()
-        self._collect_real = collect_real
 
     def _batch_coroutines(self, cors):
         """Batches a list of coroutines into one.

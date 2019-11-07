@@ -19,7 +19,6 @@ class Runner:
         agent_class=agents.RandomAgent,
         network_class=networks.DummyNetwork,
         n_envs=16,
-        collect_real=True,
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         trainer_class=trainers.DummyTrainer,
         n_epochs=None,
@@ -35,7 +34,6 @@ class Runner:
             agent_class=agent_class,
             network_class=network_class,
             n_envs=n_envs,
-            collect_real=collect_real,
         )
         self._network = network_class()
         self._trainer = trainer_class(self._network)

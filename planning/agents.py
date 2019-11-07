@@ -71,9 +71,6 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
-    def __init__(self, collect_real=False):
-        self._collect_real = collect_real
-
     def act(self, observation):
         """Determines the next action to be performed.
 
@@ -107,17 +104,18 @@ class OnlineAgent(Agent):
             Transition object containing a batch of collected transitions.
         """
         # Wrap the environment in a wrapper for collecting transitions. Collection
-        # is turned on/off for the Agent.act() call based on collect_real.
+        # is turned on/off for the Agent.act() to collect only transitions on
+        # the real environment.
         self._env = envs.TransitionCollectorWrapper(env)
 
-        self._env.collect = self._collect_real
+        self._env.collect = True
         observation = self._env.reset()
         done = False
         while not done:
+            self._env.collect = False
             # Forward network prediction requests to BatchStepper.
-            self._env.collect = not self._collect_real
             action = yield from self.act(observation)
-            self._env.collect = self._collect_real
+            self._env.collect = True
             (observation, _, done, _) = self._env.step(action)
 
         return data.nested_stack(self._env.transitions)

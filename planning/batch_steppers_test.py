@@ -133,7 +133,6 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
             outputs=res_to_return,
         ),
         n_envs=n_envs,
-        collect_real=True,
     )
     episodes = stepper.run_episode_batch(params=None)
     transition_batch = data.nested_concatenate(episodes)
