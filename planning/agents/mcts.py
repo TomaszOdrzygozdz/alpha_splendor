@@ -35,12 +35,7 @@ def rate_new_leaves_with_rollouts(
 
 
 class TreeNode:
-    """Node of the search tree.
-
-    Attrs:
-        quality: Instead of value, so we can handle rating with both V-networks
-            and Q-networks. Quality(s, a) = reward(s, a) + discount * value(s').
-    """
+    """Node of the search tree."""
 
     def __init__(self, init_quality):
         self._init_quality = init_quality
@@ -53,9 +48,15 @@ class TreeNode:
         assert self.graph_node is not None, 'Graph node must be assigned first.'
         self._reward_sum += reward
         self._reward_count += 1
-        self.graph_node.visit(value)
+        if value is not None:
+            self.graph_node.visit(value)
 
     def quality(self, discount):
+        """Returns the quality of going into this node in the search tree.
+
+        We use it instead of value, so we can handle rating with both V-networks
+        and Q-networks. Quality(s, a) = reward(s, a) + discount * value(s').
+        """
         if self._reward_count == 0:
             return self._init_quality
         return (
@@ -78,6 +79,7 @@ class GraphNode:
     def __init__(self):
         self._value_sum = 0
         self._value_count = 0
+        # TODO(koz4k): Move children here?
 
     def visit(self, value):
         self._value_sum += value
@@ -110,7 +112,7 @@ class MCTSAgent(base.OnlineAgent):
             graph_mode: (bool) Turns on using transposition tables, turning the
                 search graph from a tree to a DAG.
         """
-        self._n_passes = n_passes
+        self.n_passes = n_passes
         self._discount = discount
         self._rate_new_leaves = rate_new_leaves_fn
         self._graph_mode = graph_mode
@@ -158,30 +160,32 @@ class MCTSAgent(base.OnlineAgent):
         backpropagated yet. They will be only when we expand those new leaves.
 
         Returns:
-            Quality of the expanded leaf, or None if the pass should be
-            interrupted because the leaf is a previously-visited node.
+            Quality of the expanded leaf, or None if we shouldn't backpropagate
+            quality beause the node has already been visited.
         """
         assert leaf.is_leaf
         # TODO(koz4k): Check for loops here.
         # TODO(koz4k): Handle the case when the expanded leaf is on the path.
+        already_visited = False
         if self._graph_mode:
             state = self._model.clone_state()
-            graph_node = self._state_to_graph_node.get(state, None)
-            if graph_node is None:
-                graph_node = GraphNode()
-                self._state_to_graph_node[state] = graph_node
+            leaf.graph_node = self._state_to_graph_node.get(state, None)
+            if leaf.graph_node is not None:
+                already_visited = True
             else:
-                # Leaf is a previously visited node, interrupt the pass.
-                return None
+                leaf.graph_node = GraphNode()
+                self._state_to_graph_node[state] = leaf.graph_node
         else:
-            graph_node = GraphNode()
-        leaf.graph_node = graph_node
+            leaf.graph_node = GraphNode()
 
         if not done:
             child_qualities = yield from self._rate_new_leaves(
                 leaf, observation, self._model, self._discount
             )
             leaf.children = [TreeNode(quality) for quality in child_qualities]
+            if already_visited:
+                # Node has already been visited, don't backpropagate quality.
+                return None
             action = self._choose_action(leaf)
             return child_qualities[action]
         else:
@@ -191,20 +195,16 @@ class MCTSAgent(base.OnlineAgent):
     def _backpropagate(self, value, path):
         for (reward, node) in reversed(path):
             node.visit(reward, value)
-            value = reward + self._discount * value
+            if value is not None:
+                value = reward + self._discount * value
 
     def _run_pass(self, root, observation):
         (observation, done, path) = self._traverse(root, observation)
         (_, leaf) = path[-1]
-        try:
-            quality = yield from self._expand_leaf(leaf, observation, done)
-            if quality is None:
-                # Leaf is a previously visited node, interrupt the pass.
-                return
-            self._backpropagate(quality, path)
-        finally:
-            # Go back to the root state.
-            self._model.restore_state(self._root_state)
+        quality = yield from self._expand_leaf(leaf, observation, done)
+        self._backpropagate(quality, path)
+        # Go back to the root state.
+        self._model.restore_state(self._root_state)
 
     def reset(self, env):
         assert isinstance(env.action_space, gym.spaces.Discrete), (
@@ -219,7 +219,7 @@ class MCTSAgent(base.OnlineAgent):
             'MCTSAgent works only in model-based mode.'
         )
         self._root_state = self._model.clone_state()
-        for _ in range(self._n_passes):
+        for _ in range(self.n_passes):
             yield from self._run_pass(self._root, observation)
         action = self._choose_action(self._root)
         self._root = self._root.children[action]

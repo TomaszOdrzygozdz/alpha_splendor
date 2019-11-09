@@ -54,12 +54,17 @@ class TabularEnv(envs.ModelEnv):
 
 @asyncio.coroutine
 def rate_new_leaves_tabular(
-    leaf, observation, model, discount, child_qualities
+    leaf, observation, model, discount, state_values
 ):
     del leaf
-    del model
-    del discount
-    return child_qualities[observation]
+    del observation
+    init_state = model.clone_state()
+    def quality(action):
+        (observation, reward, _, _) = model.step(action)
+        model.restore_state(init_state)
+        # State is the same as observation.
+        return reward + discount * state_values[observation]
+    return [quality(action) for action in range(model.action_space.n)]
 
 
 def run_without_suspensions(coroutine):
@@ -106,7 +111,7 @@ def test_act_doesnt_change_env_state(graph_mode):
 
 
 def make_one_level_binary_tree(
-    left_quality, right_quality, left_reward=0, right_reward=0
+    left_value, right_value, left_reward=0, right_reward=0
 ):
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
@@ -127,30 +132,32 @@ def make_one_level_binary_tree(
     )
     rate_new_leaves_fn = functools.partial(
         rate_new_leaves_tabular,
-        child_qualities={
-            root_state: [left_quality, right_quality],
-            left_state: [0, 0],
-            right_state: [0, 0],
+        state_values={
+            root_state: 0,
+            left_state: left_value,
+            right_state: right_value,
+            # Dummy terminal states.
+            3: 0, 4: 0, 5: 0, 6: 0,
         },
     )
     return (env, rate_new_leaves_fn)
 
 
 @pytest.mark.parametrize(
-    "left_quality,right_quality,expected_action", [
-        (1, 0, 0),  # Should choose left because of high quality.
-        (0, 1, 1),  # Should choose right because of high quality.
+    "left_value,right_value,expected_action", [
+        (1, 0, 0),  # Should choose left because of high value.
+        (0, 1, 1),  # Should choose right because of high value.
     ]
 )
 @pytest.mark.parametrize('graph_mode', [False, True])
 def test_decision_after_one_pass(
-    left_quality, right_quality, expected_action, graph_mode
+    left_value, right_value, expected_action, graph_mode
 ):
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
     # 1 pass, should choose depending on qualities.
     (env, rate_new_leaves_fn) = make_one_level_binary_tree(
-        left_quality, right_quality
+        left_value, right_value
     )
     agent = agents.MCTSAgent(
         n_passes=1,
@@ -176,23 +183,22 @@ def test_stops_on_done(graph_mode):
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
-            child_qualities={0: [0]},
+            state_values={0: 0, 1: 0},
         ),
         graph_mode=graph_mode,
     )
     agent.reset(env)
     observation = env.reset()
-    # rate_new_leaves_fn errors out when rating children of a state not in the
-    # quality table.
+    # rate_new_leaves_fn errors out when rating nodes not in the value table.
     run_without_suspensions(agent.act(observation))
 
 
 @pytest.mark.parametrize('graph_mode', [False, True])
-def test_backtracks_because_of_quality(graph_mode):
-    # 0, action 0 -> 1 (medium quality)
-    # 0, action 1 -> 2 (high quality)
-    # 2, action 0 -> 3 (very low quality)
-    # 2, action 1 -> 3 (very low quality)
+def test_backtracks_because_of_value(graph_mode):
+    # 0, action 0 -> 1 (medium value)
+    # 0, action 1 -> 2 (high value)
+    # 2, action 0 -> 3 (very low value)
+    # 2, action 1 -> 3 (very low value)
     # 2 passes, should choose 0.
     env = TabularEnv(
         init_state=0,
@@ -213,12 +219,12 @@ def test_backtracks_because_of_quality(graph_mode):
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
-            child_qualities={
-                0: [0, 1],
-                1: [0, 0],
-                2: [-10, -10],
-                5: [0, 0],
-                6: [0, 0],
+            state_values={
+                0: 0,
+                1: 0,
+                2: 1,
+                5: -10,
+                6: -10,
             },
         ),
         graph_mode=graph_mode,
@@ -231,11 +237,11 @@ def test_backtracks_because_of_quality(graph_mode):
 
 @pytest.mark.parametrize('graph_mode', [False, True])
 def test_backtracks_because_of_reward(graph_mode):
-    # 0, action 0 -> 1 (high quality, very low reward)
-    # 0, action 1 -> 2 (medium quality)
+    # 0, action 0 -> 1 (high value, very low reward)
+    # 0, action 1 -> 2 (medium value)
     # 2 passes, should choose 1.
     (env, rate_new_leaves_fn) = make_one_level_binary_tree(
-        left_quality=1, left_reward=-10, right_quality=0, right_reward=0
+        left_value=1, left_reward=-10, right_value=0, right_reward=0
     )
     agent = agents.MCTSAgent(
         n_passes=2,
@@ -246,3 +252,59 @@ def test_backtracks_because_of_reward(graph_mode):
     observation = env.reset()
     action = run_without_suspensions(agent.act(observation))
     assert action == 1
+
+
+@pytest.mark.parametrize(
+    'graph_mode,expected_second_action', [(True, 1), (False, 0)]
+)
+def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
+    # 0, action 0 -> 1 (high value)
+    # 1, action 0 -> 2 (very low value)
+    # 1, action 1 -> 3 (medium value)
+    # 3, action 0 -> 4 (very low value)
+    # 3, action 1 -> 5 (very low value)
+    # 0, action 1 -> 6 (medium value)
+    # 6, action 0 -> 1 (high value)
+    # 6, action 1 -> 7 (medium value)
+    # 3 passes for the first and 2 for the second action. In graph mode, should
+    # choose 1, then 1. Not in graph mode, should choose 1, then 0.
+    env = TabularEnv(
+        init_state=0,
+        n_actions=2,
+        transitions={
+            # Root.
+            0: {0: (1, 0, False), 1: (6, 0, False)},
+            # Left branch, long one.
+            1: {0: (2, 0, True), 1: (3, 0, False)},
+            3: {0: (4, 0, True), 1: (5, 0, True)},
+            # Right branch, short, with a connection to the left.
+            6: {0: (1, 0, False), 1: (7, 0, True)},
+        },
+    )
+    agent = agents.MCTSAgent(
+        n_passes=3,
+        rate_new_leaves_fn=functools.partial(
+            rate_new_leaves_tabular,
+            state_values={
+                0: 0,
+                1: 1,
+                2: -10,
+                3: 0,
+                4: -10,
+                5: -10,
+                6: 0,
+                7: 0,
+            },
+        ),
+        graph_mode=graph_mode,
+    )
+    agent.reset(env)
+
+    observation = env.reset()
+    first_action = run_without_suspensions(agent.act(observation))
+    assert first_action == 1
+
+    agent.n_passes = 2
+    (observation, _, _, _) = env.step(first_action)
+    second_action = run_without_suspensions(agent.act(observation))
+    assert second_action == expected_second_action
