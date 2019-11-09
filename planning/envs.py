@@ -5,6 +5,8 @@ from gym.envs import classic_control
 
 from planning import data
 
+import numpy as np
+
 
 class ModelEnv(gym.Env):
     """Environment interface used by model-based agents.
@@ -27,10 +29,11 @@ class CartPole(classic_control.CartPoleEnv, ModelEnv):
     """CartPole with state clone/restore."""
 
     def clone_state(self):
-        return (self.state, self.steps_beyond_done)
+        return (tuple(self.state), self.steps_beyond_done)
 
     def restore_state(self, state):
-        (self.state, self.steps_beyond_done) = state
+        (state, self.steps_beyond_done) = state
+        self.state = np.array(state)
 
 
 class TransitionCollectorWrapper(gym.Wrapper):

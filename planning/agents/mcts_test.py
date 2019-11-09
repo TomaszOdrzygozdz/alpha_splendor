@@ -70,27 +70,31 @@ def run_without_suspensions(coroutine):
         return e.value
 
 
-def test_integration_with_cartpole():
+@pytest.mark.parametrize('graph_mode', [False, True])
+def test_integration_with_cartpole(graph_mode):
     env = envs.CartPole()
     agent = agents.MCTSAgent(
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             agents.mcts.rate_new_leaves_with_rollouts,
             rollout_time_limit=2,
-        )
+        ),
+        graph_mode=graph_mode,
     )
     transition_batch = run_without_suspensions(agent.solve(env))
     assert transition_batch.observation.shape[0] > 0
 
 
-def test_act_doesnt_change_env_state():
+@pytest.mark.parametrize('graph_mode', [False, True])
+def test_act_doesnt_change_env_state(graph_mode):
     env = envs.CartPole()
     agent = agents.MCTSAgent(
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             agents.mcts.rate_new_leaves_with_rollouts,
             rollout_time_limit=2,
-        )
+        ),
+        graph_mode=graph_mode,
     )
     agent.reset(env)
     observation = env.reset()
@@ -138,20 +142,29 @@ def make_one_level_binary_tree(
         (0, 1, 1),  # Should choose right because of high quality.
     ]
 )
-def test_decision_after_one_pass(left_quality, right_quality, expected_action):
+@pytest.mark.parametrize('graph_mode', [False, True])
+def test_decision_after_one_pass(
+    left_quality, right_quality, expected_action, graph_mode
+):
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
     # 1 pass, should choose depending on qualities.
     (env, rate_new_leaves_fn) = make_one_level_binary_tree(
         left_quality, right_quality
     )
-    agent = agents.MCTSAgent(n_passes=1, rate_new_leaves_fn=rate_new_leaves_fn)
+    agent = agents.MCTSAgent(
+        n_passes=1,
+        rate_new_leaves_fn=rate_new_leaves_fn,
+        graph_mode=graph_mode,
+    )
     agent.reset(env)
     observation = env.reset()
     actual_action = run_without_suspensions(agent.act(observation))
     assert actual_action == expected_action
 
-def test_stops_on_done():
+
+@pytest.mark.parametrize('graph_mode', [False, True])
+def test_stops_on_done(graph_mode):
     # 0 -> 1 (done)
     # 2 passes, env is not stepped from 1.
     env = TabularEnv(
@@ -164,7 +177,8 @@ def test_stops_on_done():
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
             child_qualities={0: [0]},
-        )
+        ),
+        graph_mode=graph_mode,
     )
     agent.reset(env)
     observation = env.reset()
@@ -173,12 +187,13 @@ def test_stops_on_done():
     run_without_suspensions(agent.act(observation))
 
 
-def test_backtracks_because_of_quality():
+@pytest.mark.parametrize('graph_mode', [False, True])
+def test_backtracks_because_of_quality(graph_mode):
     # 0, action 0 -> 1 (medium quality)
     # 0, action 1 -> 2 (high quality)
     # 2, action 0 -> 3 (very low quality)
     # 2, action 1 -> 3 (very low quality)
-    # 3 passes, should choose 0.
+    # 2 passes, should choose 0.
     env = TabularEnv(
         init_state=0,
         n_actions=2,
@@ -195,7 +210,7 @@ def test_backtracks_because_of_quality():
         },
     )
     agent = agents.MCTSAgent(
-        n_passes=3,
+        n_passes=2,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
             child_qualities={
@@ -205,7 +220,8 @@ def test_backtracks_because_of_quality():
                 5: [0, 0],
                 6: [0, 0],
             },
-        )
+        ),
+        graph_mode=graph_mode,
     )
     agent.reset(env)
     observation = env.reset()
@@ -213,7 +229,8 @@ def test_backtracks_because_of_quality():
     assert action == 0
 
 
-def test_backtracks_because_of_reward():
+@pytest.mark.parametrize('graph_mode', [False, True])
+def test_backtracks_because_of_reward(graph_mode):
     # 0, action 0 -> 1 (high quality, very low reward)
     # 0, action 1 -> 2 (medium quality)
     # 2 passes, should choose 1.
@@ -223,6 +240,7 @@ def test_backtracks_because_of_reward():
     agent = agents.MCTSAgent(
         n_passes=2,
         rate_new_leaves_fn=rate_new_leaves_fn,
+        graph_mode=graph_mode,
     )
     agent.reset(env)
     observation = env.reset()

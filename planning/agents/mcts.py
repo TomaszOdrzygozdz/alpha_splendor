@@ -40,28 +40,52 @@ class TreeNode:
     Attrs:
         quality: Instead of value, so we can handle rating with both V-networks
             and Q-networks. Quality(s, a) = reward(s, a) + discount * value(s').
-        reward: Reward estimate accumulated across all visits, so we can handle
-            non-deterministic environments.
     """
 
     def __init__(self, init_quality):
-        self._quality_sum = 0
-        self._quality_count = 0
+        self._init_quality = init_quality
+        self._reward_sum = 0
+        self._reward_count = 0
+        self.graph_node = None
         self.children = None
-        if init_quality is not None:
-            self.add_quality(init_quality)
 
-    def add_quality(self, quality):
-        self._quality_sum += quality
-        self._quality_count += 1
+    def visit(self, reward, value):
+        assert self.graph_node is not None, 'Graph node must be assigned first.'
+        self._reward_sum += reward
+        self._reward_count += 1
+        self.graph_node.visit(value)
 
-    @property
-    def quality(self):
-        return self._quality_sum / self._quality_count
+    def quality(self, discount):
+        if self._reward_count == 0:
+            return self._init_quality
+        return (
+            self._init_quality + self._reward_sum +
+            discount * self.graph_node.value * self._reward_count
+        ) / (self._reward_count + 1)
 
     @property
     def is_leaf(self):
         return self.children is None
+
+
+class GraphNode:
+    """Node of the search graph.
+
+    In the graph mode, corresponds to a state in the MDP. Outside of the graph
+    mode, corresponds 1-1 to a TreeNode.
+    """
+
+    def __init__(self):
+        self._value_sum = 0
+        self._value_count = 0
+
+    def visit(self, value):
+        self._value_sum += value
+        self._value_count += 1
+
+    @property
+    def value(self):
+        return self._value_sum / self._value_count
 
 
 class MCTSAgent(base.OnlineAgent):
@@ -72,6 +96,7 @@ class MCTSAgent(base.OnlineAgent):
         n_passes=10,
         discount=0.99,
         rate_new_leaves_fn=rate_new_leaves_with_rollouts,
+        graph_mode=False,
     ):
         """Initializes MCTSAgent.
 
@@ -82,17 +107,21 @@ class MCTSAgent(base.OnlineAgent):
                 ask for predictions using a Network. Should return qualities for
                 every child of a given leaf node.
                 Signature: (leaf, observation, model, discount) -> [float].
+            graph_mode: (bool) Turns on using transposition tables, turning the
+                search graph from a tree to a DAG.
         """
         self._n_passes = n_passes
         self._discount = discount
         self._rate_new_leaves = rate_new_leaves_fn
+        self._graph_mode = graph_mode
         self._model = None
         self._root = None
         self._root_state = None
+        self._state_to_graph_node = {}
 
     def _rate_children(self, node):
         return [
-            node.children[action].quality
+            node.children[action].quality(self._discount)
             for action in range(len(node.children))
         ]
 
@@ -122,40 +151,60 @@ class MCTSAgent(base.OnlineAgent):
             path.append((reward, node))
         return (observation, done, path)
 
-    def _expand_leaf(self, leaf, observation):
+    def _expand_leaf(self, leaf, observation, done):
         """Expands a leaf and returns its quality.
 
         The leaf's new children are assigned initial qualities, but they're not
         backpropagated yet. They will be only when we expand those new leaves.
 
         Returns:
-            Quality of the expanded leaf.
+            Quality of the expanded leaf, or None if the pass should be
+            interrupted because the leaf is a previously-visited node.
         """
         assert leaf.is_leaf
         # TODO(koz4k): Check for loops here.
-        child_qualities = yield from self._rate_new_leaves(
-            leaf, observation, self._model, self._discount
-        )
-        leaf.children = [TreeNode(quality) for quality in child_qualities]
-        return leaf.quality
+        # TODO(koz4k): Handle the case when the expanded leaf is on the path.
+        if self._graph_mode:
+            state = self._model.clone_state()
+            graph_node = self._state_to_graph_node.get(state, None)
+            if graph_node is None:
+                graph_node = GraphNode()
+                self._state_to_graph_node[state] = graph_node
+            else:
+                # Leaf is a previously visited node, interrupt the pass.
+                return None
+        else:
+            graph_node = GraphNode()
+        leaf.graph_node = graph_node
 
-    def _backpropagate(self, quality, path):
+        if not done:
+            child_qualities = yield from self._rate_new_leaves(
+                leaf, observation, self._model, self._discount
+            )
+            leaf.children = [TreeNode(quality) for quality in child_qualities]
+            action = self._choose_action(leaf)
+            return child_qualities[action]
+        else:
+            # In a "done" state, cumulative future return is 0.
+            return 0
+
+    def _backpropagate(self, value, path):
         for (reward, node) in reversed(path):
-            quality = reward + self._discount * quality
-            node.add_quality(quality)
+            node.visit(reward, value)
+            value = reward + self._discount * value
 
     def _run_pass(self, root, observation):
         (observation, done, path) = self._traverse(root, observation)
-        (reward, leaf) = path[-1]
-        if not done:
-            quality = yield from self._expand_leaf(leaf, observation)
-        else:
-            # In a "done" state, cumulative future return is 0, so quality is
-            # equal to reward.
-            quality = reward
-        self._backpropagate(quality, path)
-        # Go back to the root state.
-        self._model.restore_state(self._root_state)
+        (_, leaf) = path[-1]
+        try:
+            quality = yield from self._expand_leaf(leaf, observation, done)
+            if quality is None:
+                # Leaf is a previously visited node, interrupt the pass.
+                return
+            self._backpropagate(quality, path)
+        finally:
+            # Go back to the root state.
+            self._model.restore_state(self._root_state)
 
     def reset(self, env):
         assert isinstance(env.action_space, gym.spaces.Discrete), (
