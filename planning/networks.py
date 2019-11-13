@@ -4,12 +4,12 @@
 class Network:
     """Base class for networks."""
 
-    def train(self, dataset):
+    def train(self, data_stream):
         """Performs training on batches prepared by the Trainer.
 
         Args:
-            dataset: (Trainer-dependent) Python batch generator of examples to
-                run the updates on.
+            data_stream: (Trainer-dependent) Python batch generator of examples
+                to run the updates on.
         """
         raise NotImplementedError
 
