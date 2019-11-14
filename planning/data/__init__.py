@@ -21,8 +21,6 @@ Transition = collections.namedtuple(
         'next_observation',
         # Whether the environment is "solved" at S'.
         'solved',
-    ],
-    defaults=(
-        None,  # solved
-    ),
+    ]
 )
+Transition.__new__.__defaults__ = (None,) # solved
