@@ -99,6 +99,7 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
     # Generate some random data.
     def sample_seq(n):
         return [np.random.randint(1, 999) for _ in range(n)]
+
     def setup_seq(n):
         expected = sample_seq(n)
         to_return = copy.copy(expected)

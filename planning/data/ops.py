@@ -24,7 +24,7 @@ def _is_namedtuple_instance(x):
 
 def nested_map(f, x, stop_fn=_is_leaf):
     """Maps a function through a pytree.
-    
+
     Args:
         f: (callable) Function to map.
         x: Pytree to map over.
@@ -44,7 +44,7 @@ def nested_map(f, x, stop_fn=_is_leaf):
 
 def nested_zip(xs):
     """Zips a list of pytrees.
-    
+
     Inverse of nested_unzip.
 
     Example:
@@ -53,7 +53,7 @@ def nested_zip(xs):
     assert not _is_leaf(xs)
     assert xs
     for x in xs:
-        assert type(x) is type(xs[0]), (
+        assert isinstance(x, type(xs[0])), (
             'Cannot zip pytrees of different types: '
             '{} and {}.'.format(type(x), type(xs[0]))
         )
@@ -103,7 +103,7 @@ def nested_unzip(x):
 
 def nested_stack(xs):
     """Stacks a list of pytrees of numpy arrays.
-    
+
     Inverse of nested_unstack.
 
     Example:
@@ -114,7 +114,7 @@ def nested_stack(xs):
 
 def nested_unstack(x):
     """Unstacks a pytree of numpy arrays.
-    
+
     Inverse of nested_unstack.
 
     Example:
