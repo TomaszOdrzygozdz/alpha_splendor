@@ -6,8 +6,14 @@ before_script:
 
 stages:
   - Static Analysis
+  - Unit Testing
 
 flake8:
   stage: Static Analysis
   script:
   - flake8 --max-line-length=119 planning
+
+pytest:
+  stage: Unit Testing
+  script:
+  - pytest planning
