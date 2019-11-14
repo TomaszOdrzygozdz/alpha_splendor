@@ -15,9 +15,9 @@ flake8:
 
 pylint:
   stage: Static Analysis
-  allow_failure: true
   script:
-  - pylint planning
+  ## Fail on fatal (1) and error (2) codes only
+  - pylint planning || [ $(($? & 3)) -eq 0 ]
 
 pytest:
   stage: Unit Testing
