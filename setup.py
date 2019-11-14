@@ -6,5 +6,8 @@ setup(
     version='0.0.1',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['gym', 'numpy', 'pytest']
+    install_requires=['gym', 'numpy'],
+    extras_require={
+        'dev': ['flake8', 'pylint', 'pylint-fail-under', 'pytest'],
+    }
 )
