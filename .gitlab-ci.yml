@@ -11,7 +11,7 @@ stages:
 flake8:
   stage: Static Analysis
   script:
-  - flake8 --max-line-length=119 planning
+  - flake8 planning
 
 pylint:
   stage: Static Analysis
