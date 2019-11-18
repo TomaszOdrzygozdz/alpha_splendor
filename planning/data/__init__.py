@@ -2,7 +2,7 @@
 
 import collections
 
-from planning.data.ops import *
+from planning.data.ops import nested_map, nested_zip, nested_unzip, nested_stack, nested_unstack, nested_concatenate  # noqa: F401, E501
 
 
 # Transition between two states, S and S'.
@@ -21,8 +21,6 @@ Transition = collections.namedtuple(
         'next_observation',
         # Whether the environment is "solved" at S'.
         'solved',
-    ],
-    defaults=(
-        None,  # solved
-    ),
+    ]
 )
+Transition.__new__.__defaults__ = (None,)  # solved

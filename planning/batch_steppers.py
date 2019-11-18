@@ -1,14 +1,13 @@
 """Environment steppers."""
 
-from planning import data
-from planning import envs
-
 import numpy as np
+
+from planning import data
 
 
 class BatchStepper:
     """Base class for running a batch of steppers.
-    
+
     Abstracts out local/remote prediction using a Network.
     """
 
@@ -35,7 +34,7 @@ class BatchStepper:
 
 class LocalBatchStepper(BatchStepper):
     """Batch stepper running locally.
-    
+
     Runs batched prediction for all Agents at the same time.
     """
 
@@ -56,6 +55,7 @@ class LocalBatchStepper(BatchStepper):
         """
         # Store the final episodes in a list.
         episodes = [None] * len(cors)
+
         def store_transitions(i, cor):
             episodes[i] = yield from cor
             # End with an infinite stream of Nones, so we don't have
@@ -88,6 +88,7 @@ class LocalBatchStepper(BatchStepper):
             # Stack instead of concatenate to ensure that all requests have
             # the same shape.
             x = data.nested_stack(xs)
+
             def flatten_first_2_dims(x):
                 return np.reshape(x, (-1,) + x.shape[2:])
             # (n_agents, n_requests, ...) -> (n_agents * n_requests, ...)

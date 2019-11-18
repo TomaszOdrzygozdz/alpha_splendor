@@ -24,7 +24,7 @@ class Agent:
         Coroutine, suspends execution for every neural network prediction
         request. This enables a very convenient interface for requesting
         predictions by the Agent:
-            
+
             def solve(self, env):
                 # Planning...
                 predictions = yield inputs
@@ -63,7 +63,7 @@ class Agent:
 
 class OnlineAgent(Agent):
     """Base class for online agents, i.e. planning on a per-action basis.
-    
+
     Provides a default implementation of Agent.solve(), returning a Transition
     object with the collected batch of transitions.
     """
@@ -100,9 +100,10 @@ class OnlineAgent(Agent):
         Returns:
             Transition object containing a batch of collected transitions.
         """
-        # Wrap the environment in a wrapper for collecting transitions. Collection
-        # is turned on/off for the Agent.act() to collect only transitions on
-        # the real environment.
+
+        # Wrap the environment in a wrapper for collecting transitions.
+        # Collection is turned on/off for the Agent.act() to collect only
+        # transitions on the real environment.
         self._env = envs.TransitionCollectorWrapper(env)
 
         self._env.collect = True
