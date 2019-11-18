@@ -100,9 +100,10 @@ class OnlineAgent(Agent):
         Returns:
             Transition object containing a batch of collected transitions.
         """
-        # Wrap the environment in a wrapper for collecting transitions. Collection
-        # is turned on/off for the Agent.act() to collect only transitions on
-        # the real environment.
+
+        # Wrap the environment in a wrapper for collecting transitions.
+        # Collection is turned on/off for the Agent.act() to collect only
+        # transitions on the real environment.
         self._env = envs.TransitionCollectorWrapper(env)
 
         self._env.collect = True
