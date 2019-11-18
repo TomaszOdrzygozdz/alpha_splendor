@@ -53,7 +53,7 @@ def nested_zip(xs):
     assert not _is_leaf(xs)
     assert xs
     for x in xs:
-        assert isinstance(x, type(xs[0])), (
+        assert type(x) is type(xs[0]), (  # noqa: E721, check exact types
             'Cannot zip pytrees of different types: '
             '{} and {}.'.format(type(x), type(xs[0]))
         )
