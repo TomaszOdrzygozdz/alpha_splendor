@@ -59,12 +59,12 @@ def rate_new_leaves_tabular(
     del leaf
     del observation
     init_state = model.clone_state()
-    def quality(action):
+    def rating(action):
         (observation, reward, _, _) = model.step(action)
         model.restore_state(init_state)
         # State is the same as observation.
-        return reward + discount * state_values[observation]
-    return [quality(action) for action in range(model.action_space.n)]
+        return (reward, state_values[observation])
+    return [rating(action) for action in range(model.action_space.n)]
 
 
 def run_without_suspensions(coroutine):

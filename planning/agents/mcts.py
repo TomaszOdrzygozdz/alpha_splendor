@@ -17,52 +17,63 @@ def rate_new_leaves_with_rollouts(
     agent = rollout_agent_class(model.action_space)
     init_state = model.clone_state()
 
-    child_qualities = []
+    child_ratings = []
     for init_action in range(model.action_space.n):
-        (observation, reward, done, _) = model.step(init_action)
-        quality = reward
+        (observation, init_reward, done, _) = model.step(init_action)
+        value = 0
         total_discount = 1
         time = 0
         while not done and time < rollout_time_limit:
             action = yield from agent.act(observation)
             (observation, reward, done, _) = model.step(action)
+            value += total_discount * reward
             total_discount *= discount
-            quality += total_discount * reward
             time += 1
-        child_qualities.append(quality)
+        child_ratings.append((init_reward, value))
         model.restore_state(init_state)
-    return child_qualities
+    return child_ratings
 
 
 class TreeNode:
     """Node of the search tree."""
 
-    def __init__(self, init_quality):
-        self._init_quality = init_quality
-        self._reward_sum = 0
-        self._reward_count = 0
-        self.graph_node = None
+    def __init__(self, init_reward, init_value=None):
+        self._reward_sum = init_reward
+        self._reward_count = 1
+        self._init_value = init_value
+        self._graph_node = None
         self.children = None
+        self.is_terminal = False
+
+    def init_graph_node(self, graph_node=None):
+        assert self._graph_node is None, 'Graph node initialized twice.'
+        if graph_node is None:
+            graph_node = GraphNode(self._init_value)
+        self._graph_node = graph_node
+
+    @property
+    def graph_node(self):
+        return self._graph_node
 
     def visit(self, reward, value):
-        assert self.graph_node is not None, 'Graph node must be assigned first.'
         self._reward_sum += reward
         self._reward_count += 1
-        if value is not None:
+        if not self.is_terminal and value is not None:
+            assert self.graph_node is not None, (
+                'Graph node must be assigned first.'
+            )
             self.graph_node.visit(value)
 
     def quality(self, discount):
         """Returns the quality of going into this node in the search tree.
 
-        We use it instead of value, so we can handle rating with both V-networks
-        and Q-networks. Quality(s, a) = reward(s, a) + discount * value(s').
+        We use it instead of value, so we can handle dense rewards.
+        Quality(s, a) = reward(s, a) + discount * value(s').
         """
-        if self._reward_count == 0:
-            return self._init_quality
-        return (
-            self._init_quality + self._reward_sum +
-            discount * self.graph_node.value * self._reward_count
-        ) / (self._reward_count + 1)
+        return self._reward_sum / self._reward_count + (
+            self._graph_node.value
+            if self._graph_node is not None else self._init_value
+        )
 
     @property
     def is_leaf(self):
@@ -76,9 +87,11 @@ class GraphNode:
     mode, corresponds 1-1 to a TreeNode.
     """
 
-    def __init__(self):
+    def __init__(self, init_value):
         self._value_sum = 0
         self._value_count = 0
+        if init_value is not None:
+            self.visit(init_value)
         # TODO(koz4k): Move children here?
 
     def visit(self, value):
@@ -105,10 +118,11 @@ class MCTSAgent(base.OnlineAgent):
         Args:
             n_passes: (int) Number of MCTS passes per act().
             discount: (float) Discount factor.
-            rate_new_leaves: Coroutine estimating qualities of new leaves. Can
-                ask for predictions using a Network. Should return qualities for
-                every child of a given leaf node.
-                Signature: (leaf, observation, model, discount) -> [float].
+            rate_new_leaves: Coroutine estimating rewards and values of new
+                leaves. Can ask for predictions using a Network. Should return
+                rewards and values for every child of a given leaf node.
+                Signature:
+                (leaf, observation, model, discount) -> [(reward, value)].
             graph_mode: (bool) Turns on using transposition tables, turning the
                 search graph from a tree to a DAG.
         """
@@ -129,8 +143,8 @@ class MCTSAgent(base.OnlineAgent):
 
     def _choose_action(self, node):
         # TODO(koz4k): Distinguish exploratory/not.
-        child_qualities = self._rate_children(node)
-        (_, action) = max(zip(child_qualities, range(len(child_qualities))))
+        child_ratings = self._rate_children(node)
+        (_, action) = max(zip(child_ratings, range(len(child_ratings))))
         return action
 
     def _traverse(self, root, observation):
@@ -156,41 +170,46 @@ class MCTSAgent(base.OnlineAgent):
     def _expand_leaf(self, leaf, observation, done):
         """Expands a leaf and returns its quality.
 
-        The leaf's new children are assigned initial qualities, but they're not
-        backpropagated yet. They will be only when we expand those new leaves.
+        The leaf's new children are assigned initial rewards and values. The
+        reward and value of the "best" new leaf is then backpropagated.
 
         Returns:
-            Quality of the expanded leaf, or None if we shouldn't backpropagate
-            quality beause the node has already been visited.
+            Quality of a chosen child of the expanded leaf, or None if we
+            shouldn't backpropagate quality beause the node has already been
+            visited.
         """
         assert leaf.is_leaf
+        
+        if done:
+            leaf.is_terminal = True
+            # In a "done" state, cumulative future return is 0.
+            return 0
+
         # TODO(koz4k): Check for loops here.
         # TODO(koz4k): Handle the case when the expanded leaf is on the path.
         already_visited = False
         if self._graph_mode:
             state = self._model.clone_state()
-            leaf.graph_node = self._state_to_graph_node.get(state, None)
-            if leaf.graph_node is not None:
+            graph_node = self._state_to_graph_node.get(state, None)
+            leaf.init_graph_node(graph_node)
+            if graph_node is not None:
                 already_visited = True
             else:
-                leaf.graph_node = GraphNode()
                 self._state_to_graph_node[state] = leaf.graph_node
         else:
-            leaf.graph_node = GraphNode()
+            leaf.init_graph_node()
 
-        if not done:
-            child_qualities = yield from self._rate_new_leaves(
-                leaf, observation, self._model, self._discount
-            )
-            leaf.children = [TreeNode(quality) for quality in child_qualities]
-            if already_visited:
-                # Node has already been visited, don't backpropagate quality.
-                return None
-            action = self._choose_action(leaf)
-            return child_qualities[action]
-        else:
-            # In a "done" state, cumulative future return is 0.
-            return 0
+        child_ratings = yield from self._rate_new_leaves(
+            leaf, observation, self._model, self._discount
+        )
+        leaf.children = [
+            TreeNode(reward, value) for (reward, value) in child_ratings
+        ]
+        if already_visited:
+            # Node has already been visited, don't backpropagate quality.
+            return None
+        action = self._choose_action(leaf)
+        return leaf.children[action].quality(self._discount)
 
     def _backpropagate(self, value, path):
         for (reward, node) in reversed(path):
@@ -211,8 +230,8 @@ class MCTSAgent(base.OnlineAgent):
             'MCTSAgent only works with Discrete action spaces.'
         )
         self._model = env
-        # Initialize root with some quality to avoid division by zero.
-        self._root = TreeNode(init_quality=0)
+        # Initialize root with some reward to avoid division by zero.
+        self._root = TreeNode(init_reward=0)
 
     def act(self, observation):
         assert self._model is not None, (
