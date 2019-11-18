@@ -144,20 +144,27 @@ def make_one_level_binary_tree(
 
 
 @pytest.mark.parametrize(
-    "left_value,right_value,expected_action", [
-        (1, 0, 0),  # Should choose left because of high value.
-        (0, 1, 1),  # Should choose right because of high value.
+    "left_value,right_value,left_reward,right_reward,expected_action", [
+        (1, 0, 0, 0, 0),  # Should choose left because of high value.
+        (0, 1, 0, 0, 1),  # Should choose right because of high value.
+        (0, 0, 1, 0, 0),  # Should choose left because of high reward.
+        (0, 0, 0, 1, 1),  # Should choose right because of high reward.
     ]
 )
 @pytest.mark.parametrize('graph_mode', [False, True])
 def test_decision_after_one_pass(
-    left_value, right_value, expected_action, graph_mode
+    left_value,
+    right_value,
+    left_reward,
+    right_reward,
+    expected_action,
+    graph_mode,
 ):
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
     # 1 pass, should choose depending on qualities.
     (env, rate_new_leaves_fn) = make_one_level_binary_tree(
-        left_value, right_value
+        left_value, right_value, left_reward, right_reward
     )
     agent = agents.MCTSAgent(
         n_passes=1,
