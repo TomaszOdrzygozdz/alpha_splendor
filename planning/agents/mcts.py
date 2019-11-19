@@ -1,5 +1,7 @@
 """Monte Carlo Tree Search agent."""
 
+import random
+
 import gym
 
 from planning.agents import base
@@ -103,6 +105,10 @@ class GraphNode:
         return self._value_sum / self._value_count
 
 
+class DeadEnd(Exception):
+    pass
+
+
 class MCTSAgent(base.OnlineAgent):
     """Monte Carlo Tree Search agent."""
 
@@ -112,6 +118,8 @@ class MCTSAgent(base.OnlineAgent):
         discount=0.99,
         rate_new_leaves_fn=rate_new_leaves_with_rollouts,
         graph_mode=False,
+        avoid_loops=False,
+        loop_penalty=0,
     ):
         """Initializes MCTSAgent.
 
@@ -125,14 +133,25 @@ class MCTSAgent(base.OnlineAgent):
                 (leaf, observation, model, discount) -> [(reward, value)].
             graph_mode: (bool) Turns on using transposition tables, turning the
                 search graph from a tree to a DAG.
+            avoid_loops: (bool) Prevents going back to states already visited on
+                the path from the root.
+            loop_penalty: (float) Value backpropagated from "dead ends" - nodes
+                from which it's impossible to reach a node that hasn't already
+                been visited.
         """
+        if avoid_loops:
+            assert graph_mode, 'Loop avoidance only works in graph mode.'
+
         self.n_passes = n_passes
         self._discount = discount
         self._rate_new_leaves = rate_new_leaves_fn
         self._graph_mode = graph_mode
+        self._avoid_loops = avoid_loops
+        self._loop_penalty = loop_penalty
         self._model = None
         self._root = None
         self._root_state = None
+        self._real_visited = None
         self._state_to_graph_node = {}
 
     def _rate_children(self, node):
@@ -141,13 +160,27 @@ class MCTSAgent(base.OnlineAgent):
             for action in range(len(node.children))
         ]
 
-    def _choose_action(self, node):
+    def _choose_action(self, node, visited):
         # TODO(koz4k): Distinguish exploratory/not.
-        child_ratings = self._rate_children(node)
-        (_, action) = max(zip(child_ratings, range(len(child_ratings))))
-        return action
+        child_qualities = self._rate_children(node)
+        child_qualities_and_actions = zip(
+            child_qualities, range(len(child_qualities))
+        )
+        if self._avoid_loops:
+            child_graph_nodes = [child.graph_node for child in node.children]
+            child_qualities_and_actions = [
+                (quality, action)
+                for (quality, action) in child_qualities_and_actions
+                if child_graph_nodes[action] not in visited
+            ]
+        if child_qualities_and_actions:
+            (_, action) = max(child_qualities_and_actions)
+            return action
+        else:
+            # No unvisited child - dead end.
+            raise DeadEnd
 
-    def _traverse(self, root, observation):
+    def _traverse(self, root, observation, path):
         """Chooses a path from the root to a leaf in the search tree.
 
         Returns:
@@ -156,18 +189,20 @@ class MCTSAgent(base.OnlineAgent):
             transitioning _to_ node. In case of a "done" state, traversal is
             interrupted.
         """
-        path = []
         path.append((0, root))
+        visited = {root.graph_node}
         node = root
         done = False
+        visited = set()
         while not node.is_leaf and not done:
-            action = self._choose_action(node)
+            action = self._choose_action(node, visited)
             node = node.children[action]
             (observation, reward, done, _) = self._model.step(action)
             path.append((reward, node))
-        return (observation, done, path)
+            visited.add(node.graph_node)
+        return (observation, done, visited)
 
-    def _expand_leaf(self, leaf, observation, done):
+    def _expand_leaf(self, leaf, observation, done, visited):
         """Expands a leaf and returns its quality.
 
         The leaf's new children are assigned initial rewards and values. The
@@ -178,6 +213,7 @@ class MCTSAgent(base.OnlineAgent):
             shouldn't backpropagate quality beause the node has already been
             visited.
         """
+        # TODO(koz4k): visited/already_visited - clean up.
         assert leaf.is_leaf
         
         if done:
@@ -185,8 +221,6 @@ class MCTSAgent(base.OnlineAgent):
             # In a "done" state, cumulative future return is 0.
             return 0
 
-        # TODO(koz4k): Check for loops here.
-        # TODO(koz4k): Handle the case when the expanded leaf is on the path.
         already_visited = False
         if self._graph_mode:
             state = self._model.clone_state()
@@ -208,19 +242,28 @@ class MCTSAgent(base.OnlineAgent):
         if already_visited:
             # Node has already been visited, don't backpropagate quality.
             return None
-        action = self._choose_action(leaf)
+        action = self._choose_action(leaf, visited)
         return leaf.children[action].quality(self._discount)
 
     def _backpropagate(self, value, path):
+        print('path:', path)
         for (reward, node) in reversed(path):
             node.visit(reward, value)
             if value is not None:
                 value = reward + self._discount * value
 
     def _run_pass(self, root, observation):
-        (observation, done, path) = self._traverse(root, observation)
-        (_, leaf) = path[-1]
-        quality = yield from self._expand_leaf(leaf, observation, done)
+        path = []
+        try:
+            (observation, done, visited) = self._traverse(
+                root, observation, path
+            )
+            (_, leaf) = path[-1]
+            quality = yield from self._expand_leaf(
+                leaf, observation, done, visited
+            )
+        except DeadEnd:
+            quality = self._loop_penalty
         self._backpropagate(quality, path)
         # Go back to the root state.
         self._model.restore_state(self._root_state)
@@ -232,6 +275,7 @@ class MCTSAgent(base.OnlineAgent):
         self._model = env
         # Initialize root with some reward to avoid division by zero.
         self._root = TreeNode(init_reward=0)
+        self._real_visited = set()
 
     def act(self, observation):
         assert self._model is not None, (
@@ -240,6 +284,14 @@ class MCTSAgent(base.OnlineAgent):
         self._root_state = self._model.clone_state()
         for _ in range(self.n_passes):
             yield from self._run_pass(self._root, observation)
-        action = self._choose_action(self._root)
+
+        # Add the root to visited nodes after MCTS passes to ensure it has
+        # a graph node assigned.
+        self._real_visited.add(self._root.graph_node)
+
+        try:
+            action = self._choose_action(self._root, self._real_visited)
+        except DeadEnd:
+            action = random.randrange(len(self._root.children))
         self._root = self._root.children[action]
         return action

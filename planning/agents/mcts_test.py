@@ -315,3 +315,87 @@ def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
     (observation, _, _, _) = env.step(first_action)
     second_action = run_without_suspensions(agent.act(observation))
     assert second_action == expected_second_action
+
+
+@pytest.mark.parametrize('avoid_loops,expected_action', [(False, 0), (True, 1)])
+def test_avoids_real_loops(avoid_loops, expected_action):
+    # 0, action 0 -> 0 (high reward)
+    # 0, action 1 -> 1 (done)
+    # 2 passes: first to expand the root, second to merge child with the root.
+    # Should choose 0 or 1 depending on the loop avoidance flag.
+    env = TabularEnv(
+        init_state=0,
+        n_actions=2,
+        transitions={0: {0: (0, 1, False), 1: (1, 0, True)}},
+    )
+    agent = agents.MCTSAgent(
+        n_passes=2,
+        rate_new_leaves_fn=functools.partial(
+            rate_new_leaves_tabular,
+            state_values={0: 0, 1: 0},
+        ),
+        graph_mode=True,
+        avoid_loops=avoid_loops,
+    )
+    agent.reset(env)
+    observation = env.reset()
+    action = run_without_suspensions(agent.act(observation))
+    assert action == expected_action
+
+
+def test_chooses_something_in_dead_end():
+    # 0 -> 0
+    # 2 passes: first to expand the root, second to merge child with the root.
+    # Should choose 0 and not error out.
+    env = TabularEnv(
+        init_state=0,
+        n_actions=1,
+        transitions={0: {0: (0, 0, False)}},
+    )
+    agent = agents.MCTSAgent(
+        n_passes=2,
+        rate_new_leaves_fn=functools.partial(
+            rate_new_leaves_tabular,
+            state_values={0: 0, 1: 0},
+        ),
+        graph_mode=True,
+        avoid_loops=True,
+    )
+    agent.reset(env)
+    observation = env.reset()
+    action = run_without_suspensions(agent.act(observation))
+    assert action == 0
+
+
+@pytest.mark.parametrize('avoid_loops,expected_action', [(False, 0), (True, 1)])
+def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
+    # 0, action 0 -> 1 (high reward)
+    # 1 -> 0 (loop = low value because of penalty)
+    # 0, action 1 -> 2
+    # 2 passes: first to expand the root, second to expand the left branch,
+    # and backpropagate the loop penalty.
+    # Should choose 0 or 1 depending on the loop avoidance flag.
+    env = TabularEnv(
+        init_state=0,
+        n_actions=2,
+        transitions={
+            # Root.
+            0: {0: (1, 1, False), 1: (2, 0, True)},
+            # Loop in the left branch.
+            1: {0: (0, 0, False), 1: (0, 0, False)},
+        },
+    )
+    agent = agents.MCTSAgent(
+        n_passes=2,
+        rate_new_leaves_fn=functools.partial(
+            rate_new_leaves_tabular,
+            state_values={0: 0, 1: 0, 2: 0},
+        ),
+        graph_mode=True,
+        avoid_loops=avoid_loops,
+        loop_penalty=-2,
+    )
+    agent.reset(env)
+    observation = env.reset()
+    action = run_without_suspensions(agent.act(observation))
+    assert action == expected_action
