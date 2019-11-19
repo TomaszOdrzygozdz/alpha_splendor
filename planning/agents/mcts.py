@@ -173,6 +173,7 @@ class MCTSAgent(base.OnlineAgent):
 
     def __init__(
         self,
+        action_space,
         n_passes=10,
         discount=0.99,
         rate_new_leaves_fn=rate_new_leaves_with_rollouts,
@@ -183,6 +184,7 @@ class MCTSAgent(base.OnlineAgent):
         """Initializes MCTSAgent.
 
         Args:
+            action_space: (gym.Space) Action space.
             n_passes: (int) Number of MCTS passes per act().
             discount: (float) Discount factor.
             rate_new_leaves: Coroutine estimating rewards and values of new
@@ -198,6 +200,8 @@ class MCTSAgent(base.OnlineAgent):
                 from which it's impossible to reach a node that hasn't already
                 been visited.
         """
+        super().__init__(action_space)
+
         if avoid_loops:
             assert graph_mode, 'Loop avoidance only works in graph mode.'
 
