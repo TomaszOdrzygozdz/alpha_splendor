@@ -387,6 +387,7 @@ def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
     )
     agent = agents.MCTSAgent(
         n_passes=2,
+        discount=1,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
             state_values={0: 0, 1: 0, 2: 0},
