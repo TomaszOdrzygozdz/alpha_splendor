@@ -59,11 +59,13 @@ def rate_new_leaves_tabular(
     del leaf
     del observation
     init_state = model.clone_state()
+
     def rating(action):
         (observation, reward, _, _) = model.step(action)
         model.restore_state(init_state)
         # State is the same as observation.
         return (reward, state_values[observation])
+
     return [rating(action) for action in range(model.action_space.n)]
 
 
@@ -87,7 +89,7 @@ def test_integration_with_cartpole(graph_mode):
         graph_mode=graph_mode,
     )
     transition_batch = run_without_suspensions(agent.solve(env))
-    assert transition_batch.observation.shape[0] > 0
+    assert transition_batch.observation.shape[0]  # pylint: disable=no-member
 
 
 @pytest.mark.parametrize('graph_mode', [False, True])
@@ -127,7 +129,7 @@ def make_one_level_binary_tree(
             },
             # Dummy terminal states, made so we can expand left and right.
             left_state: {0: (3, 0, True), 1: (4, 0, True)},
-            right_state: {0: (5, 0, True), 1: (6, 0, True),},
+            right_state: {0: (5, 0, True), 1: (6, 0, True)},
         }
     )
     rate_new_leaves_fn = functools.partial(

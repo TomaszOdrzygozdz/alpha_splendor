@@ -44,10 +44,12 @@ class LocalBatchStepper(BatchStepper):
         super().__init__(
             env_class, agent_class, network_class, n_envs
         )
+
         def make_env_and_agent():
             env = env_class()
             agent = agent_class(env.action_space)
             return (env, agent)
+
         self._envs_and_agents = [make_env_and_agent() for _ in range(n_envs)]
         self._network = network_class()
 
