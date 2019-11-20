@@ -142,7 +142,10 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
         n_envs=n_envs,
     )
     episodes = stepper.run_episode_batch(params=None)
-    transition_batch = data.nested_concatenate(episodes)
+    transition_batch = data.nested_concatenate(
+        # pylint: disable=not-an-iterable
+        [episode.transition_batch for episode in episodes]
+    )
 
     # Assert that all data got passed around correctly.
     assert len(actual_obs) >= n_envs
