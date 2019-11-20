@@ -1,12 +1,14 @@
 """Entrypoint of the experiment."""
 
+import argparse
 import itertools
+import os
 
 import gin
-from gym.envs import classic_control
 
 from planning import agents
 from planning import batch_steppers
+from planning import envs
 from planning import metric_logging
 from planning import networks
 from planning import trainers
@@ -18,7 +20,8 @@ class Runner:
 
     def __init__(
         self,
-        env_class=classic_control.CartPoleEnv,
+        output_dir,
+        env_class=envs.CartPole,
         agent_class=agents.RandomAgent,
         network_class=networks.DummyNetwork,
         n_envs=16,
@@ -32,6 +35,9 @@ class Runner:
             n_epochs: (int or None) Number of epochs to run for, or indefinitely
                 if None.
         """
+        self._output_dir = os.path.expanduser(output_dir)
+        os.makedirs(self._output_dir, exist_ok=True)
+
         self._batch_stepper = batch_stepper_class(
             env_class=env_class,
             agent_class=agent_class,
@@ -49,6 +55,12 @@ class Runner:
         ) / len(episodes)
         metric_logging.log_scalar('return_mean', self._epoch, return_mean)
 
+    def _save_gin(self):
+        # TODO(koz4k): Send to neptune as well.
+        config_path = os.path.join(self._output_dir, 'config.gin')
+        with open(config_path, 'w') as f:
+            f.write(gin.operative_config_str())
+
     def run_epoch(self):
         """Runs a single epoch."""
         episodes = self._batch_stepper.run_episode_batch(
@@ -58,6 +70,11 @@ class Runner:
         for episode in episodes:
             self._trainer.add_episode(episode)
         self._trainer.train_epoch()
+
+        if self._epoch == 0:
+            # Save gin operative config in a file after the first epoch.
+            self._save_gin()
+
         self._epoch += 1
 
     def run(self):
@@ -71,6 +88,21 @@ class Runner:
             self.run_epoch()
 
 
+def _parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--output_dir', required=True, help='Output directory.')
+    parser.add_argument(
+        '--config_file', action='append', help='Gin config files.'
+    )
+    parser.add_argument(
+        '--config', action='append', help='Gin config overrides.'
+    )
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    runner = Runner()
+    args = _parse_args()
+    gin.parse_config_files_and_bindings(args.config_file, args.config)
+
+    runner = Runner(args.output_dir)
     runner.run()
