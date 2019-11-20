@@ -1,0 +1,43 @@
+# Parameters for CartPole:
+# ==============================================================================
+# None.
+
+# Parameters for DummyNetwork:
+# ==============================================================================
+# None.
+
+# Parameters for DummyTrainer:
+# ==============================================================================
+# None.
+
+# Parameters for LocalBatchStepper:
+# ==============================================================================
+# None.
+
+# Parameters for MCTSAgent:
+# ==============================================================================
+MCTSAgent.avoid_loops = False
+MCTSAgent.discount = 0.99
+MCTSAgent.graph_mode = False
+MCTSAgent.loop_penalty = 0
+MCTSAgent.n_passes = 2
+MCTSAgent.rate_new_leaves_fn = @planning.agents.mcts.rate_new_leaves_with_rollouts
+
+# Parameters for RandomAgent:
+# ==============================================================================
+# None.
+
+# Parameters for rate_new_leaves_with_rollouts:
+# ==============================================================================
+rate_new_leaves_with_rollouts.rollout_agent_class = @planning.agents.RandomAgent
+rate_new_leaves_with_rollouts.rollout_time_limit = 20
+
+# Parameters for Runner:
+# ==============================================================================
+Runner.agent_class = @planning.agents.MCTSAgent
+Runner.batch_stepper_class = @planning.batch_steppers.LocalBatchStepper
+Runner.env_class = @planning.envs.CartPole
+Runner.n_envs = 4
+Runner.n_epochs = None
+Runner.network_class = @planning.networks.DummyNetwork
+Runner.trainer_class = @planning.trainers.DummyTrainer

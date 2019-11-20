@@ -4,9 +4,10 @@
 from planning import runner
 
 
-def test_smoke(capsys):
+def test_smoke(tmpdir, capsys):
     n_epochs = 3
     runner.Runner(
+        output_dir=tmpdir,
         n_envs=2,
         n_epochs=n_epochs,
     ).run()
