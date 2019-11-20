@@ -1,5 +1,6 @@
 """Environment steppers."""
 
+import gin
 import numpy as np
 
 from planning import data
@@ -32,6 +33,7 @@ class BatchStepper:
         raise NotImplementedError
 
 
+@gin.configurable
 class LocalBatchStepper(BatchStepper):
     """Batch stepper running locally.
 

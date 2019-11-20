@@ -2,6 +2,7 @@
 
 import itertools
 
+import gin
 from gym.envs import classic_control
 
 from planning import agents
@@ -11,6 +12,7 @@ from planning import networks
 from planning import trainers
 
 
+@gin.configurable
 class Runner:
     """Main class running the experiment."""
 

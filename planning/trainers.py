@@ -1,5 +1,7 @@
 """Neural network trainers."""
 
+import gin
+
 
 class Trainer:
     """Base class for trainers.
@@ -23,6 +25,7 @@ class Trainer:
         raise NotImplementedError
 
 
+@gin.configurable
 class DummyTrainer(Trainer):
     """Dummy Trainer for testing."""
 
