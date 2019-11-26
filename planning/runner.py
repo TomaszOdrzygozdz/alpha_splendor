@@ -72,7 +72,9 @@ class Runner:
         self._trainer.train_epoch()
 
         if self._epoch == 0:
-            # Save gin operative config in a file after the first epoch.
+            # Save gin operative config into a file. "Operative" means the part
+            # that is actually used in the experiment. We need to run an epoch
+            # first, so gin can figure that out.
             self._save_gin()
 
         self._epoch += 1
