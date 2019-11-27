@@ -25,7 +25,7 @@ class BatchStepper:
         """Runs a batch of episodes using the given network parameters.
 
         Args:
-            params: (Network-dependent) Network parameters.
+            params (Network-dependent): Network parameters.
 
         Returns:
             List of completed episodes (Agent/Trainer-dependent).

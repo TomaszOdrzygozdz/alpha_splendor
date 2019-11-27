@@ -5,14 +5,13 @@ import functools
 import random
 
 import gym
+import numpy as np
 import pytest
 
 from planning import agents
 from planning import batch_steppers
 from planning import data
 from planning import networks
-
-import numpy as np
 
 
 class _TestEnv(gym.Env):

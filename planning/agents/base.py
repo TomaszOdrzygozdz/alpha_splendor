@@ -54,7 +54,7 @@ class Agent:
         a coroutine even though it doesn't have any yield.
 
         Args:
-            env: (gym.Env) Environment to solve.
+            env (gym.Env): Environment to solve.
 
         Yields:
             A stream of Network inputs requested for inference.
@@ -79,9 +79,8 @@ class OnlineAgent(Agent):
         Called for every new environment to be solved. Overriding is optional.
 
         Args:
-            env: (gym.Env) Environment to solve.
+            env (gym.Env): Environment to solve.
         """
-        pass
 
     def act(self, observation):
         """Determines the next action to be performed.
@@ -93,7 +92,7 @@ class OnlineAgent(Agent):
         a big overhead for heavier environments.
 
         Args:
-            observation: Observation from the environment.
+            observation (Env-dependent): Observation from the environment.
 
         Yields:
             A stream of Network inputs requested for inference.
@@ -107,13 +106,15 @@ class OnlineAgent(Agent):
         """Solves a given environment using OnlineAgent.act().
 
         Args:
-            env: (gym.Env) Environment to solve.
+            env (gym.Env): Environment to solve.
 
         Yields:
-            A stream of Network inputs requested for inference.
+            Network-dependent: A stream of Network inputs requested for
+            inference.
 
         Returns:
-            Transition object containing a batch of collected transitions.
+            data.Episode: Episode object containing a batch of collected
+            transitions and the return for the episode.
         """
         self.reset(env)
 

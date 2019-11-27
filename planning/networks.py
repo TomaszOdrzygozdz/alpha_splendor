@@ -10,7 +10,7 @@ class Network:
         """Performs training on batches prepared by the Trainer.
 
         Args:
-            data_stream: (Trainer-dependent) Python batch generator of examples
+            data_stream (iterable): Python batch generator of examples
                 to run the updates on.
         """
         raise NotImplementedError
@@ -19,7 +19,7 @@ class Network:
         """Returns the prediction for a given input.
 
         Args:
-            inputs: (Agent-dependent) Batch of inputs to run prediction on.
+            inputs (Agent-dependent): Batch of inputs to run prediction on.
         """
         raise NotImplementedError
 
@@ -46,8 +46,8 @@ class Network:
 class DummyNetwork(Network):
     """Dummy Network for testing."""
 
-    def train(self, transition_batch):
-        del transition_batch
+    def train(self, data_stream):
+        del data_stream
 
     def predict(self, inputs):
         return inputs

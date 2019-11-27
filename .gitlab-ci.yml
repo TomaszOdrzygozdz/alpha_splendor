@@ -8,16 +8,10 @@ stages:
   - Static Analysis
   - Unit Testing
 
-flake8:
-  stage: Static Analysis
-  script:
-  - flake8 planning
-
 pylint:
   stage: Static Analysis
   script:
-  ## Fail on fatal (1) and error (2) codes only
-  - pylint planning || [ $(($? & 3)) -eq 0 ]
+  - pylint planning
 
 pytest:
   stage: Unit Testing

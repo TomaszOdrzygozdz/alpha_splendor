@@ -2,9 +2,9 @@
 
 import collections
 
-from planning.data import ops
-
 import numpy as np
+
+from planning.data import ops
 
 _TestNamedtuple = collections.namedtuple('_TestNamedtuple', ['test_field'])
 

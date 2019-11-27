@@ -16,7 +16,12 @@ persistent=yes
 
 # List of plugins (as comma separated values of python modules names) to load,
 # usually to register additional checkers.
-load-plugins=
+load-plugins=pylint.extensions.docparams,pylint_quotes
+
+# pylint_quotes
+string-quote=single
+triple-quote=double
+docstring-quote=double
 
 # Use multiple processes to speed up Pylint.
 jobs=2
@@ -60,89 +65,27 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=
-    # disabled by me,
-    locally-disabled,
-    missing-docstring,
-    fixme,
-    # disabled by default,
-    import-star-module-level,
-    old-octal-literal,
-    oct-method,
-    print-statement,
-    unpacking-in-except,
-    parameter-unpacking,
-    backtick,
-    old-raise-syntax,
-    old-ne-operator,
-    long-suffix,
-    dict-view-method,
-    dict-iter-method,
-    metaclass-assignment,
-    next-method-called,
-    raising-string,
-    indexing-exception,
-    raw_input-builtin,
-    long-builtin,
-    file-builtin,
-    execfile-builtin,
-    coerce-builtin,
-    cmp-builtin,
-    buffer-builtin,
-    basestring-builtin,
-    apply-builtin,
-    filter-builtin-not-iterating,
-    using-cmp-argument,
-    useless-suppression,
-    range-builtin-not-iterating,
-    suppressed-message,
-    no-absolute-import,
-    old-division,
-    cmp-method,
-    reload-builtin,
-    zip-builtin-not-iterating,
-    intern-builtin,
-    unichr-builtin,
-    reduce-builtin,
-    standarderror-builtin,
-    unicode-builtin,
-    xrange-builtin,
-    coerce-method,
-    delslice-method,
-    getslice-method,
-    setslice-method,
-    input-builtin,
-    round-builtin,
-    hex-method,
-    nonzero-method,
-    map-builtin-not-iterating,
+disable=design,similarities,locally-disabled,star-args,bad-option-value,fixme,suppressed-message,useless-suppression,locally-enabled,file-ignored,unsubscriptable-object,abstract-method,no-else-return,inconsistent-return-statements,bad-continuation,stop-iteration-return,missing-type-doc,missing-return-type-doc,missing-yield-type-doc
 
 
 [REPORTS]
 
-# Set the output format. Available formats are text, parseable, colorized, msvs
-# (visual studio) and html. You can also give a reporter class, eg
-# mypackage.mymodule.MyReporterClass.
-output-format=text
+# Set the output format.
+# output-format=sorted-text
 
 # Put messages in a separate file for each module / package specified on the
 # command line instead of printing them on stdout. Reports (if any) will be
 # written in a file name "pylint_global.[txt|html]".
 files-output=no
 
-# Tells whether to display a full report or only the messages
-reports=yes
+# Tells whether to display a full report or only the messages.
+reports=no
 
-# Python expression which should return a note less than 10 (10 is the highest
-# note). You have access to the variables errors warning, statement which
-# respectively contain the number of errors / warnings messages and the total
-# number of statements analyzed. This is used by the global evaluation report
-# (RP0004).
-evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+# Disable the report(s) with the given id(s).
+disable-report=R0001,R0002,R0003,R0004,R0101,R0102,R0201,R0202,R0220,R0401,R0402,R0701,R0801,R0901,R0902,R0903,R0904,R0911,R0912,R0913,R0914,R0915,R0921,R0922,R0923
 
-# Template used to display messages. This is a python new-style format string
-# used to format the message information. See doc for all details
-#msg-template=
+# Error message template (continued on second line)
+msg-template={msg_id}:{line:3} {obj}: {msg} [{symbol}]
 
 
 [FORMAT]
@@ -203,120 +146,82 @@ logging-modules=logging
 
 [BASIC]
 
-# List of builtins function names that should not be used, separated by a comma
-bad-functions=map,filter,input
+# Required attributes for module, separated by a comma
+required-attributes=
+
+# Regular expression which should only match the name
+# of functions or classes which do not require a docstring.
+# Exclude private classes/functions and tests.
+no-docstring-rgx=(_.*|test_.*|main)
+
+# Min length in lines of a function that requires a docstring.
+docstring-min-length=10
+
+# Regular expression which should only match correct module names. The
+# leading underscore is sanctioned for private modules by Google's style
+# guide.
+#
+# There are exceptions to the basic rule (_?[a-z][a-z0-9_]*) to cover
+# requirements of Python's module system.
+module-rgx=^(_?[a-z][a-z0-9_]*)|__init__$
+
+# Regular expression which should only match correct module level names
+const-rgx=^(_?[A-Z][A-Z0-9_]*|__[a-z0-9_]+__|_?[a-z][a-z0-9_]*)$
+
+# Regular expression which should only match correct class attribute
+class-attribute-rgx=^(_?[A-Z][A-Z0-9_]*|__[a-z0-9_]+__|_?[a-z][a-z0-9_]*)$
+
+# Regular expression which should only match correct class names
+class-rgx=^_?[A-Z][a-zA-Z0-9]*$
+
+# Regular expression which should only match correct function names.
+# 'camel_case' and 'snake_case' group names are used for consistency of naming
+# styles across functions and methods.
+function-rgx=^(?:(?P<exempt>setUp|tearDown|setUpModule|tearDownModule)|(?P<camel_case>_?[A-Z][a-zA-Z0-9]*)|(?P<snake_case>_?[a-z][a-z0-9_]*))$
+
+
+# Regular expression which should only match correct method names.
+# 'camel_case' and 'snake_case' group names are used for consistency of naming
+# styles across functions and methods. 'exempt' indicates a name which is
+# consistent with all naming styles.
+method-rgx=(?x)
+  ^(?:(?P<exempt>_[a-z0-9_]+__|runTest|setUp|tearDown|setUpTestCase
+         |tearDownTestCase|setupSelf|tearDownClass|setUpClass
+         |(test|assert)_*[A-Z0-9][a-zA-Z0-9_]*|next)
+     |(?P<camel_case>_{0,2}[A-Z][a-zA-Z0-9_]*)
+     |(?P<snake_case>_{0,2}[a-z][a-z0-9_]*))$
+
+
+# Regular expression which should only match correct instance attribute names
+attr-rgx=^_{0,2}[a-z][a-z0-9_]*$
+
+# Regular expression which should only match correct argument names
+argument-rgx=^[a-z][a-z0-9_]*$
+
+# Regular expression which should only match correct variable names
+variable-rgx=^[a-z][a-z0-9_]*$
+
+# Regular expression which should only match correct list comprehension /
+# generator expression variable names
+inlinevar-rgx=^[a-z][a-z0-9_]*$
 
 # Good variable names which should always be accepted, separated by a comma
-good-names=i,e,s,_,fd,fp
+good-names=main,_
 
 # Bad variable names which should always be refused, separated by a comma
-bad-names=foo,bar,baz,toto,tutu,tata
+bad-names=
 
-# Colon-delimited sets of names that determine each other's naming style when
-# the name regexes allow several styles.
-name-group=
+# List of builtins function names that should not be used, separated by a comma
+bad-functions=input,apply,reduce
 
-# Include a hint for the correct naming format with invalid-name
-include-naming-hint=no
-
-# Regular expression matching correct function names
-# original:
-#function-rgx=[a-z_][a-z0-9_]{2,30}$
-function-rgx=[a-zA-Z_][a-zA-Z0-9_]{2,40}$
-
-# Naming hint for function names
-function-name-hint=[a-z_][a-z0-9_]{2,30}$
-
-# Regular expression matching correct variable names
-variable-rgx=[a-z_][a-z0-9_]{2,30}$
-
-# Naming hint for variable names
-variable-name-hint=[a-z_][a-z0-9_]{2,30}$
-
-# Regular expression matching correct constant names
-# original:
-#const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
-const-rgx=(([a-zA-Z_][a-zA-Z0-9_]*)|(__.*__))$
-
-# Naming hint for constant names
-const-name-hint=(([A-Z_][A-Z0-9_]*)|(__.*__))$
-
-# Regular expression matching correct attribute names
-attr-rgx=[a-z_][a-z0-9_]{2,30}$
-
-# Naming hint for attribute names
-attr-name-hint=[a-z_][a-z0-9_]{2,30}$
-
-# Regular expression matching correct argument names
-argument-rgx=[a-z_][a-z0-9_]{2,30}$
-
-# Naming hint for argument names
-argument-name-hint=[a-z_][a-z0-9_]{2,30}$
-
-# Regular expression matching correct class attribute names
-# original:
-#class-attribute-rgx=([A-Za-z_][A-Za-z0-9_]{2,30}|(__.*__))$
-class-attribute-rgx=([A-Za-z_][A-Za-z0-9_]{2,40}|(__.*__))$
-
-# Naming hint for class attribute names
-class-attribute-name-hint=([A-Za-z_][A-Za-z0-9_]{2,30}|(__.*__))$
-
-# Regular expression matching correct inline iteration names
-inlinevar-rgx=[A-Za-z_][A-Za-z0-9_]*$
-
-# Naming hint for inline iteration names
-inlinevar-name-hint=[A-Za-z_][A-Za-z0-9_]*$
-
-# Regular expression matching correct class names
-# original:
-#class-rgx=[A-Z_][a-zA-Z0-9]+$
-class-rgx=[a-zA-Z_][a-zA-Z0-9]+$
-
-# Naming hint for class names
-class-name-hint=[A-Z_][a-zA-Z0-9]+$
-
-# Regular expression matching correct module names
-module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
-
-# Naming hint for module names
-module-name-hint=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
-
-# Regular expression matching correct method names
-# original:
-#method-rgx=[a-z_][a-z0-9_]{2,30}$
-method-rgx=[a-zA-Z_][a-zA-Z0-9_]{2,40}$
-
-# Naming hint for method names
-method-name-hint=[a-z_][a-z0-9_]{2,30}$
-
-# Regular expression which should only match function or class names that do
-# not require a docstring.
-no-docstring-rgx=^_
-
-# Minimum line length for functions/classes that require docstrings, shorter
-# ones are exempt.
-docstring-min-length=-1
+# List of decorators that define properties, such as abc.abstractproperty.
+property-classes=abc.abstractproperty
 
 
 [ELIF]
 
 # Maximum number of nested blocks for function / method body
 max-nested-blocks=5
-
-
-[SIMILARITIES]
-
-# Minimum lines number of a similarity.
-min-similarity-lines=4
-
-# Ignore comments when computing similarities.
-ignore-comments=yes
-
-# Ignore docstrings when computing similarities.
-ignore-docstrings=yes
-
-# Ignore imports when computing similarities.
-ignore-imports=no
 
 
 [TYPECHECK]
@@ -380,43 +285,6 @@ valid-metaclass-classmethod-first-arg=mcs
 # List of member names, which should be excluded from the protected access
 # warning.
 exclude-protected=_asdict,_fields,_replace,_source,_make
-
-
-[DESIGN]
-
-# Maximum number of arguments for function / method
-max-args=5
-
-# Argument names that match this expression will be ignored. Default to name
-# with leading underscore
-ignored-argument-names=_.*
-
-# Maximum number of locals for function / method body
-max-locals=15
-
-# Maximum number of return / yield for function / method body
-max-returns=6
-
-# Maximum number of branch for function / method body
-max-branches=12
-
-# Maximum number of statements in function / method body
-max-statements=50
-
-# Maximum number of parents for a class (see R0901).
-max-parents=7
-
-# Maximum number of attributes for a class (see R0902).
-max-attributes=7
-
-# Minimum number of public methods for a class (see R0903).
-min-public-methods=2
-
-# Maximum number of public methods for a class (see R0904).
-max-public-methods=20
-
-# Maximum number of boolean expressions in a if statement
-max-bool-expr=5
 
 
 [IMPORTS]

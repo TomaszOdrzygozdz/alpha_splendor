@@ -32,7 +32,14 @@ class Runner:
         """Initializes the runner.
 
         Args:
-            n_epochs: (int or None) Number of epochs to run for, or indefinitely
+            output_dir (str): Output directory for the experiment.
+            env_class (type): Environment class.
+            agent_class (type): Agent class.
+            network_class (type): Network class.
+            n_envs (int): Number of environments to run in parallel.
+            batch_stepper_class (type): BatchStepper class.
+            trainer_class (type): Trainer class.
+            n_epochs (int or None): Number of epochs to run for, or indefinitely
                 if None.
         """
         self._output_dir = os.path.expanduser(output_dir)
