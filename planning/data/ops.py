@@ -132,3 +132,19 @@ def nested_unstack(x):
 def nested_concatenate(xs):
     """Concatenates a list of pytrees of numpy arrays."""
     return nested_map(np.concatenate, nested_zip(xs), stop_fn=_is_last_level)
+
+
+def choose_leaf(x):
+    """Chooses a leaf of the pytree."""
+    class Found(Exception):
+        pass
+
+    def find_leaf(x):
+        raise Found(x)
+
+    try:
+        nested_map(find_leaf, x)
+        raise ValueError('Pytree has no leaves.')
+    except Found as e:
+        (leaf,) = e.args
+        return leaf
