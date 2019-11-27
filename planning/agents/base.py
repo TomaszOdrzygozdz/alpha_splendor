@@ -132,4 +132,9 @@ class OnlineAgent(Agent):
             env.collect = True
             (observation, _, done, _) = env.step(action)
 
-        return data.nested_stack(env.transitions)
+        return_ = sum(transition.reward for transition in env.transitions)
+        transition_batch = data.nested_stack(env.transitions)
+        return data.Episode(
+            transition_batch=transition_batch,
+            return_=return_,
+        )

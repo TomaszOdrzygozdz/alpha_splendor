@@ -89,8 +89,8 @@ def test_integration_with_cartpole(graph_mode):
         ),
         graph_mode=graph_mode,
     )
-    transition_batch = run_without_suspensions(agent.solve(env))
-    assert transition_batch.observation.shape[0]  # pylint: disable=no-member
+    episode = run_without_suspensions(agent.solve(env))
+    assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member  # noqa
 
 
 @pytest.mark.parametrize('graph_mode', [False, True])

@@ -24,3 +24,19 @@ Transition = collections.namedtuple(
     ]
 )
 Transition.__new__.__defaults__ = (None,)  # solved
+
+
+# Basic Episode object, summarizing experience collected when solving an episode
+# in the form of transitions. It's used for basic Agent -> Trainer
+# communication. Agents and Trainers can use different (but shared) episode
+# representations, as long as they have a 'return_' field, as this field is used
+# by Runner for reporting metrics.
+Episode = collections.namedtuple(
+    'Episode',
+    [
+        # Transition object containing a batch of transitions.
+        'transition_batch',
+        # Undiscounted return (cumulative reward) for the entire episode.
+        'return_',
+    ]
+)

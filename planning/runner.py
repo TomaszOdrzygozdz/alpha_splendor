@@ -6,6 +6,7 @@ from gym.envs import classic_control
 
 from planning import agents
 from planning import batch_steppers
+from planning import metric_logging
 from planning import networks
 from planning import trainers
 
@@ -40,11 +41,18 @@ class Runner:
         self._n_epochs = n_epochs
         self._epoch = 0
 
+    def _log_metrics(self, episodes):
+        return_mean = sum(
+            episode.return_ for episode in episodes
+        ) / len(episodes)
+        metric_logging.log_scalar('return_mean', self._epoch, return_mean)
+
     def run_epoch(self):
         """Runs a single epoch."""
         episodes = self._batch_stepper.run_episode_batch(
             self._network.params
         )
+        self._log_metrics(episodes)
         for episode in episodes:
             self._trainer.add_episode(episode)
         self._trainer.train_epoch()
