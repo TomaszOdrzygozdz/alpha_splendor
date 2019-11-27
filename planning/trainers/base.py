@@ -1,6 +1,4 @@
-"""Neural network trainers."""
-
-import gin
+"""Base class for trainers."""
 
 
 class Trainer:
@@ -23,14 +21,3 @@ class Trainer:
     def train_epoch(self):
         """Runs one epoch of training."""
         raise NotImplementedError
-
-
-@gin.configurable
-class DummyTrainer(Trainer):
-    """Dummy Trainer for testing."""
-
-    def add_episode(self, episode):
-        del episode
-
-    def train_epoch(self):
-        pass
