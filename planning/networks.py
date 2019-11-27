@@ -1,5 +1,7 @@
 """Deep learning framework-agnostic interface for neural networks."""
 
+import gin
+
 
 class Network:
     """Base class for networks."""
@@ -40,18 +42,15 @@ class Network:
         raise NotImplementedError
 
 
+@gin.configurable
 class DummyNetwork(Network):
     """Dummy Network for testing."""
-
-    def __init__(self, predict_output=None):
-        self.predict_output = predict_output
 
     def train(self, transition_batch):
         del transition_batch
 
     def predict(self, inputs):
-        del inputs
-        return self.predict_output
+        return inputs
 
     @property
     def params(self):

@@ -2,12 +2,14 @@
 
 import random
 
+import gin
 import gym
 
 from planning.agents import base
 from planning.agents import core
 
 
+@gin.configurable
 def rate_new_leaves_with_rollouts(
     leaf,
     observation,

@@ -1,5 +1,6 @@
 """Environments."""
 
+import gin
 import gym
 from gym.envs import classic_control
 
@@ -25,6 +26,7 @@ class ModelEnv(gym.Env):
         raise NotImplementedError
 
 
+@gin.configurable
 class CartPole(classic_control.CartPoleEnv, ModelEnv):
     """CartPole with state clone/restore."""
 
