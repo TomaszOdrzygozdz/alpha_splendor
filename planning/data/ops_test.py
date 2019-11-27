@@ -29,6 +29,12 @@ def test_nested_unzip():
     assert out == [_TestNamedtuple(1), _TestNamedtuple(2)]
 
 
+def test_nested_zip_with():
+    inp = [((1, 2), 3), ((4, 5), 6)]
+    out = ops.nested_zip_with(lambda x, y: x + y, inp)
+    assert out == ((5, 7), 9)
+
+
 def test_nested_stack_unstack():
     inp = [_TestNamedtuple(1), _TestNamedtuple(2)]
     out = ops.nested_unstack(ops.nested_stack(inp))

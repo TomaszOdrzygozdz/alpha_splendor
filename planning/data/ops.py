@@ -104,6 +104,19 @@ def nested_unzip(x):
         return acc
 
 
+def nested_zip_with(f, xs):
+    """Zips a list of pytrees using a function.
+
+    Example (elementwise addition of 2 pytrees):
+        nested_zip_with(
+            lambda x, y: x + y, [((1, 2), 3), ((4, 5), 6)]
+        ) == ((5, 7), 9)
+    """
+    def f_star(args):
+        return f(*args)
+    return nested_map(f_star, nested_zip(xs), stop_fn=_is_last_level)
+
+
 def nested_stack(xs):
     """Stacks a list of pytrees of numpy arrays.
 
