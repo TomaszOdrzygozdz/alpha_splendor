@@ -1,6 +1,4 @@
-"""Agents."""
-
-import asyncio
+"""Agent base classes."""
 
 from planning import data
 from planning import envs
@@ -14,9 +12,16 @@ class Agent:
     This is done using a coroutine API, explained in solve().
     """
 
-    def __init__(self):
-        """No-op constructor just for documentation purposes."""
-        pass
+    def __init__(self, action_space):
+        """Initializes Agent.
+
+        Args:
+            action_space (gym.Space): Action space. It's passed in the
+                constructor instead of being inferred from env in solve(),
+                because it shouldn't change between environments and this way
+                the API for stateless OnlineAgents is simpler.
+        """
+        self._action_space = action_space
 
     def solve(self, env):
         """Solves a given environment.
@@ -68,6 +73,16 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
+    def reset(self, env):
+        """Resets the agent state.
+
+        Called for every new environment to be solved. Overriding is optional.
+
+        Args:
+            env: (gym.Env) Environment to solve.
+        """
+        pass
+
     def act(self, observation):
         """Determines the next action to be performed.
 
@@ -100,33 +115,21 @@ class OnlineAgent(Agent):
         Returns:
             Transition object containing a batch of collected transitions.
         """
+        self.reset(env)
 
         # Wrap the environment in a wrapper for collecting transitions.
-        # Collection is turned on/off for the Agent.act() to collect only
+        # Collection is turned on/off for Agent.act() to collect only
         # transitions on the real environment.
-        self._env = envs.TransitionCollectorWrapper(env)
+        env = envs.TransitionCollectorWrapper(env)
 
-        self._env.collect = True
-        observation = self._env.reset()
+        env.collect = True
+        observation = env.reset()
         done = False
         while not done:
-            self._env.collect = False
+            env.collect = False
             # Forward network prediction requests to BatchStepper.
             action = yield from self.act(observation)
-            self._env.collect = True
-            (observation, _, done, _) = self._env.step(action)
+            env.collect = True
+            (observation, _, done, _) = env.step(action)
 
-        return data.nested_stack(self._env.transitions)
-
-
-class RandomAgent(OnlineAgent):
-    """Random agent, sampling actions from the uniform distribution."""
-
-    def solve(self, env):
-        self._action_space = env.action_space
-        return super().solve(env)
-
-    @asyncio.coroutine
-    def act(self, observation):
-        del observation
-        return self._action_space.sample()
+        return data.nested_stack(env.transitions)
