@@ -200,6 +200,9 @@ class MCTSAgent(base.OnlineAgent):
                 from which it's impossible to reach a node that hasn't already
                 been visited.
         """
+        assert isinstance(action_space, gym.spaces.Discrete), (
+            'MCTSAgent only works with Discrete action spaces.'
+        )
         super().__init__(action_space)
 
         if avoid_loops:
@@ -410,9 +413,7 @@ class MCTSAgent(base.OnlineAgent):
 
     def reset(self, env):
         """Reinitializes the search tree for a new environment."""
-        assert isinstance(env.action_space, gym.spaces.Discrete), (
-            'MCTSAgent only works with Discrete action spaces.'
-        )
+        assert env.action_space == self._action_space
         self._model = env
         # Initialize root with some reward to avoid division by zero.
         self._root = TreeNode(init_reward=0)

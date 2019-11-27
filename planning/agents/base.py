@@ -13,8 +13,15 @@ class Agent:
     """
 
     def __init__(self, action_space):
-        """No-op constructor just for documentation purposes."""
-        del action_space
+        """Initializes Agent.
+
+        Args:
+            action_space (gym.Space): Action space. It's passed in the
+                constructor instead of being inferred from env in solve(),
+                because it shouldn't change between environments and this way
+                the API for stateless OnlineAgents is simpler.
+        """
+        self._action_space = action_space
 
     def solve(self, env):
         """Solves a given environment.
