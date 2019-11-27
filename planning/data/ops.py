@@ -26,10 +26,13 @@ def nested_map(f, x, stop_fn=_is_leaf):
     """Maps a function through a pytree.
 
     Args:
-        f: (callable) Function to map.
-        x: Pytree to map over.
-        stop_fn: (callable) Optional stopping condition for the recursion. By
+        f (callable): Function to map.
+        x (any): Pytree to map over.
+        stop_fn (callable): Optional stopping condition for the recursion. By
             default, stops on leaves.
+
+    Returns:
+        pytree: Result of mapping.
     """
     if stop_fn(x):
         return f(x)
@@ -53,12 +56,12 @@ def nested_zip(xs):
     assert not _is_leaf(xs)
     assert xs
     for x in xs:
-        assert type(x) is type(xs[0]), (  # noqa: E721, check exact types
+        assert type(x) is type(xs[0]), (
             'Cannot zip pytrees of different types: '
             '{} and {}.'.format(type(x), type(xs[0]))
         )
 
-    if _is_namedtuple_instance(x):
+    if _is_namedtuple_instance(xs[0]):
         return type(xs[0])(*nested_zip([tuple(x) for x in xs]))
     elif isinstance(xs[0], (list, tuple)):
         for x in xs:

@@ -4,7 +4,8 @@ import gin
 
 from planning.agents import core
 from planning.agents import mcts
-from planning.agents.base import Agent, OnlineAgent  # noqa: F401
+from planning.agents.base import Agent
+from planning.agents.base import OnlineAgent
 
 
 # Configure agents in this module to ensure they're accessible via the
@@ -15,5 +16,5 @@ def configure_agent(agent_class):
     )
 
 
-RandomAgent = configure_agent(core.RandomAgent)
-MCTSAgent = configure_agent(mcts.MCTSAgent)
+RandomAgent = configure_agent(core.RandomAgent)  # pylint: disable=invalid-name
+MCTSAgent = configure_agent(mcts.MCTSAgent)  # pylint: disable=invalid-name

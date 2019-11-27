@@ -21,16 +21,20 @@ def rate_new_leaves_with_rollouts(
     """Basic rate_new_leaves_fn based on rollouts with an Agent.
 
     Args:
-        leaf: (TreeNode) Node whose children are to be rated.
-        observation: (np.ndarray) Observation received at leaf.
-        model: (gym.Env) Model environment.
-        discount: (float) Discount factor.
-        rollout_agent_class: (type) Agent class to use for rollouts.
-        rollout_time_limit: (int) Maximum number of timesteps for rollouts.
+        leaf (TreeNode): Node whose children are to be rated.
+        observation (np.ndarray): Observation received at leaf.
+        model (gym.Env): Model environment.
+        discount (float): Discount factor.
+        rollout_agent_class (type): Agent class to use for rollouts.
+        rollout_time_limit (int): Maximum number of timesteps for rollouts.
+
+    Yields:
+        Network prediction requests.
 
     Returns:
-        List of pairs (reward, value) for all actions played from leaf.
+        list: List of pairs (reward, value) for all actions played from leaf.
     """
+    del leaf
     agent = rollout_agent_class(model.action_space)
     init_state = model.clone_state()
 
@@ -55,14 +59,14 @@ class TreeNode:
     """Node of the search tree.
 
     Attrs:
-        children: (list) List of children, indexed by action.
-        is_leaf: (bool) Whether the node is a leaf, i.e. has not been expanded
+        children (list): List of children, indexed by action.
+        is_leaf (bool): Whether the node is a leaf, i.e. has not been expanded
             yet.
-        is_terminal: Whether the node is terminal, i.e. the environment returns
-            "done" when stepping into this state. For now we assume that "done"s
-            are deterministic.
+        is_terminal (bool): Whether the node is terminal, i.e. the environment
+            returns "done" when stepping into this state. For now we assume that
+            "done"s are deterministic.
             TODO(koz4k): Lift this assumption.
-        graph_node: (GraphNode) The corresponding graph node - many to one
+        graph_node (GraphNode): The corresponding graph node - many to one
             relation.
     """
 
@@ -70,9 +74,9 @@ class TreeNode:
         """Initializes TreeNode.
 
         Args:
-            init_reward: (float) Reward collected when stepping into the node
+            init_reward (float): Reward collected when stepping into the node
                 the first time.
-            init_value: (float or None) Value received from a rate_new_leaves_fn
+            init_value (float or None): Value received from a rate_new_leaves_fn
                 for this node, or None if it's the root.
         """
         self._reward_sum = init_reward
@@ -97,8 +101,8 @@ class TreeNode:
         """Records a visit in the node during backpropagation.
 
         Args:
-            reward: (float) Reward collected when stepping into the node.
-            value: (float or None) Value accumulated on the path out of the
+            reward (float): Reward collected when stepping into the node.
+            value (float or None): Value accumulated on the path out of the
                 node, or None if value should not be accumulated.
         """
         self._reward_sum += reward
@@ -133,14 +137,14 @@ class GraphNode:
     mode, corresponds 1-1 to a TreeNode.
 
     Attrs:
-        value: (float) Value accumulated in this node.
+        value (float): Value accumulated in this node.
     """
 
     def __init__(self, init_value):
         """Initializes GraphNode.
 
         Args:
-            init_value: (float or None) Value received from a rate_new_leaves_fn
+            init_value (float or None): Value received from a rate_new_leaves_fn
                 for this node, or None if it's the root.
         """
         self._value_sum = 0
@@ -153,7 +157,7 @@ class GraphNode:
         """Records a visit in the node during backpropagation.
 
         Args:
-            value: (float) Value accumulated on the path out of the node.
+            value (float): Value accumulated on the path out of the node.
         """
         self._value_sum += value
         self._value_count += 1
@@ -186,19 +190,19 @@ class MCTSAgent(base.OnlineAgent):
         """Initializes MCTSAgent.
 
         Args:
-            action_space: (gym.Space) Action space.
-            n_passes: (int) Number of MCTS passes per act().
-            discount: (float) Discount factor.
-            rate_new_leaves: Coroutine estimating rewards and values of new
-                leaves. Can ask for predictions using a Network. Should return
-                rewards and values for every child of a given leaf node.
-                Signature:
+            action_space (gym.Space): Action space.
+            n_passes (int): Number of MCTS passes per act().
+            discount (float): Discount factor.
+            rate_new_leaves_fn (callable): Coroutine estimating rewards and
+                values of new leaves. Can ask for predictions using a Network.
+                Should return rewards and values for every child of a given leaf
+                node. Signature:
                 (leaf, observation, model, discount) -> [(reward, value)].
-            graph_mode: (bool) Turns on using transposition tables, turning the
+            graph_mode (bool): Turns on using transposition tables, turning the
                 search graph from a tree to a DAG.
-            avoid_loops: (bool) Prevents going back to states already visited on
+            avoid_loops (bool): Prevents going back to states already visited on
                 the path from the root.
-            loop_penalty: (float) Value backpropagated from "dead ends" - nodes
+            loop_penalty (float): Value backpropagated from "dead ends" - nodes
                 from which it's impossible to reach a node that hasn't already
                 been visited.
         """
@@ -233,14 +237,14 @@ class MCTSAgent(base.OnlineAgent):
         from the root.
 
         Args:
-            node: (TreeNode) Node to choose an action from.
-            visited: (set) Set of GraphNodes visited on the path from the root.
+            node (TreeNode): Node to choose an action from.
+            visited (set): Set of GraphNodes visited on the path from the root.
 
         Returns:
             Action to take.
 
         Raises:
-            DeadEnd exception if there's no child not visited before.
+            DeadEnd: If there's no child not visited before.
         """
         # TODO(koz4k): Distinguish exploratory/not.
         child_qualities = self._rate_children(node)
@@ -270,9 +274,9 @@ class MCTSAgent(base.OnlineAgent):
         Does not modify the nodes.
 
         Args:
-            root: (TreeNode) Root of the search tree.
-            observation: (np.ndarray) Observation received at root.
-            path: (list) Empty list that will be filled with pairs
+            root (TreeNode): Root of the search tree.
+            observation (np.ndarray): Observation received at root.
+            path (list): Empty list that will be filled with pairs
                 (reward, node) of nodes visited during traversal and rewards
                 collected when stepping into them. It is passed as an argument
                 rather than returned, so we can access the result in case of
@@ -307,13 +311,16 @@ class MCTSAgent(base.OnlineAgent):
         Only modifies leaf - assigns a GraphNode and adds children.
 
         Args:
-            leaf: (TreeNode) Leaf to expand.
-            observation: (np.ndarray) Observation received at leaf.
-            done: (bool) "Done" flag received at leaf.
-            visited: (set) Set of GraphNodes visited on the path from the root.
+            leaf (TreeNode): Leaf to expand.
+            observation (np.ndarray): Observation received at leaf.
+            done (bool): "Done" flag received at leaf.
+            visited (set): Set of GraphNodes visited on the path from the root.
+
+        Yields:
+            Network prediction requests.
 
         Returns:
-            Quality of a chosen child of the expanded leaf, or None if we
+            float: Quality of a chosen child of the expanded leaf, or None if we
             shouldn't backpropagate quality beause the node has already been
             visited.
         """
@@ -354,9 +361,9 @@ class MCTSAgent(base.OnlineAgent):
         Only modifies the rewards and values of nodes on the path.
 
         Args:
-            value: (float or None) Value collected at the leaf, or None if value
+            value (float or None): Value collected at the leaf, or None if value
                 should not be backpropagated.
-            path: (list) List of (reward, node) pairs, describing a path from
+            path (list): List of (reward, node) pairs, describing a path from
                 the root to a leaf.
         """
         for (reward, node) in reversed(path):
@@ -395,8 +402,11 @@ class MCTSAgent(base.OnlineAgent):
                loop_penalty  option is backpropagated from the node.
 
         Args:
-            root: (TreeNode) Root node.
-            observation: (np.ndarray) Observation collected at the root.
+            root (TreeNode): Root node.
+            observation (np.ndarray): Observation collected at the root.
+
+        Yields:
+            Network prediction requests.
         """
         path = []
         try:

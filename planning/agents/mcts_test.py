@@ -4,12 +4,11 @@ import asyncio
 import functools
 
 import gym
+import numpy as np
 import pytest
 
 from planning import agents
 from planning import envs
-
-import numpy as np
 
 
 class TabularEnv(envs.ModelEnv):
@@ -22,8 +21,9 @@ class TabularEnv(envs.ModelEnv):
         """Initializes TabularEnv.
 
         Args:
-            init_state: Initial state, returned from reset().
-            transitions: Dict of structure:
+            init_state (any): Initial state, returned from reset().
+            n_actions (int): Number of actions.
+            transitions (dict): Dict of structure:
                 {
                     state: {
                         action: (state', reward, done),
@@ -36,6 +36,7 @@ class TabularEnv(envs.ModelEnv):
         self.action_space = gym.spaces.Discrete(n_actions)
         self._init_state = init_state
         self._transitions = transitions
+        self._state = None
 
     def reset(self):
         self._state = self._init_state
@@ -56,8 +57,10 @@ class TabularEnv(envs.ModelEnv):
 def rate_new_leaves_tabular(
     leaf, observation, model, discount, state_values
 ):
+    """Rates new leaves based on hardcoded values."""
     del leaf
     del observation
+    del discount
     init_state = model.clone_state()
 
     def rating(action):
@@ -90,7 +93,7 @@ def test_integration_with_cartpole(graph_mode):
         graph_mode=graph_mode,
     )
     episode = run_without_suspensions(agent.solve(env))
-    assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member  # noqa
+    assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member
 
 
 @pytest.mark.parametrize('graph_mode', [False, True])
@@ -117,6 +120,7 @@ def test_act_doesnt_change_env_state(graph_mode):
 def make_one_level_binary_tree(
     left_value, right_value, left_reward=0, right_reward=0
 ):
+    """Makes a TabularEnv and rate_new_leaves_fn for a 1-level binary tree."""
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
     (root_state, left_state, right_state) = (0, 1, 2)
@@ -148,7 +152,7 @@ def make_one_level_binary_tree(
 
 
 @pytest.mark.parametrize(
-    "left_value,right_value,left_reward,right_reward,expected_action", [
+    'left_value,right_value,left_reward,right_reward,expected_action', [
         (1, 0, 0, 0, 0),  # Should choose left because of high value.
         (0, 1, 0, 0, 1),  # Should choose right because of high value.
         (0, 0, 1, 0, 0),  # Should choose left because of high reward.

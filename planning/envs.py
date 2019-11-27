@@ -3,10 +3,9 @@
 import gin
 import gym
 from gym.envs import classic_control
+import numpy as np
 
 from planning import data
-
-import numpy as np
 
 
 class ModelEnv(gym.Env):
@@ -47,8 +46,8 @@ class TransitionCollectorWrapper(gym.Wrapper):
         self._last_observation = None
         self.collect = True
 
-    def reset(self):
-        self._last_observation = super().reset()
+    def reset(self, **kwargs):
+        self._last_observation = super().reset(**kwargs)
         return self._last_observation
 
     def step(self, action):
