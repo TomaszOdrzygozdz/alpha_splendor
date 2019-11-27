@@ -8,11 +8,6 @@ stages:
   - Static Analysis
   - Unit Testing
 
-flake8:
-  stage: Static Analysis
-  script:
-  - flake8 planning
-
 pylint:
   stage: Static Analysis
   script:
