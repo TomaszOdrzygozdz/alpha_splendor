@@ -3,6 +3,7 @@
 import gin
 
 from planning.trainers import dummy
+from planning.trainers import supervised
 from planning.trainers.base import Trainer
 
 
@@ -15,3 +16,4 @@ def configure_trainer(trainer_class):
 
 
 DummyTrainer = configure_trainer(dummy.DummyTrainer)  # pylint: disable=invalid-name
+SupervisedTrainer = configure_trainer(supervised.SupervisedTrainer)  # pylint: disable=invalid-name
