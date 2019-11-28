@@ -7,18 +7,20 @@ import tensorflow as tf
 from tensorflow import keras
 
 from planning import utils
-from planning.networks.keras import define_keras_mlp, KerasNetwork  # noqa: E501
+from planning.networks import keras as keras_network
 
 
 @pytest.fixture
 def keras_mlp():
-    model = define_keras_mlp(input_shape=(784,),
-                             hidden_sizes=(16, 10),
-                             output_activation='softmax')
-    network = KerasNetwork(model,
-                           optimizer=keras.optimizers.RMSprop(),
-                           loss=keras.losses.CategoricalCrossentropy(),
-                           metrics=[keras.metrics.CategoricalAccuracy()])
+    model = keras_network.mlp(input_shape=(784,),
+                              hidden_sizes=(16, 10),
+                              output_activation='softmax')
+    network = keras_network.KerasNetwork(
+        model=model,
+        optimizer=keras.optimizers.RMSprop(),
+        loss=keras.losses.CategoricalCrossentropy(),
+        metrics=[keras.metrics.CategoricalAccuracy()])
+
     return network
 
 

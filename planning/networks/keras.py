@@ -3,10 +3,10 @@
 import tensorflow as tf
 from tensorflow import keras
 
-from planning.networks import Network
+from planning import networks
 
 
-class KerasNetwork(Network):
+class KerasNetwork(networks.Network):
     """Network implementation in Keras.
 
     Args:
@@ -88,8 +88,8 @@ class KerasNetwork(Network):
         self.model.load_weights(checkpoint_path)
 
 
-def define_keras_mlp(input_shape, hidden_sizes=(32,), activation='relu',
-                     output_activation=None):
+def mlp(input_shape, hidden_sizes=(32,), activation='relu',
+        output_activation=None):
     inputs = keras.Input(shape=input_shape)
     x = inputs
     for h in hidden_sizes[:-1]:
