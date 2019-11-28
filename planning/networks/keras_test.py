@@ -1,5 +1,6 @@
 """Tests for planning.networks.keras."""
 
+import functools
 import os
 import tempfile
 
@@ -12,62 +13,43 @@ from planning.networks import keras as keras_networks
 
 
 @pytest.fixture
-def keras_mlp_factory():
-    """Returns a NetworkFactory for a Keras MLP."""
-    def _model_fn(input_shape):
-        return keras_networks.mlp(input_shape=input_shape,
-                                  hidden_sizes=(16, 10),
-                                  output_activation='softmax')
-
-    network_factory = keras_networks.KerasNetwork(
-        model_fn=_model_fn,
-        optimizer=keras.optimizers.RMSprop(),
-        loss=keras.losses.CategoricalCrossentropy(),
-        metrics=[keras.metrics.CategoricalAccuracy()])
-
-    return network_factory
+def keras_mlp():
+    return keras_networks.KerasNetwork(input_shape=(13,))
 
 
 @pytest.fixture
-def keras_mlp(keras_mlp_factory):
-    # NOTE: This is how you should create networks! Take its factory as param
-    #       and construct it with input shape.
-    mnist_input_shape = (784,)
-    return keras_mlp_factory.construct_network(mnist_input_shape)
+def dataset():
+    ((x_train, y_train), _) = keras.datasets.boston_housing.load_data()
+    return (x_train, y_train)
 
 
-def test_keras_mlp_train_epoch_on_mnist(keras_mlp):
+def test_keras_mlp_train_epoch_on_boston_housing(keras_mlp, dataset):
     # Set up
-    (x_train, y_train), _ = keras.datasets.mnist.load_data()
+    (x_train, y_train) = dataset
     x_train = x_train[:16]
     y_train = y_train[:16]
 
-    # Preprocess the data (these are Numpy arrays)
-    x_train = x_train.reshape(-1, 784).astype('float32') / 255
-    y_train = tf.one_hot(y_train, depth=10, dtype=tf.float32)
-
-    def mnist_data_stream():
+    def data_stream():
         for _ in range(3):
             yield (x_train, y_train)
 
     # Run
-    history = keras_mlp.train(mnist_data_stream)
+    history = keras_mlp.train(data_stream)
 
     # Test
     assert 'loss' in history.history
-    assert 'categorical_accuracy' in history.history
 
 
-def test_keras_mlp_predict_batch_on_mnist(keras_mlp):
+def test_keras_mlp_predict_batch_on_boston_housing(keras_mlp, dataset):
     # Set up
-    (data, _), _ = keras.datasets.mnist.load_data()
-    data_batch = data[:16].reshape(-1, 784).astype('float32') / 255
+    (data, _) = dataset
+    data_batch = data[:16]
 
     # Run
     pred_batch = keras_mlp.predict(data_batch)
 
     # Test
-    assert pred_batch.shape == (16, 10)
+    assert pred_batch.shape == (16, 1)
 
 
 def test_keras_mlp_modify_weights(keras_mlp):

@@ -6,7 +6,24 @@ from tensorflow import keras
 from planning import networks
 
 
-class KerasNetwork(networks.NetworkFactory, networks.Network):
+def mlp(input_shape, hidden_sizes=(32,), activation='relu',
+        output_activation=None):
+    inputs = keras.Input(shape=input_shape)
+    x = inputs
+    for h in hidden_sizes:
+        x = keras.layers.Dense(h, activation=activation)(x)
+    outputs = keras.layers.Dense(
+        # 1 output hardcoded for now (value networks).
+        # TODO(koz4k): Lift this restriction.
+        1,
+        activation=output_activation,
+        name='predictions',
+    )(x)
+
+    return keras.Model(inputs=inputs, outputs=outputs)
+
+
+class KerasNetwork(networks.Network):
     """Network implementation in Keras.
 
     Args:
@@ -17,43 +34,27 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
             (Default: None).
         train_callbacks: List of keras.callbacks.Callback instances. List of
             callbacks to apply during training (Default: None)
-        **kwargs: These arguments are passed to tf.keras.Model.compile.
+        **compile_kwargs: These arguments are passed to tf.keras.Model.compile.
     """
 
-    def __init__(self, model_fn, optimizer, loss, metrics=None,
-                 train_callbacks=None, **kwargs):
+    def __init__(
+        self,
+        input_shape,
+        model_fn=mlp,
+        optimizer='adam',
+        loss='mean_squared_error',
+        metrics=None,
+        train_callbacks=None,
+        **compile_kwargs
+    ):
+        super().__init__(input_shape)
+        self._model = model_fn(input_shape)
+        self._model.compile(optimizer=optimizer,
+                            loss=loss,
+                            metrics=metrics or [],
+                            **compile_kwargs)
 
-        self.model_fn = model_fn
-        self.optimizer = optimizer
-        self.loss = loss
-        self.metrics = metrics or []
         self.train_callbacks = train_callbacks or []
-        self.compile_kwargs = kwargs
-
-        self._model = None
-        self._data_types = None
-
-    def construct_network(self, input_shape):
-        """Constructs Network implementation.
-
-        Args:
-            input_shape: tf.keras.Model input shape.
-
-        Return:
-            Network implementation.
-        """
-        self._model = self.model_fn(input_shape)
-        self._model.compile(optimizer=self.optimizer,
-                            loss=self.loss,
-                            metrics=self.metrics,
-                            **self.compile_kwargs)
-
-        self._data_types = (
-            self._model.input.dtype,
-            self._model.output.dtype,
-        )
-
-        return self
 
     def train(self, data_stream):
         """Performs one epoch of training on data prepared by the Trainer.
@@ -69,7 +70,7 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
 
         dataset = tf.data.Dataset.from_generator(
             generator=data_stream,
-            output_types=self._data_types
+            output_types=(self._model.input.dtype, self._model.output.dtype)
         )
 
         # WA for bug: https://github.com/tensorflow/tensorflow/issues/32912
@@ -109,15 +110,3 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
         """Restores network parameters from a file."""
 
         self._model.load_weights(checkpoint_path)
-
-
-def mlp(input_shape, hidden_sizes=(32,), activation='relu',
-        output_activation=None):
-    inputs = keras.Input(shape=input_shape)
-    x = inputs
-    for h in hidden_sizes[:-1]:
-        x = keras.layers.Dense(h, activation=activation)(x)
-    outputs = keras.layers.Dense(hidden_sizes[-1], activation=output_activation,
-                                 name='predictions')(x)
-
-    return keras.Model(inputs=inputs, outputs=outputs)
