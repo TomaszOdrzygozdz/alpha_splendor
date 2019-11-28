@@ -6,7 +6,8 @@ import tempfile
 import tensorflow as tf
 from tensorflow import keras
 
-from planning.networks.keras import define_keras_mlp, get_ds_batch_n_shuffle_fn, KerasNetwork  # noqa: E501
+from planning import utils
+from planning.networks.keras import define_keras_mlp, KerasNetwork  # noqa: E501
 
 
 @pytest.fixture
@@ -14,7 +15,7 @@ def keras_mlp():
     model = define_keras_mlp(input_shape=(784,),
                              hidden_sizes=(16, 10),
                              output_activation='softmax')
-    network = KerasNetwork(model, ds_proc_fn=get_ds_batch_n_shuffle_fn(16, 64),
+    network = KerasNetwork(model,
                            optimizer=keras.optimizers.RMSprop(),
                            loss=keras.losses.CategoricalCrossentropy(),
                            metrics=[keras.metrics.CategoricalAccuracy()])
@@ -32,8 +33,7 @@ def test_keras_mlp_train_epoch_on_mnist(keras_mlp):
     y_train = tf.one_hot(y_train, depth=10, dtype=tf.float32)
 
     def mnist_data_stream():
-        for x, y in zip(x_train, y_train):
-            yield x, y
+        return utils.DatasetBatcher(x_train, y_train, batch_size=16)
 
     # Run
     history = keras_mlp.train(mnist_data_stream)

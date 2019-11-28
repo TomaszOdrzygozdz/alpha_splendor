@@ -16,18 +16,14 @@ class KerasNetwork(Network):
         metrics: See tf.keras.Model.compile docstring for possible values.
         train_callbacks: List of keras.callbacks.Callback instances. List of
             callbacks to apply during training (Default: None)
-        ds_proc_fn: Allows for modifications to training dataset before
-            training. Should take tf.data.Dataset and return tf.data.Dataset
-            (Default: None).
         **kwargs: These arguments are passed to tf.keras.Model.compile.
     """
 
     def __init__(self, model, optimizer, loss, metrics=None,
-                 train_callbacks=None, ds_proc_fn=None, **kwargs):
+                 train_callbacks=None, **kwargs):
 
         self.model = model
         self.train_callbacks = train_callbacks or []
-        self.ds_proc_fn = ds_proc_fn
 
         self.model.compile(optimizer=optimizer,
                            loss=loss,
@@ -37,10 +33,6 @@ class KerasNetwork(Network):
         self._data_types = (
             self.model.input.dtype,
             self.model.output.dtype,
-        )
-        self._data_shapes = (
-            self.model.input.shape[1:],
-            self.model.output.shape[1:],
         )
 
     def train(self, data_stream):
@@ -55,9 +47,14 @@ class KerasNetwork(Network):
             training loss values and metrics values at successive epochs.
         """
 
-        dataset = self._get_train_dataset(data_stream)
-        return self.model.fit(dataset, epochs=1, verbose=0,
-                              callbacks=self.train_callbacks)
+        dataset = tf.data.Dataset.from_generator(
+            generator=data_stream,
+            output_types=self._data_types
+        )
+
+        # WA for bug: https://github.com/tensorflow/tensorflow/issues/32912
+        return self.model.fit_generator(dataset, epochs=1, verbose=0,
+                                        callbacks=self.train_callbacks)
 
     def predict(self, inputs):
         """Returns the prediction for a given input.
@@ -90,18 +87,6 @@ class KerasNetwork(Network):
 
         self.model.load_weights(checkpoint_path)
 
-    def _get_train_dataset(self, data_stream):
-        dataset = tf.data.Dataset.from_generator(
-            generator=data_stream,
-            output_types=self._data_types,
-            output_shapes=self._data_shapes
-        )
-
-        if self.ds_proc_fn is not None:
-            dataset = self.ds_proc_fn(dataset)
-
-        return dataset
-
 
 def define_keras_mlp(input_shape, hidden_sizes=(32,), activation='relu',
                      output_activation=None):
@@ -113,9 +98,3 @@ def define_keras_mlp(input_shape, hidden_sizes=(32,), activation='relu',
                                  name='predictions')(x)
 
     return keras.Model(inputs=inputs, outputs=outputs)
-
-
-def get_ds_batch_n_shuffle_fn(batch_size, buffer_size, seed=None):
-    def _ds_batch_n_shuffle_fn(dataset):
-        return dataset.shuffle(buffer_size, seed).batch(batch_size)
-    return _ds_batch_n_shuffle_fn
