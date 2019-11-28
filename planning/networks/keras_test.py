@@ -6,7 +6,6 @@ import tempfile
 import tensorflow as tf
 from tensorflow import keras
 
-from planning import utils
 from planning.networks import keras as keras_network
 
 
@@ -37,15 +36,16 @@ def keras_mlp(keras_mlp_factory):
 def test_keras_mlp_train_epoch_on_mnist(keras_mlp):
     # Set up
     (x_train, y_train), _ = keras.datasets.mnist.load_data()
-    x_train = x_train[:100]
-    y_train = y_train[:100]
+    x_train = x_train[:16]
+    y_train = y_train[:16]
 
     # Preprocess the data (these are Numpy arrays)
     x_train = x_train.reshape(-1, 784).astype('float32') / 255
     y_train = tf.one_hot(y_train, depth=10, dtype=tf.float32)
 
     def mnist_data_stream():
-        return utils.DatasetBatcher(x_train, y_train, batch_size=16)
+        for _ in range(3):
+            yield (x_train, y_train)
 
     # Run
     history = keras_mlp.train(mnist_data_stream)
