@@ -73,6 +73,9 @@ class ReplayBuffer:
 
         Returns:
             Datapoint object with sampled datapoints stacked along the 0 axis.
+
+        Raises:
+            ValueError: If the buffer is empty.
         """
         if self._data_buffer is None:
             raise ValueError('Cannot sample from an empty buffer.')
