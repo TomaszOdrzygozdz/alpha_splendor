@@ -11,6 +11,7 @@ from planning.networks import core
 @gin.configurable
 def mlp(input_shape, hidden_sizes=(32,), activation='relu',
         output_activation=None):
+    """Simple multilayer perceptron."""
     inputs = keras.Input(shape=input_shape)
     x = inputs
     for h in hidden_sizes:
@@ -30,7 +31,8 @@ class KerasNetwork(core.Network):
     """Network implementation in Keras.
 
     Args:
-        model_fn: It should take an input shape and return tf.keras.Model.
+        input_shape (tuple): Input shape.
+        model_fn (callable): Function input_shape -> tf.keras.Model.
         optimizer: See tf.keras.Model.compile docstring for possible values.
         loss: See tf.keras.Model.compile docstring for possible values.
         metrics: See tf.keras.Model.compile docstring for possible values

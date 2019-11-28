@@ -60,7 +60,8 @@ class Runner:
         self._n_epochs = n_epochs
         self._epoch = 0
 
-    def _infer_input_shape(self, env_class):
+    @staticmethod
+    def _infer_input_shape(env_class):
         # For now we assume that all Networks take an observation as input.
         # TODO(koz4k): Lift this requirement.
         # Initialize an environment to get observation_space.

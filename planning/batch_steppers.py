@@ -24,6 +24,7 @@ class BatchStepper:
                 instead of an already-initialized Network, because some
                 BatchSteppers will send it to remote workers and it makes no
                 sense to force Networks to be picklable just for this purpose.
+            n_envs (int): Number of parallel environments to run.
         """
         del env_class
         del agent_class

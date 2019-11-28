@@ -1,12 +1,10 @@
 """Tests for planning.networks.keras."""
 
-import functools
 import os
 import tempfile
 
 import numpy as np
 import pytest
-import tensorflow as tf
 from tensorflow import keras
 
 from planning.networks import keras as keras_networks
