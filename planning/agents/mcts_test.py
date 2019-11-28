@@ -80,6 +80,16 @@ def run_without_suspensions(coroutine):
         return e.value
 
 
+def run_with_dummy_network(coroutine):
+    try:
+        request = next(coroutine)
+        while True:
+            batch_size = request.shape[0]
+            request = coroutine.send(np.zeros((batch_size, 1)))
+    except StopIteration as e:
+        return e.value
+
+
 @pytest.mark.parametrize('graph_mode', [False, True])
 def test_integration_with_cartpole(graph_mode):
     env = envs.CartPole()
@@ -97,22 +107,26 @@ def test_integration_with_cartpole(graph_mode):
 
 
 @pytest.mark.parametrize('graph_mode', [False, True])
-def test_act_doesnt_change_env_state(graph_mode):
+@pytest.mark.parametrize('rate_new_leaves_fn', [
+    functools.partial(
+        agents.mcts.rate_new_leaves_with_rollouts,
+        rollout_time_limit=2,
+    ),
+    agents.mcts.rate_new_leaves_with_value_network,
+])
+def test_act_doesnt_change_env_state(graph_mode, rate_new_leaves_fn):
     env = envs.CartPole()
     agent = agents.MCTSAgent(
         action_space=env.action_space,
         n_passes=2,
-        rate_new_leaves_fn=functools.partial(
-            agents.mcts.rate_new_leaves_with_rollouts,
-            rollout_time_limit=2,
-        ),
+        rate_new_leaves_fn=rate_new_leaves_fn,
         graph_mode=graph_mode,
     )
     agent.reset(env)
     observation = env.reset()
 
     state_before = env.clone_state()
-    run_without_suspensions(agent.act(observation))
+    run_with_dummy_network(agent.act(observation))
     state_after = env.clone_state()
     np.testing.assert_equal(state_before, state_after)
 
