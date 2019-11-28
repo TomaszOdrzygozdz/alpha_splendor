@@ -90,7 +90,7 @@ class KerasNetwork(core.Network):
             Agent-dependent: Network predictions.
         """
 
-        return self._model.predict_on_batch(inputs)
+        return self._model.predict_on_batch(inputs).numpy()
 
     @property
     def params(self):
