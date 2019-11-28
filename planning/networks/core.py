@@ -7,11 +7,11 @@ class Network:
     """Base class for networks."""
 
     def train(self, data_stream):
-        """Performs training on batches prepared by the Trainer.
+        """Performs one epoch of training on data prepared by the Trainer.
 
         Args:
-            data_stream (iterable): Python batch generator of examples
-                to run the updates on.
+            data_stream: (Trainer-dependent) Python generator of batches to run
+                the updates on.
         """
         raise NotImplementedError
 
@@ -42,6 +42,21 @@ class Network:
         raise NotImplementedError
 
 
+class NetworkFactory:
+    """Base class for network factories."""
+
+    def construct_network(self, input_shape):
+        """Constructs Network implementation.
+
+        Args:
+            input_shape: Network input shape.
+
+        Return:
+            Network implementation.
+        """
+        raise NotImplementedError
+
+
 @gin.configurable
 class DummyNetwork(Network):
     """Dummy Network for testing."""
@@ -65,3 +80,12 @@ class DummyNetwork(Network):
 
     def restore(self, checkpoint_path):
         del checkpoint_path
+
+
+@gin.configurable
+class DummyFactory(NetworkFactory):
+    """Dummy NetworkFactory for testing."""
+
+    def construct_network(self, input_shape):
+        del input_shape
+        return DummyNetwork()
