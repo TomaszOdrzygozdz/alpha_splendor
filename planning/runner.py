@@ -56,7 +56,7 @@ class Runner:
             n_envs=n_envs,
         )
         self._network = network_fn()
-        self._trainer = trainer_class(self._network)
+        self._trainer = trainer_class()
         self._n_epochs = n_epochs
         self._epoch = 0
 
@@ -89,7 +89,7 @@ class Runner:
         self._log_episode_metrics(episodes)
         for episode in episodes:
             self._trainer.add_episode(episode)
-        self._trainer.train_epoch()
+        self._trainer.train_epoch(self._network)
 
         if self._epoch == 0:
             # Save gin operative config into a file. "Operative" means the part
