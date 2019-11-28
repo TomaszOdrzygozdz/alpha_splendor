@@ -13,12 +13,21 @@ class BatchStepper:
     """
 
     def __init__(
-        self, env_class, agent_class, network_class, n_envs
+        self, env_class, agent_class, network_fn, n_envs
     ):
-        """No-op constructor just for documentation purposes."""
+        """No-op constructor just for documentation purposes.
+
+        Args:
+            env_class (type): Environment class.
+            agent_class (type): Agent class.
+            network_fn (callable): Function () -> Network. Note: we take this
+                instead of an already-initialized Network, because some
+                BatchSteppers will send it to remote workers and it makes no
+                sense to force Networks to be picklable just for this purpose.
+        """
         del env_class
         del agent_class
-        del network_class
+        del network_fn
         del n_envs
 
     def run_episode_batch(self, params):
@@ -40,12 +49,8 @@ class LocalBatchStepper(BatchStepper):
     Runs batched prediction for all Agents at the same time.
     """
 
-    def __init__(
-        self, env_class, agent_class, network_class, n_envs
-    ):
-        super().__init__(
-            env_class, agent_class, network_class, n_envs
-        )
+    def __init__(self, env_class, agent_class, network_fn, n_envs):
+        super().__init__(env_class, agent_class, network_fn, n_envs)
 
         def make_env_and_agent():
             env = env_class()
@@ -53,7 +58,7 @@ class LocalBatchStepper(BatchStepper):
             return (env, agent)
 
         self._envs_and_agents = [make_env_and_agent() for _ in range(n_envs)]
-        self._network = network_class()
+        self._network = network_fn()
 
     def _batch_coroutines(self, cors):
         """Batches a list of coroutines into one.

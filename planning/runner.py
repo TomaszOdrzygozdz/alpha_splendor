@@ -1,6 +1,7 @@
 """Entrypoint of the experiment."""
 
 import argparse
+import functools
 import itertools
 import os
 
@@ -45,16 +46,27 @@ class Runner:
         self._output_dir = os.path.expanduser(output_dir)
         os.makedirs(self._output_dir, exist_ok=True)
 
+        input_shape = self._infer_input_shape(env_class)
+        network_fn = functools.partial(network_class, input_shape=input_shape)
+
         self._batch_stepper = batch_stepper_class(
             env_class=env_class,
             agent_class=agent_class,
-            network_class=network_class,
+            network_fn=network_fn,
             n_envs=n_envs,
         )
-        self._network = network_class()
+        self._network = network_fn()
         self._trainer = trainer_class(self._network)
         self._n_epochs = n_epochs
         self._epoch = 0
+
+    def _infer_input_shape(self, env_class):
+        # For now we assume that all Networks take an observation as input.
+        # TODO(koz4k): Lift this requirement.
+        # Initialize an environment to get observation_space.
+        # TODO(koz4k): Figure something else out if this becomes a problem.
+        env = env_class()
+        return env.observation_space.shape
 
     def _log_metrics(self, episodes):
         return_mean = sum(

@@ -79,7 +79,7 @@ class _TestAgent(agents.OnlineAgent):
 class _TestNetwork(networks.DummyNetwork):
 
     def __init__(self, inputs, outputs):
-        super().__init__()
+        super().__init__(input_shape=(1,))
         self._inputs = inputs
         self._outputs = outputs
 
@@ -133,7 +133,7 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
             responses=actual_res,
             actions=act_to_return,
         ),
-        network_class=functools.partial(
+        network_fn=functools.partial(
             _TestNetwork,
             inputs=actual_req,
             outputs=res_to_return,
