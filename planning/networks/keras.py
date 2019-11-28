@@ -13,7 +13,8 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
         model_fn: It should take an input shape and return tf.keras.Model.
         optimizer: See tf.keras.Model.compile docstring for possible values.
         loss: See tf.keras.Model.compile docstring for possible values.
-        metrics: See tf.keras.Model.compile docstring for possible values.
+        metrics: See tf.keras.Model.compile docstring for possible values
+            (Default: None).
         train_callbacks: List of keras.callbacks.Callback instances. List of
             callbacks to apply during training (Default: None)
         **kwargs: These arguments are passed to tf.keras.Model.compile.
@@ -33,6 +34,14 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
         self._data_types = None
 
     def construct_network(self, input_shape):
+        """Constructs Network implementation.
+
+        Args:
+            input_shape: tf.keras.Model input shape.
+
+        Return:
+            Network implementation.
+        """
         self._model = self.model_fn(input_shape)
         self._model.compile(optimizer=self.optimizer,
                             loss=self.loss,
@@ -50,7 +59,7 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
         """Performs one epoch of training on data prepared by the Trainer.
 
         Args:
-            data_stream: (Trainer-dependent) Python generator of examples to run
+            data_stream: (Trainer-dependent) Python generator of batches to run
                 the updates on.
 
         Returns:

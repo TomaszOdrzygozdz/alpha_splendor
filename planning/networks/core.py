@@ -10,7 +10,7 @@ class Network:
         """Performs one epoch of training on data prepared by the Trainer.
 
         Args:
-            data_stream: (Trainer-dependent) Python generator of examples to run
+            data_stream: (Trainer-dependent) Python generator of batches to run
                 the updates on.
         """
         raise NotImplementedError
@@ -49,8 +49,7 @@ class NetworkFactory:
         """Constructs Network implementation.
 
         Args:
-            data_stream: (Trainer-dependent) Python generator of examples to run
-                the updates on.
+            input_shape: Network input shape.
 
         Return:
             Network implementation.
