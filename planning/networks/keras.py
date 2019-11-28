@@ -1,11 +1,14 @@
 """Network interface implementation using the Keras framework."""
 
+import gin
+
 import tensorflow as tf
 from tensorflow import keras
 
-from planning import networks
+from planning.networks import core
 
 
+@gin.configurable
 def mlp(input_shape, hidden_sizes=(32,), activation='relu',
         output_activation=None):
     inputs = keras.Input(shape=input_shape)
@@ -23,7 +26,7 @@ def mlp(input_shape, hidden_sizes=(32,), activation='relu',
     return keras.Model(inputs=inputs, outputs=outputs)
 
 
-class KerasNetwork(networks.Network):
+class KerasNetwork(core.Network):
     """Network implementation in Keras.
 
     Args:

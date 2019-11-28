@@ -1,7 +1,5 @@
 """Deep learning framework-agnostic interface for neural networks."""
 
-import gin
-
 
 class Network:
     """Base class for networks."""
@@ -50,7 +48,6 @@ class Network:
         raise NotImplementedError
 
 
-@gin.configurable
 class DummyNetwork(Network):
     """Dummy Network for testing."""
 
