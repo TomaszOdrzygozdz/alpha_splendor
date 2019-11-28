@@ -81,6 +81,9 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
 
         Args:
             inputs: (Agent-dependent) Batch of inputs to run prediction on.
+
+        Returns:
+            Agent-dependent: Network predictions.
         """
 
         return self._model.predict_on_batch(inputs)
@@ -109,7 +112,7 @@ class KerasNetwork(networks.NetworkFactory, networks.Network):
 
 
 def mlp(input_shape, hidden_sizes=(32,), activation='relu',
-        output_activation=None, **kwargs):
+        output_activation=None):
     inputs = keras.Input(shape=input_shape)
     x = inputs
     for h in hidden_sizes[:-1]:

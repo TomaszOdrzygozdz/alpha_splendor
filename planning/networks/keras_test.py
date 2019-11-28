@@ -1,22 +1,25 @@
+"""Tests for planning.networks.keras."""
+
 import os
+import tempfile
 
 import numpy as np
 import pytest
-import tempfile
 import tensorflow as tf
 from tensorflow import keras
 
-from planning.networks import keras as keras_network
+from planning.networks import keras as keras_networks
 
 
 @pytest.fixture
 def keras_mlp_factory():
+    """Returns a NetworkFactory for a Keras MLP."""
     def _model_fn(input_shape):
-        return keras_network.mlp(input_shape=input_shape,
-                                 hidden_sizes=(16, 10),
-                                 output_activation='softmax')
+        return keras_networks.mlp(input_shape=input_shape,
+                                  hidden_sizes=(16, 10),
+                                  output_activation='softmax')
 
-    network_factory = keras_network.KerasNetwork(
+    network_factory = keras_networks.KerasNetwork(
         model_fn=_model_fn,
         optimizer=keras.optimizers.RMSprop(),
         loss=keras.losses.CategoricalCrossentropy(),
