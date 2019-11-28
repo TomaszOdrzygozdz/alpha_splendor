@@ -6,11 +6,11 @@ from tensorflow import keras
 from planning import networks
 
 
-class KerasNetwork(networks.Network):
+class KerasNetwork(networks.NetworkFactory, networks.Network):
     """Network implementation in Keras.
 
     Args:
-        model: Not compiled tf.keras.Model.
+        model_fn: It should take an input shape and return tf.keras.Model.
         optimizer: See tf.keras.Model.compile docstring for possible values.
         loss: See tf.keras.Model.compile docstring for possible values.
         metrics: See tf.keras.Model.compile docstring for possible values.
@@ -19,21 +19,32 @@ class KerasNetwork(networks.Network):
         **kwargs: These arguments are passed to tf.keras.Model.compile.
     """
 
-    def __init__(self, model, optimizer, loss, metrics=None,
+    def __init__(self, model_fn, optimizer, loss, metrics=None,
                  train_callbacks=None, **kwargs):
 
-        self.model = model
+        self.model_fn = model_fn
+        self.optimizer = optimizer
+        self.loss = loss
+        self.metrics = metrics or []
         self.train_callbacks = train_callbacks or []
+        self.compile_kwargs = kwargs
 
-        self.model.compile(optimizer=optimizer,
-                           loss=loss,
-                           metrics=metrics or [],
-                           **kwargs)
+        self._model = None
+        self._data_types = None
+
+    def construct_network(self, input_shape):
+        self._model = self.model_fn(input_shape)
+        self._model.compile(optimizer=self.optimizer,
+                            loss=self.loss,
+                            metrics=self.metrics,
+                            **self.compile_kwargs)
 
         self._data_types = (
-            self.model.input.dtype,
-            self.model.output.dtype,
+            self._model.input.dtype,
+            self._model.output.dtype,
         )
+
+        return self
 
     def train(self, data_stream):
         """Performs one epoch of training on data prepared by the Trainer.
@@ -53,8 +64,8 @@ class KerasNetwork(networks.Network):
         )
 
         # WA for bug: https://github.com/tensorflow/tensorflow/issues/32912
-        return self.model.fit_generator(dataset, epochs=1, verbose=0,
-                                        callbacks=self.train_callbacks)
+        return self._model.fit_generator(dataset, epochs=1, verbose=0,
+                                         callbacks=self.train_callbacks)
 
     def predict(self, inputs):
         """Returns the prediction for a given input.
@@ -63,33 +74,33 @@ class KerasNetwork(networks.Network):
             inputs: (Agent-dependent) Batch of inputs to run prediction on.
         """
 
-        return self.model.predict_on_batch(inputs)
+        return self._model.predict_on_batch(inputs)
 
     @property
     def params(self):
         """Returns network parameters."""
 
-        return self.model.get_weights()
+        return self._model.get_weights()
 
     @params.setter
     def params(self, new_params):
         """Sets network parameters."""
 
-        self.model.set_weights(new_params)
+        self._model.set_weights(new_params)
 
     def save(self, checkpoint_path):
         """Saves network parameters to a file."""
 
-        self.model.save_weights(checkpoint_path, save_format='h5')
+        self._model.save_weights(checkpoint_path, save_format='h5')
 
     def restore(self, checkpoint_path):
         """Restores network parameters from a file."""
 
-        self.model.load_weights(checkpoint_path)
+        self._model.load_weights(checkpoint_path)
 
 
 def mlp(input_shape, hidden_sizes=(32,), activation='relu',
-        output_activation=None):
+        output_activation=None, **kwargs):
     inputs = keras.Input(shape=input_shape)
     x = inputs
     for h in hidden_sizes[:-1]:

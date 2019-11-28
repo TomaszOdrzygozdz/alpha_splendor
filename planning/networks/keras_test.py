@@ -11,17 +11,27 @@ from planning.networks import keras as keras_network
 
 
 @pytest.fixture
-def keras_mlp():
-    model = keras_network.mlp(input_shape=(784,),
-                              hidden_sizes=(16, 10),
-                              output_activation='softmax')
-    network = keras_network.KerasNetwork(
-        model=model,
+def keras_mlp_factory():
+    def _model_fn(input_shape):
+        return keras_network.mlp(input_shape=input_shape,
+                                 hidden_sizes=(16, 10),
+                                 output_activation='softmax')
+
+    network_factory = keras_network.KerasNetwork(
+        model_fn=_model_fn,
         optimizer=keras.optimizers.RMSprop(),
         loss=keras.losses.CategoricalCrossentropy(),
         metrics=[keras.metrics.CategoricalAccuracy()])
 
-    return network
+    return network_factory
+
+
+@pytest.fixture
+def keras_mlp(keras_mlp_factory):
+    # NOTE: This is how you should create networks! Take its factory as param
+    #       and construct it with input shape.
+    mnist_input_shape = (784,)
+    return keras_mlp_factory.construct_network(mnist_input_shape)
 
 
 def test_keras_mlp_train_epoch_on_mnist(keras_mlp):

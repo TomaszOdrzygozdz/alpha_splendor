@@ -42,6 +42,22 @@ class Network:
         raise NotImplementedError
 
 
+class NetworkFactory:
+    """Base class for network factories."""
+
+    def construct_network(self, input_shape):
+        """Constructs Network implementation.
+
+        Args:
+            data_stream: (Trainer-dependent) Python generator of examples to run
+                the updates on.
+
+        Return:
+            Network implementation.
+        """
+        raise NotImplementedError
+
+
 @gin.configurable
 class DummyNetwork(Network):
     """Dummy Network for testing."""
@@ -65,3 +81,12 @@ class DummyNetwork(Network):
 
     def restore(self, checkpoint_path):
         del checkpoint_path
+
+
+@gin.configurable
+class DummyFactory(NetworkFactory):
+    """Dummy NetworkFactory for testing."""
+
+    def construct_network(self, input_shape):
+        del input_shape
+        return DummyNetwork()
