@@ -81,10 +81,28 @@ def test_keras_mlp_modify_weights(keras_mlp):
         assert np.all(new == mlp)
 
 
-def test_keras_mlp_save_n_restore_weights(keras_mlp):
+def test_keras_mlp_save_weights(keras_mlp):
     # Set up, Run and Test
     with tempfile.NamedTemporaryFile() as temp_file:
         assert os.path.getsize(temp_file.name) == 0
         keras_mlp.save(temp_file.name)
         assert os.path.getsize(temp_file.name) > 0
+
+
+def test_keras_mlp_restore_weights(keras_mlp):
+    with tempfile.NamedTemporaryFile() as temp_file:
+        # Set up
+        orig_params = keras_mlp.params
+        keras_mlp.save(temp_file.name)
+
+        new_params = keras_mlp.params
+        for p in new_params:
+            p *= 2
+        keras_mlp.params = new_params
+
+        # Run
         keras_mlp.restore(temp_file.name)
+
+        # Test
+        for orig, mlp in zip(orig_params, keras_mlp.params):
+            assert np.all(orig == mlp)
