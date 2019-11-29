@@ -67,8 +67,7 @@ class KerasNetwork(core.Network):
                 the updates on.
 
         Returns:
-            A History object. Its History.history attribute is a record of
-            training loss values and metrics values at successive epochs.
+            dict: Collected metrics, indexed by name.
         """
 
         dataset = tf.data.Dataset.from_generator(
@@ -77,8 +76,11 @@ class KerasNetwork(core.Network):
         )
 
         # WA for bug: https://github.com/tensorflow/tensorflow/issues/32912
-        return self._model.fit_generator(dataset, epochs=1, verbose=0,
-                                         callbacks=self.train_callbacks)
+        history = self._model.fit_generator(dataset, epochs=1, verbose=0,
+                                            callbacks=self.train_callbacks)
+        # history contains epoch-indexed sequences. We run only one epoch, so
+        # we take the only element.
+        return {name: values[0] for (name, values) in history.history.items()}
 
     def predict(self, inputs):
         """Returns the prediction for a given input.

@@ -18,6 +18,9 @@ class Network:
         Args:
             data_stream: (Trainer-dependent) Python generator of batches to run
                 the updates on.
+
+        Returns:
+            dict: Collected metrics, indexed by name.
         """
         raise NotImplementedError
 

@@ -34,10 +34,10 @@ def test_keras_mlp_train_epoch_on_boston_housing(keras_mlp, dataset):
             yield (x_train, y_train)
 
     # Run
-    history = keras_mlp.train(data_stream)
+    metrics = keras_mlp.train(data_stream)
 
     # Test
-    assert 'loss' in history.history
+    assert 'loss' in metrics
 
 
 def test_keras_mlp_predict_batch_on_boston_housing(keras_mlp, dataset):

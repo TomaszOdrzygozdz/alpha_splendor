@@ -68,7 +68,7 @@ class Runner:
         env = env_class()
         return env.observation_space.shape
 
-    def _log_metrics(self, episodes):
+    def _log_episode_metrics(self, episodes):
         return_mean = sum(
             episode.return_ for episode in episodes
         ) / len(episodes)
@@ -85,7 +85,7 @@ class Runner:
         episodes = self._batch_stepper.run_episode_batch(
             self._network.params
         )
-        self._log_metrics(episodes)
+        self._log_episode_metrics(episodes)
         for episode in episodes:
             self._trainer.add_episode(episode)
         self._trainer.train_epoch()
