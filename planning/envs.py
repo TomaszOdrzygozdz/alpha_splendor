@@ -63,6 +63,17 @@ class TransitionCollectorWrapper(gym.Wrapper):
             next_observation=next_observation,
         ))
         self._last_observation = next_observation
+
+        if done and 'solved' in info:
+            # Some envs return a "solved" flag in the final step. We can use
+            # it as a supervised target in value network training.
+            # Rewrite the collected transitions, so we know they come from
+            # a "solved" episode.
+            self.transitions[:] = [
+                transition._replace(solved=info['solved'])
+                for transition in self.transitions
+            ]
+
         return (next_observation, reward, done, info)
 
     @property
