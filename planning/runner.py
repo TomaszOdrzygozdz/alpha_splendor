@@ -75,6 +75,10 @@ class Runner:
         ) / len(episodes)
         metric_logging.log_scalar('return_mean', self._epoch, return_mean)
 
+    def _log_training_metrics(self, metrics):
+        for (name, value) in metrics.items():
+            metric_logging.log_scalar('train/' + name, self._epoch, value)
+
     def _save_gin(self):
         # TODO(koz4k): Send to neptune as well.
         config_path = os.path.join(self._output_dir, 'config.gin')
@@ -89,7 +93,8 @@ class Runner:
         self._log_episode_metrics(episodes)
         for episode in episodes:
             self._trainer.add_episode(episode)
-        self._trainer.train_epoch(self._network)
+        metrics = self._trainer.train_epoch(self._network)
+        self._log_training_metrics(metrics)
 
         if self._epoch == 0:
             # Save gin operative config into a file. "Operative" means the part
