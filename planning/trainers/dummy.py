@@ -13,4 +13,4 @@ class DummyTrainer(base.Trainer):
         del episode
 
     def train_epoch(self, network):
-        pass
+        return {}
