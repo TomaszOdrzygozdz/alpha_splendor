@@ -4,8 +4,7 @@ import gin
 
 from planning.agents import core
 from planning.agents import mcts
-from planning.agents.base import Agent
-from planning.agents.base import OnlineAgent
+from planning.agents.base import *
 
 
 # Configure agents in this module to ensure they're accessible via the

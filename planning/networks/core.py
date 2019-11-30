@@ -1,10 +1,16 @@
 """Deep learning framework-agnostic interface for neural networks."""
 
-import gin
-
 
 class Network:
     """Base class for networks."""
+
+    def __init__(self, input_shape):
+        """Initializes Network.
+
+        Args:
+            input_shape (tuple): Input shape.
+        """
+        self._input_shape = input_shape
 
     def train(self, data_stream):
         """Performs one epoch of training on data prepared by the Trainer.
@@ -12,6 +18,9 @@ class Network:
         Args:
             data_stream: (Trainer-dependent) Python generator of batches to run
                 the updates on.
+
+        Returns:
+            dict: Collected metrics, indexed by name.
         """
         raise NotImplementedError
 
@@ -42,22 +51,6 @@ class Network:
         raise NotImplementedError
 
 
-class NetworkFactory:
-    """Base class for network factories."""
-
-    def construct_network(self, input_shape):
-        """Constructs Network implementation.
-
-        Args:
-            input_shape: Network input shape.
-
-        Return:
-            Network implementation.
-        """
-        raise NotImplementedError
-
-
-@gin.configurable
 class DummyNetwork(Network):
     """Dummy Network for testing."""
 
@@ -80,12 +73,3 @@ class DummyNetwork(Network):
 
     def restore(self, checkpoint_path):
         del checkpoint_path
-
-
-@gin.configurable
-class DummyFactory(NetworkFactory):
-    """Dummy NetworkFactory for testing."""
-
-    def construct_network(self, input_shape):
-        del input_shape
-        return DummyNetwork()
