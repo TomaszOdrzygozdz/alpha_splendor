@@ -1,6 +1,4 @@
-"""Neural network trainers."""
-
-import gin
+"""Base class for trainers."""
 
 
 class Trainer:
@@ -12,25 +10,14 @@ class Trainer:
     learning on a tree.
     """
 
-    def __init__(self, network):
-        """No-op constructor just for documentation purposes."""
-        del network
+    def __init__(self, input_shape):
+        """No-op constructor just to specify the interface."""
+        del input_shape
 
     def add_episode(self, episode):
         """Adds an episode to memory."""
         raise NotImplementedError
 
-    def train_epoch(self):
+    def train_epoch(self, network):
         """Runs one epoch of training."""
         raise NotImplementedError
-
-
-@gin.configurable
-class DummyTrainer(Trainer):
-    """Dummy Trainer for testing."""
-
-    def add_episode(self, episode):
-        del episode
-
-    def train_epoch(self):
-        pass

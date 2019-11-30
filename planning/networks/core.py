@@ -56,6 +56,7 @@ class DummyNetwork(Network):
 
     def train(self, data_stream):
         del data_stream
+        return {}
 
     def predict(self, inputs):
         return inputs
