@@ -12,28 +12,27 @@ class ReplayBuffer:
     overwrites the oldest ones.
     """
 
-    def __init__(self, capacity):
+    def __init__(self, datapoint_spec, capacity):
         """Initializes the replay buffer.
 
         Args:
+            datapoint_spec (pytree): Pytree of shape tuples, defining the
+                structure of data to be stored.
             capacity (int): Maximum size of the buffer.
         """
         self._capacity = capacity
         self._size = 0
-        self._data_buffer = None
         self._insert_index = 0
 
-    def _init_buffer(self, prototype):
-        """Initializes the data buffer.
-
-        Args:
-            prototype (pytree): Example datapoint object to infer the structure
-                of data from.
-        """
-        def init_array(array_prototype):
-            shape = (self._capacity,) + array_prototype.shape[1:]
-            return np.zeros(shape, array_prototype.dtype)
-        self._data_buffer = data.nested_map(init_array, prototype)
+        def init_array(shape):
+            shape = (self._capacity,) + shape
+            return np.zeros(shape)
+        self._data_buffer = data.nested_map(
+            init_array, datapoint_spec,
+            # datapoint_spec has shape tuples at leaves, we don't want to map
+            # over them so we stop one level higher.
+            stop_fn=data.is_last_level,
+        )
 
     def add(self, stacked_datapoints):
         """Adds datapoints to the buffer.
@@ -42,9 +41,6 @@ class ReplayBuffer:
             stacked_datapoints (pytree): Transition object containing the
                 datapoints, stacked along axis 0.
         """
-        if self._data_buffer is None:
-            self._init_buffer(stacked_datapoints)
-
         n_elems = data.choose_leaf(data.nested_map(
             lambda x: x.shape[0], stacked_datapoints
         ))

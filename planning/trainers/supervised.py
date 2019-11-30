@@ -21,6 +21,7 @@ class SupervisedTrainer(base.Trainer):
 
     def __init__(
         self,
+        input_shape,
         target_fn=target_solved,
         batch_size=64,
         n_steps_per_epoch=1000,
@@ -29,6 +30,7 @@ class SupervisedTrainer(base.Trainer):
         """Initializes SupervisedTrainer.
 
         Args:
+            input_shape (tuple): Input shape for the network.
             target_fn (callable): Function transition_batch -> target for
                 determining the target for network training.
             batch_size (int): Batch size.
@@ -36,11 +38,17 @@ class SupervisedTrainer(base.Trainer):
                 epoch.
             replay_buffer_capacity (int): Maximum size of the replay buffer.
         """
+        super().__init__(input_shape)
         self._target_fn = target_fn
         self._batch_size = batch_size
         self._n_steps_per_epoch = n_steps_per_epoch
+
+        # (input, target). For now we assume that all networks return a single
+        # output.
+        # TODO(koz4k): Lift this restriction.
+        datapoint_spec = (input_shape, ())
         self._replay_buffer = replay_buffer.ReplayBuffer(
-            capacity=replay_buffer_capacity
+            datapoint_spec, capacity=replay_buffer_capacity
         )
 
     def add_episode(self, episode):

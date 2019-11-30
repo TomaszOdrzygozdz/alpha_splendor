@@ -19,6 +19,7 @@ def test_integration_with_keras():
     n_transitions = 10
     obs_shape = (4,)
     trainer = supervised.SupervisedTrainer(
+        input_shape=obs_shape,
         target_fn=supervised.target_solved,
         batch_size=2,
         n_steps_per_epoch=3,

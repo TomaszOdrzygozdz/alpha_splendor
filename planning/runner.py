@@ -56,7 +56,7 @@ class Runner:
             n_envs=n_envs,
         )
         self._network = network_fn()
-        self._trainer = trainer_class()
+        self._trainer = trainer_class(input_shape)
         self._n_epochs = n_epochs
         self._epoch = 0
 

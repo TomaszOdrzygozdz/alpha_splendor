@@ -10,6 +10,10 @@ class Trainer:
     learning on a tree.
     """
 
+    def __init__(self, input_shape):
+        """No-op constructor just to specify the interface."""
+        del input_shape
+
     def add_episode(self, episode):
         """Adds an episode to memory."""
         raise NotImplementedError
