@@ -1,7 +1,7 @@
-"""Tests for planning.runner."""
+"""Tests for alpacka.runner."""
 
 
-from planning import runner
+from alpacka import runner
 
 
 def test_smoke(tmpdir, capsys):

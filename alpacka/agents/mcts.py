@@ -5,9 +5,9 @@ import random
 import gin
 import gym
 
-from planning import data
-from planning.agents import base
-from planning.agents import core
+from alpacka import data
+from alpacka.agents import base
+from alpacka.agents import core
 
 
 @gin.configurable

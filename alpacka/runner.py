@@ -7,12 +7,12 @@ import os
 
 import gin
 
-from planning import agents
-from planning import batch_steppers
-from planning import envs
-from planning import metric_logging
-from planning import networks
-from planning import trainers
+from alpacka import agents
+from alpacka import batch_steppers
+from alpacka import envs
+from alpacka import metric_logging
+from alpacka import networks
+from alpacka import trainers
 
 
 @gin.configurable

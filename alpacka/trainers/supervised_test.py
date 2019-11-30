@@ -1,12 +1,12 @@
-"""Tests for planning.trainers.supervised."""
+"""Tests for alpacka.trainers.supervised."""
 
 import collections
 
 import numpy as np
 
-from planning import data
-from planning.networks import keras
-from planning.trainers import supervised
+from alpacka import data
+from alpacka.networks import keras
+from alpacka.trainers import supervised
 
 
 _TestTransition = collections.namedtuple(

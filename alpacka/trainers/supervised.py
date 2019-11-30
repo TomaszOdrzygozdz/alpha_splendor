@@ -3,8 +3,8 @@
 import gin
 import numpy as np
 
-from planning.trainers import base
-from planning.trainers import replay_buffer
+from alpacka.trainers import base
+from alpacka.trainers import replay_buffer
 
 
 @gin.configurable

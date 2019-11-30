@@ -2,15 +2,15 @@
 
 import gin
 
-from planning.networks import core
-from planning.networks import keras
+from alpacka.networks import core
+from alpacka.networks import keras
 
 
 # Configure networks in this module to ensure they're accessible via the
-# planning.networks.* namespace.
+# alpacka.networks.* namespace.
 def configure_network(network_class):
     return gin.external_configurable(
-        network_class, module='planning.networks'
+        network_class, module='alpacka.networks'
     )
 
 

@@ -2,7 +2,7 @@
 
 import collections
 
-from planning.data.ops import *
+from alpacka.data.ops import *
 
 
 # Transition between two states, S and S'.

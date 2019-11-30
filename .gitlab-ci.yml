@@ -11,9 +11,9 @@ stages:
 pylint:
   stage: Static Analysis
   script:
-  - pylint planning
+  - pylint alpacka
 
 pytest:
   stage: Unit Testing
   script:
-  - pytest planning
+  - pytest alpacka

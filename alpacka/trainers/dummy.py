@@ -2,7 +2,7 @@
 
 import gin
 
-from planning.trainers import base
+from alpacka.trainers import base
 
 
 @gin.configurable

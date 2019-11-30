@@ -5,7 +5,7 @@ import gin
 import tensorflow as tf
 from tensorflow import keras
 
-from planning.networks import core
+from alpacka.networks import core
 
 
 @gin.configurable
