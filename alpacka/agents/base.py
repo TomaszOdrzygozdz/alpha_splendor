@@ -1,7 +1,7 @@
 """Agent base classes."""
 
-from planning import data
-from planning import envs
+from alpacka import data
+from alpacka import envs
 
 
 class Agent:

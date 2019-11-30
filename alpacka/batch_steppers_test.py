@@ -1,4 +1,4 @@
-"""Tests for planning.batch_steppers."""
+"""Tests for alpacka.batch_steppers."""
 
 import copy
 import functools
@@ -8,10 +8,10 @@ import gym
 import numpy as np
 import pytest
 
-from planning import agents
-from planning import batch_steppers
-from planning import data
-from planning import networks
+from alpacka import agents
+from alpacka import batch_steppers
+from alpacka import data
+from alpacka import networks
 
 
 class _TestEnv(gym.Env):

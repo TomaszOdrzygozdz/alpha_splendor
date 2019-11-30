@@ -1,4 +1,4 @@
-"""Tests for planning.agents.mcts."""
+"""Tests for alpacka.agents.mcts."""
 
 import asyncio
 import functools
@@ -7,8 +7,8 @@ import gym
 import numpy as np
 import pytest
 
-from planning import agents
-from planning import envs
+from alpacka import agents
+from alpacka import envs
 
 
 class TabularEnv(envs.ModelEnv):

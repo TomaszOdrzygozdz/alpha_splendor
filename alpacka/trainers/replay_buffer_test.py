@@ -1,11 +1,11 @@
-"""Tests for planning.trainers.replay_buffer."""
+"""Tests for alpacka.trainers.replay_buffer."""
 
 import collections
 
 import numpy as np
 import pytest
 
-from planning.trainers import replay_buffer
+from alpacka.trainers import replay_buffer
 
 
 _TestTransition = collections.namedtuple('_TestTransition', ['test_field'])

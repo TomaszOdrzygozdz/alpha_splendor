@@ -3,7 +3,7 @@
 import gin
 import numpy as np
 
-from planning import data
+from alpacka import data
 
 
 class BatchStepper:

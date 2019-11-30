@@ -3,7 +3,7 @@
 Pytrees are nested structures of lists/tuples/namedtuples. They typically have
 numpy arrays at leaves.
 
-Behavior of those ops is well described in planning.data.ops_test.
+Behavior of those ops is well described in alpacka.data.ops_test.
 """
 
 import numpy as np

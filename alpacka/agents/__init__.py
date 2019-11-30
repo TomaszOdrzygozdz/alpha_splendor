@@ -2,16 +2,16 @@
 
 import gin
 
-from planning.agents import core
-from planning.agents import mcts
-from planning.agents.base import *
+from alpacka.agents import core
+from alpacka.agents import mcts
+from alpacka.agents.base import *
 
 
 # Configure agents in this module to ensure they're accessible via the
-# planning.agents.* namespace.
+# alpacka.agents.* namespace.
 def configure_agent(agent_class):
     return gin.external_configurable(
-        agent_class, module='planning.agents'
+        agent_class, module='alpacka.agents'
     )
 
 

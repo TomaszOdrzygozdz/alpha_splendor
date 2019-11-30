@@ -2,16 +2,16 @@
 
 import gin
 
-from planning.trainers import dummy
-from planning.trainers import supervised
-from planning.trainers.base import Trainer
+from alpacka.trainers import dummy
+from alpacka.trainers import supervised
+from alpacka.trainers.base import Trainer
 
 
 # Configure trainers in this module to ensure they're accessible via the
-# planning.trainers.* namespace.
+# alpacka.trainers.* namespace.
 def configure_trainer(trainer_class):
     return gin.external_configurable(
-        trainer_class, module='planning.trainers'
+        trainer_class, module='alpacka.trainers'
     )
 
 

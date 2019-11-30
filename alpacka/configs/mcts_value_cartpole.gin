@@ -1,0 +1,56 @@
+# Parameters for CartPole:
+# ==============================================================================
+CartPole.solved_at = 40
+
+# Parameters for KerasNetwork:
+# ==============================================================================
+KerasNetwork.loss = 'binary_crossentropy'
+KerasNetwork.metrics = ['accuracy']
+KerasNetwork.model_fn = @alpacka.networks.keras.mlp
+KerasNetwork.optimizer = 'adam'
+KerasNetwork.train_callbacks = None
+
+# Parameters for LocalBatchStepper:
+# ==============================================================================
+# None.
+
+# Parameters for MCTSAgent:
+# ==============================================================================
+MCTSAgent.avoid_loops = False
+MCTSAgent.discount = 0.99
+MCTSAgent.graph_mode = False
+MCTSAgent.loop_penalty = 0
+MCTSAgent.n_passes = 10
+MCTSAgent.rate_new_leaves_fn = \
+    @alpacka.agents.mcts.rate_new_leaves_with_value_network
+
+# Parameters for mlp:
+# ==============================================================================
+mlp.activation = 'relu'
+mlp.hidden_sizes = (16,)
+mlp.output_activation = 'sigmoid'
+
+# Parameters for rate_new_leaves_with_value_network:
+# ==============================================================================
+# None.
+
+# Parameters for Runner:
+# ==============================================================================
+Runner.agent_class = @alpacka.agents.MCTSAgent
+Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+Runner.env_class = @alpacka.envs.CartPole
+Runner.n_envs = 1
+Runner.n_epochs = None
+Runner.network_class = @alpacka.networks.KerasNetwork
+Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
+
+# Parameters for SupervisedTrainer:
+# ==============================================================================
+SupervisedTrainer.target_fn = @alpacka.trainers.supervised.target_solved
+SupervisedTrainer.batch_size = 64
+SupervisedTrainer.n_steps_per_epoch = 100
+SupervisedTrainer.replay_buffer_capacity = 1000000
+
+# Parameters for target_solved:
+# ==============================================================================
+# None.

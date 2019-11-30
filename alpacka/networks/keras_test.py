@@ -1,4 +1,4 @@
-"""Tests for planning.networks.keras."""
+"""Tests for alpacka.networks.keras."""
 
 import os
 import tempfile
@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from tensorflow import keras
 
-from planning.networks import keras as keras_networks
+from alpacka.networks import keras as keras_networks
 
 
 @pytest.fixture

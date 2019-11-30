@@ -5,7 +5,7 @@ import gym
 from gym.envs import classic_control
 import numpy as np
 
-from planning import data
+from alpacka import data
 
 
 class ModelEnv(gym.Env):

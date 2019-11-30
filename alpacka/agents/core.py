@@ -2,7 +2,7 @@
 
 import asyncio
 
-from planning.agents import base
+from alpacka.agents import base
 
 
 class RandomAgent(base.OnlineAgent):

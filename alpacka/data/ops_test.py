@@ -1,11 +1,11 @@
-"""Tests for planning.data.ops."""
+"""Tests for alpacka.data.ops."""
 
 import collections
 
 import numpy as np
 import pytest
 
-from planning.data import ops
+from alpacka.data import ops
 
 
 _TestNamedtuple = collections.namedtuple('_TestNamedtuple', ['test_field'])
