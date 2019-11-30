@@ -27,13 +27,29 @@ class ModelEnv(gym.Env):
 
 @gin.configurable
 class CartPole(classic_control.CartPoleEnv, ModelEnv):
-    """CartPole with state clone/restore."""
+    """CartPole with state clone/restore and returning a "solved" flag."""
+
+    def __init__(self, solved_at=500, **kwargs):
+        super().__init__(**kwargs)
+        self._solved_at = solved_at
+        self._step = None
+
+    def reset(self):
+        self._step = 0
+        return super().reset()
+
+    def step(self, action):
+        (observation, reward, done, info) = super().step(action)
+        if done:
+            info['solved'] = self._step >= self._solved_at
+        self._step += 1
+        return (observation, reward, done, info)
 
     def clone_state(self):
-        return (tuple(self.state), self.steps_beyond_done)
+        return (tuple(self.state), self.steps_beyond_done, self._step)
 
     def restore_state(self, state):
-        (state, self.steps_beyond_done) = state
+        (state, self.steps_beyond_done, self._step) = state
         self.state = np.array(state)
 
 
@@ -63,6 +79,17 @@ class TransitionCollectorWrapper(gym.Wrapper):
             next_observation=next_observation,
         ))
         self._last_observation = next_observation
+
+        if done and 'solved' in info:
+            # Some envs return a "solved" flag in the final step. We can use
+            # it as a supervised target in value network training.
+            # Rewrite the collected transitions, so we know they come from
+            # a "solved" episode.
+            self.transitions[:] = [
+                transition._replace(solved=info['solved'])
+                for transition in self.transitions
+            ]
+
         return (next_observation, reward, done, info)
 
     @property

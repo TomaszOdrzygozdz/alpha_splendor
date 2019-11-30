@@ -5,6 +5,7 @@ import random
 import gin
 import gym
 
+from planning import data
 from planning.agents import base
 from planning.agents import core
 
@@ -53,6 +54,28 @@ def rate_new_leaves_with_rollouts(
         child_ratings.append((init_reward, value))
         model.restore_state(init_state)
     return child_ratings
+
+
+@gin.configurable
+def rate_new_leaves_with_value_network(leaf, observation, model, discount):
+    """rate_new_leaves_fn based on a value network (observation -> value)."""
+    del leaf
+    del observation
+
+    init_state = model.clone_state()
+
+    def step_and_rewind(action):
+        (observation, reward, done, _) = model.step(action)
+        model.restore_state(init_state)
+        return (observation, reward, done)
+
+    (observations, rewards, dones) = data.nested_stack([
+        step_and_rewind(action) for action in range(model.action_space.n)
+    ])
+    # Run the network to predict values for children.
+    values = yield observations
+    # Compute the final ratings, masking out "done" states.
+    return rewards + discount * values * (1 - dones)
 
 
 class TreeNode:
