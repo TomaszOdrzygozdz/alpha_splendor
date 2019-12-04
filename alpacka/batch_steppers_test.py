@@ -162,4 +162,68 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
     assert transition_batch.done.sum() == n_envs
 
 
+@pytest.mark.parametrize('max_n_requests', [0, 1, 4])
+def test_ray_batch_stepper_runs_episode_batch(max_n_requests):
+    n_envs = 8
+    max_n_steps = 4
+    n_total_steps = n_envs * max_n_steps
+    n_total_requests = n_total_steps * max_n_requests
+
+    # Generate some random data.
+    def sample_seq(n):
+        return [np.random.randint(1, 999) for _ in range(n)]
+
+    def setup_seq(n):
+        expected = sample_seq(n)
+        to_return = copy.copy(expected)
+        actual = []
+        return (expected, to_return, actual)
+    (expected_rew, rew_to_return, _) = setup_seq(n_total_steps)
+    (expected_obs, obs_to_return, _) = setup_seq(n_total_steps)
+    (expected_act, act_to_return, _) = setup_seq(n_total_steps)
+    (_, req_to_return, _) = setup_seq(n_total_requests)
+    (_, res_to_return, _) = setup_seq(n_total_requests)
+
+    # Connect all pipes together.
+    stepper = batch_steppers.RayBatchStepper(
+        env_class=functools.partial(
+            _TestEnv,
+            actions=[],
+            n_steps=max_n_steps,
+            observations=obs_to_return,
+            rewards=rew_to_return,
+        ),
+        agent_class=functools.partial(
+            _TestAgent,
+            observations=[],
+            max_n_requests=max_n_requests,
+            requests=req_to_return,
+            responses=[],
+            actions=act_to_return,
+        ),
+        network_fn=functools.partial(
+            _TestNetwork,
+            inputs=[],
+            outputs=res_to_return,
+        ),
+        n_envs=n_envs,
+    )
+    episodes = stepper.run_episode_batch(params=None)
+    transition_batch = data.nested_concatenate(
+        # pylint: disable=not-an-iterable
+        [episode.transition_batch for episode in episodes]
+    )
+
+    # Assert that we collected the correct transitions (order is mixed up).
+    assert transition_batch.done.sum() == n_envs
+    for episode in episodes:
+        episode_len = len(episode.transition_batch.done)
+        assert episode.transition_batch.observation.tolist() == \
+            expected_obs[:episode_len]
+        assert episode.transition_batch.action.tolist() == \
+            expected_act[:episode_len]
+        assert episode.transition_batch.reward.tolist() == \
+            expected_rew[:episode_len]
+
+
 # TODO(koz4k): Test collecting real/model transitions.
