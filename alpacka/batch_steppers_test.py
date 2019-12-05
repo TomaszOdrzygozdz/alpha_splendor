@@ -4,6 +4,8 @@ import copy
 import functools
 import random
 
+from unittest import mock
+
 import gym
 import numpy as np
 import pytest
@@ -94,8 +96,45 @@ class _TestNetwork(networks.DummyNetwork):
         return np.array(outputs)
 
 
+def mock_ray_remote(Cls):
+    class NewCls(object):
+        def __init__(self, *args, **kwargs):
+            self.orig_obj = Cls(*args, **kwargs)
+
+        @classmethod
+        def remote(Self, *args, **kwargs):
+            """Mock Ray Actor factory method."""
+            return Self(*args, **kwargs)
+
+        def __getattr__(self, name):
+            """Mock every Ray Actor method."""
+            orig_attr = self.orig_obj.__getattribute__(name)
+            new_attr = mock.Mock()
+            new_attr.remote = mock.Mock(side_effect=orig_attr)
+            return new_attr
+
+    return NewCls
+
+
+def mock_ray_put_get(x, *args, **kwargs):
+    return x
+
+
+def mock_ray_init(*args, **kwargs):
+    pass
+
+
+@mock.patch('ray.remote', mock_ray_remote)
+@mock.patch('ray.get', mock_ray_put_get)
+@mock.patch('ray.put', mock_ray_put_get)
+@mock.patch('ray.init', mock_ray_init)
+@pytest.mark.parametrize('batch_stepper_cls', [
+    batch_steppers.LocalBatchStepper,
+    batch_steppers.RayBatchStepper
+])
 @pytest.mark.parametrize('max_n_requests', [0, 1, 4])
-def test_local_batch_stepper_runs_episode_batch(max_n_requests):
+def test_batch_steppers_run_episode_batch(max_n_requests,
+                                          batch_stepper_cls):
     n_envs = 8
     max_n_steps = 4
     n_total_steps = n_envs * max_n_steps
@@ -117,7 +156,7 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
     (expected_res, res_to_return, actual_res) = setup_seq(n_total_requests)
 
     # Connect all pipes together.
-    stepper = batch_steppers.LocalBatchStepper(
+    stepper = batch_stepper_cls(
         env_class=functools.partial(
             _TestEnv,
             actions=actual_act,
@@ -160,70 +199,6 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
         expected_rew[:len(actual_obs)]
     )
     assert transition_batch.done.sum() == n_envs
-
-
-@pytest.mark.parametrize('max_n_requests', [0, 1, 4])
-def test_ray_batch_stepper_runs_episode_batch(max_n_requests):
-    n_envs = 8
-    max_n_steps = 4
-    n_total_steps = n_envs * max_n_steps
-    n_total_requests = n_total_steps * max_n_requests
-
-    # Generate some random data.
-    def sample_seq(n):
-        return [np.random.randint(1, 999) for _ in range(n)]
-
-    def setup_seq(n):
-        expected = sample_seq(n)
-        to_return = copy.copy(expected)
-        actual = []
-        return (expected, to_return, actual)
-    (expected_rew, rew_to_return, _) = setup_seq(n_total_steps)
-    (expected_obs, obs_to_return, _) = setup_seq(n_total_steps)
-    (expected_act, act_to_return, _) = setup_seq(n_total_steps)
-    (_, req_to_return, _) = setup_seq(n_total_requests)
-    (_, res_to_return, _) = setup_seq(n_total_requests)
-
-    # Connect all pipes together.
-    stepper = batch_steppers.RayBatchStepper(
-        env_class=functools.partial(
-            _TestEnv,
-            actions=[],
-            n_steps=max_n_steps,
-            observations=obs_to_return,
-            rewards=rew_to_return,
-        ),
-        agent_class=functools.partial(
-            _TestAgent,
-            observations=[],
-            max_n_requests=max_n_requests,
-            requests=req_to_return,
-            responses=[],
-            actions=act_to_return,
-        ),
-        network_fn=functools.partial(
-            _TestNetwork,
-            inputs=[],
-            outputs=res_to_return,
-        ),
-        n_envs=n_envs,
-    )
-    episodes = stepper.run_episode_batch(params=None)
-    transition_batch = data.nested_concatenate(
-        # pylint: disable=not-an-iterable
-        [episode.transition_batch for episode in episodes]
-    )
-
-    # Assert that we collected the correct transitions (order is mixed up).
-    assert transition_batch.done.sum() == n_envs
-    for episode in episodes:
-        episode_len = len(episode.transition_batch.done)
-        assert episode.transition_batch.observation.tolist() == \
-            expected_obs[:episode_len]
-        assert episode.transition_batch.action.tolist() == \
-            expected_act[:episode_len]
-        assert episode.transition_batch.reward.tolist() == \
-            expected_rew[:episode_len]
 
 
 # TODO(koz4k): Test collecting real/model transitions.
