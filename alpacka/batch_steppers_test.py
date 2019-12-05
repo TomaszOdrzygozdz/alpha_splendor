@@ -96,15 +96,15 @@ class _TestNetwork(networks.DummyNetwork):
         return np.array(outputs)
 
 
-def mock_ray_remote(Cls):
-    class NewCls(object):
+def _mock_ray_remote(cls):
+    class _NewCls:
         def __init__(self, *args, **kwargs):
-            self.orig_obj = Cls(*args, **kwargs)
+            self.orig_obj = cls(*args, **kwargs)
 
         @classmethod
-        def remote(Self, *args, **kwargs):
+        def remote(cls, *args, **kwargs):
             """Mock Ray Actor factory method."""
-            return Self(*args, **kwargs)
+            return cls(*args, **kwargs)
 
         def __getattr__(self, name):
             """Mock every Ray Actor method."""
@@ -113,21 +113,24 @@ def mock_ray_remote(Cls):
             new_attr.remote = mock.Mock(side_effect=orig_attr)
             return new_attr
 
-    return NewCls
+    return _NewCls
 
 
-def mock_ray_put_get(x, *args, **kwargs):
+def _mock_ray_put_get(x, *args, **kwargs):
+    del args
+    del kwargs
     return x
 
 
-def mock_ray_init(*args, **kwargs):
-    pass
+def _mock_ray_init(*args, **kwargs):
+    del args
+    del kwargs
 
 
-@mock.patch('ray.remote', mock_ray_remote)
-@mock.patch('ray.get', mock_ray_put_get)
-@mock.patch('ray.put', mock_ray_put_get)
-@mock.patch('ray.init', mock_ray_init)
+@mock.patch('ray.remote', _mock_ray_remote)
+@mock.patch('ray.get', _mock_ray_put_get)
+@mock.patch('ray.put', _mock_ray_put_get)
+@mock.patch('ray.init', _mock_ray_init)
 @pytest.mark.parametrize('batch_stepper_cls', [
     batch_steppers.LocalBatchStepper,
     batch_steppers.RayBatchStepper
