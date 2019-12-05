@@ -74,7 +74,7 @@ class _TestAgent(agents.OnlineAgent):
             if random.random() < 0.5:
                 break
             response = yield np.array([self._requests.pop(0)])
-            self._responses.append(response)
+            self._responses.append(response[0])
         return self._actions.pop(0)
 
 
@@ -190,10 +190,10 @@ def test_batch_steppers_run_episode_batch(max_n_requests,
 
     # Assert that all data got passed around correctly.
     assert len(actual_obs) >= n_envs
-    assert actual_obs == expected_obs[:len(actual_obs)]
-    assert actual_req == expected_req[:len(actual_req)]
-    assert actual_res == expected_res[:len(actual_req)]
-    assert actual_act == expected_act[:len(actual_obs)]
+    np.testing.assert_array_equal(actual_obs, expected_obs[:len(actual_obs)])
+    np.testing.assert_array_equal(actual_req, expected_req[:len(actual_req)])
+    np.testing.assert_array_equal(actual_res, expected_res[:len(actual_req)])
+    np.testing.assert_array_equal(actual_act, expected_act[:len(actual_obs)])
 
     # Assert that we collected the correct transitions (order is mixed up).
     assert set(transition_batch.observation.tolist()) == set(actual_obs)

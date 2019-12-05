@@ -176,7 +176,7 @@ class RayBatchStepper(BatchStepper):
                 try:
                     inputs = next(episode_cor)
                     while True:
-                        predictions = self.network.predict([inputs])
+                        predictions = self.network.predict(inputs)
                         inputs = episode_cor.send(predictions)
                 except StopIteration as e:
                     episode = e.value
