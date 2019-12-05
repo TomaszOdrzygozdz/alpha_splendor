@@ -2,6 +2,7 @@
 
 import gin
 import numpy as np
+import ray
 
 from alpacka import data
 
@@ -144,3 +145,50 @@ class LocalBatchStepper(BatchStepper):
             episodes = e.value
             assert len(episodes) == len(self._envs_and_agents)
             return episodes
+
+
+@gin.configurable
+class RayBatchStepper(BatchStepper):
+    """Batch stepper running remotely using Ray.
+
+    Runs predictions and steps environments for all Agents separately in their
+    own workers.
+
+    It's highly recommended to pass params to run_episode_batch as a numpy array
+    or a collection of numpy arrays. Then each worker can retrieve params with
+    zero-copy operation on each node.
+    """
+
+    def __init__(self, env_class, agent_class, network_fn, n_envs):
+        super().__init__(env_class, agent_class, network_fn, n_envs)
+
+        @ray.remote
+        class _Worker:
+            def __init__(self, env_class, agent_class, network_fn):
+                self.env = env_class()
+                self.agent = agent_class(self.env.action_space)
+                self.network = network_fn()
+
+            def run(self, params):
+                """Runs the episode using the given network parameters."""
+                self.network.params = params
+                episode_cor = self.agent.solve(self.env)
+                try:
+                    inputs = next(episode_cor)
+                    while True:
+                        predictions = self.network.predict(inputs)
+                        inputs = episode_cor.send(predictions)
+                except StopIteration as e:
+                    episode = e.value
+                    return episode
+
+        if not ray.is_initialized():
+            ray.init()
+        # pylint: disable=no-member
+        self._workers = [_Worker.remote(env_class, agent_class, network_fn)
+                         for _ in range(n_envs)]
+
+    def run_episode_batch(self, params):
+        params_id = ray.put(params, weakref=True)
+        episodes = ray.get([w.run.remote(params_id) for w in self._workers])
+        return episodes

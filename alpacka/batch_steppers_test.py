@@ -4,6 +4,8 @@ import copy
 import functools
 import random
 
+from unittest import mock
+
 import gym
 import numpy as np
 import pytest
@@ -72,7 +74,7 @@ class _TestAgent(agents.OnlineAgent):
             if random.random() < 0.5:
                 break
             response = yield np.array([self._requests.pop(0)])
-            self._responses.append(response)
+            self._responses.append(response[0])
         return self._actions.pop(0)
 
 
@@ -94,8 +96,48 @@ class _TestNetwork(networks.DummyNetwork):
         return np.array(outputs)
 
 
+def _mock_ray_remote(cls):
+    class _NewCls:
+        def __init__(self, *args, **kwargs):
+            self.orig_obj = cls(*args, **kwargs)
+
+        @classmethod
+        def remote(cls, *args, **kwargs):
+            """Mock Ray Actor factory method."""
+            return cls(*args, **kwargs)
+
+        def __getattr__(self, name):
+            """Mock every Ray Actor method."""
+            orig_attr = self.orig_obj.__getattribute__(name)
+            new_attr = mock.Mock()
+            new_attr.remote = mock.Mock(side_effect=orig_attr)
+            return new_attr
+
+    return _NewCls
+
+
+def _mock_ray_put_get(x, *args, **kwargs):
+    del args
+    del kwargs
+    return x
+
+
+def _mock_ray_init(*args, **kwargs):
+    del args
+    del kwargs
+
+
+@mock.patch('ray.remote', _mock_ray_remote)
+@mock.patch('ray.get', _mock_ray_put_get)
+@mock.patch('ray.put', _mock_ray_put_get)
+@mock.patch('ray.init', _mock_ray_init)
+@pytest.mark.parametrize('batch_stepper_cls', [
+    batch_steppers.LocalBatchStepper,
+    batch_steppers.RayBatchStepper
+])
 @pytest.mark.parametrize('max_n_requests', [0, 1, 4])
-def test_local_batch_stepper_runs_episode_batch(max_n_requests):
+def test_batch_steppers_run_episode_batch(max_n_requests,
+                                          batch_stepper_cls):
     n_envs = 8
     max_n_steps = 4
     n_total_steps = n_envs * max_n_steps
@@ -117,7 +159,7 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
     (expected_res, res_to_return, actual_res) = setup_seq(n_total_requests)
 
     # Connect all pipes together.
-    stepper = batch_steppers.LocalBatchStepper(
+    stepper = batch_stepper_cls(
         env_class=functools.partial(
             _TestEnv,
             actions=actual_act,
@@ -148,10 +190,10 @@ def test_local_batch_stepper_runs_episode_batch(max_n_requests):
 
     # Assert that all data got passed around correctly.
     assert len(actual_obs) >= n_envs
-    assert actual_obs == expected_obs[:len(actual_obs)]
-    assert actual_req == expected_req[:len(actual_req)]
-    assert actual_res == expected_res[:len(actual_req)]
-    assert actual_act == expected_act[:len(actual_obs)]
+    np.testing.assert_array_equal(actual_obs, expected_obs[:len(actual_obs)])
+    np.testing.assert_array_equal(actual_req, expected_req[:len(actual_req)])
+    np.testing.assert_array_equal(actual_res, expected_res[:len(actual_req)])
+    np.testing.assert_array_equal(actual_act, expected_act[:len(actual_obs)])
 
     # Assert that we collected the correct transitions (order is mixed up).
     assert set(transition_batch.observation.tolist()) == set(actual_obs)
