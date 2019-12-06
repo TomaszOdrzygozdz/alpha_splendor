@@ -22,7 +22,7 @@ class ModelEnv(gym.Env):
         raise NotImplementedError
 
     def restore_state(self, state):
-        """Restores environment state."""
+        """Restores environment state, returns the observation."""
         raise NotImplementedError
 
 
@@ -52,6 +52,7 @@ class CartPole(classic_control.CartPoleEnv, ModelEnv):
     def restore_state(self, state):
         (state, self.steps_beyond_done, self._step) = state
         self.state = np.array(state)
+        return self.state
 
 
 @gin.configurable
