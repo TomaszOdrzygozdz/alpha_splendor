@@ -23,14 +23,14 @@ class Agent:
         """
         self._action_space = action_space
 
-    def solve(self, env):
+    def solve(self, env, init_state=None):
         """Solves a given environment.
 
         Coroutine, suspends execution for every neural network prediction
         request. This enables a very convenient interface for requesting
         predictions by the Agent:
 
-            def solve(self, env):
+            def solve(self, env, init_state=None):
                 # Planning...
                 predictions = yield inputs
                 # Planning...
@@ -55,6 +55,8 @@ class Agent:
 
         Args:
             env (gym.Env): Environment to solve.
+            init_state (object): Reset the environment to this state.
+                If None, then do normal gym.Env.reset().
 
         Yields:
             A stream of Network inputs requested for inference.
@@ -102,11 +104,13 @@ class OnlineAgent(Agent):
         """
         raise NotImplementedError
 
-    def solve(self, env):
+    def solve(self, env, init_state=None):
         """Solves a given environment using OnlineAgent.act().
 
         Args:
             env (gym.Env): Environment to solve.
+            init_state (object): Reset the environment to this state.
+                If None, then do normal gym.Env.reset().
 
         Yields:
             Network-dependent: A stream of Network inputs requested for
@@ -123,7 +127,13 @@ class OnlineAgent(Agent):
         # transitions on the real environment.
         env = envs.TransitionCollectorWrapper(env)
 
-        observation = env.reset()
+        if init_state is None:
+            # Model-free case...
+            observation = env.reset()
+        else:
+            # Model-based case...
+            observation = env.restore_state(init_state)
+
         done = False
         while not done:
             # Forward network prediction requests to BatchStepper.
