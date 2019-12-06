@@ -173,6 +173,8 @@ class RayBatchStepper(BatchStepper):
                 """Runs the episode using the given network parameters."""
                 self.network.params = params
                 episode_cor = self.agent.solve(self.env)
+                # TODO(pj): This block of code is the same in LocalBatchStepper
+                # too. Move it to the BatchStepper base class.
                 try:
                     inputs = next(episode_cor)
                     while True:
