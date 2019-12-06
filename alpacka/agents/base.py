@@ -123,14 +123,11 @@ class OnlineAgent(Agent):
         # transitions on the real environment.
         env = envs.TransitionCollectorWrapper(env)
 
-        env.collect = True
         observation = env.reset()
         done = False
         while not done:
-            env.collect = False
             # Forward network prediction requests to BatchStepper.
             action = yield from self.act(observation)
-            env.collect = True
             (observation, _, done, _) = env.step(action)
 
         return_ = sum(transition.reward for transition in env.transitions)
