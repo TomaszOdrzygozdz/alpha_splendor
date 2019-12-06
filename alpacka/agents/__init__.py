@@ -5,6 +5,7 @@ import gin
 from alpacka.agents import core
 from alpacka.agents import mcts
 from alpacka.agents import shooting
+from alpacka.agents import mcts_polo
 from alpacka.agents.base import *
 
 
@@ -19,3 +20,4 @@ def configure_agent(agent_class):
 RandomAgent = configure_agent(core.RandomAgent)  # pylint: disable=invalid-name
 MCTSAgent = configure_agent(mcts.MCTSAgent)  # pylint: disable=invalid-name
 ShootingAgent = configure_agent(shooting.ShootingAgent)  # pylint: disable=invalid-name
+MCTSValue = configure_agent(mcts_polo.MCTSValue)  # pylint: disable=invalid-name

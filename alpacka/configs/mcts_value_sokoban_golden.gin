@@ -1,0 +1,61 @@
+# Parameters for Sokoban:
+# ==============================================================================
+Sokoban.dim_room = (8, 8)
+Sokoban.max_steps = 50
+Sokoban.num_boxes = 2
+Sokoban.penalty_for_step = -0.1
+Sokoban.reward_box_on_target = 1
+Sokoban.reward_finished = 10
+
+# Parameters for KerasNetwork:
+# ==============================================================================
+KerasNetwork.loss = 'mean_squared_error'
+KerasNetwork.metrics = ['mae', 'mse']
+KerasNetwork.model_fn = @alpacka.networks.keras.convnet_mnist
+KerasNetwork.optimizer = 'adam'
+KerasNetwork.train_callbacks = None
+KerasNetwork.weight_decay = 0.003
+
+# Parameters for LocalBatchStepper:
+# ==============================================================================
+# None.
+
+# Parameters for MCTSValue:
+# ==============================================================================
+# None.
+
+# Parameters for convnet_mnist:
+# ==============================================================================
+convnet_mnist.n_conv_layers = 5
+convnet_mnist.d_conv = 64
+convnet_mnist.d_ff = 128
+convnet_mnist.activation = 'relu'
+convnet_mnist.output_activation = None
+
+# Parameters for rate_new_leaves_with_value_network:
+# ==============================================================================
+# None.
+
+# Parameters for Runner:
+# ==============================================================================
+Runner.agent_class = @alpacka.agents.MCTSValue
+Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+Runner.env_class = @alpacka.envs.Sokoban
+Runner.n_envs = 64
+Runner.episode_time_limit = 50
+Runner.n_precollect_epochs = 15
+Runner.n_epochs = 1500
+Runner.network_class = @alpacka.networks.KerasNetwork
+Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
+
+# Parameters for SupervisedTrainer:
+# ==============================================================================
+SupervisedTrainer.target_fn = @alpacka.trainers.supervised.target_value
+SupervisedTrainer.batch_size = 32
+SupervisedTrainer.n_steps_per_epoch = 13
+SupervisedTrainer.replay_buffer_capacity = 500000
+SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
+
+# Parameters for target_solved:
+# ==============================================================================
+# None.
