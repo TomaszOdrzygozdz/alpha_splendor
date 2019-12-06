@@ -6,7 +6,16 @@ setup(
     version='0.0.1',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=['gin-config', 'gym', 'numpy', 'ray', 'tensorflow'],
+    install_requires=[
+        'gin-config',
+        'gym',
+        # TODO(koz4k): Move to extras?
+        # (need to lazily define alpacka.envs.Sokoban then)
+        'gym_sokoban @ git+ssh://git@gitlab.com/awarelab/gym-sokoban.git',
+        'numpy',
+        'ray',
+        'tensorflow',
+    ],
     extras_require={
         'dev': ['pylint', 'pylint_quotes', 'pytest', 'ray[debug]'],
     }
