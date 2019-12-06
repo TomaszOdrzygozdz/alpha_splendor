@@ -1,7 +1,7 @@
 """Ops for manipulating pytrees.
 
-Pytrees are nested structures of lists/tuples/namedtuples. They typically have
-numpy arrays at leaves.
+Pytrees are nested structures of lists/tuples/namedtuples/dicts. They typically
+have numpy arrays at leaves.
 
 Behavior of those ops is well described in alpacka.data.ops_test.
 """
@@ -11,7 +11,7 @@ import numpy as np
 
 def _is_leaf(x):
     """Returns whether pytree is a leaf."""
-    return not isinstance(x, (tuple, list))
+    return not isinstance(x, (tuple, list, dict))
 
 
 def _is_namedtuple_instance(x):
@@ -39,6 +39,8 @@ def nested_map(f, x, stop_fn=_is_leaf):
 
     if _is_namedtuple_instance(x):
         return type(x)(*nested_map(f, tuple(x), stop_fn=stop_fn))
+    if isinstance(x, dict):
+        return {k: nested_map(f, v, stop_fn=stop_fn) for (k, v) in x.items()}
     assert isinstance(x, (list, tuple)), (
         'Non-exhaustive pattern match for {}.'.format(type(x))
     )
@@ -73,13 +75,21 @@ def nested_zip(xs):
         return type(xs[0])(
             nested_zip([x[i] for x in xs]) for i in range(len(xs[0]))
         )
+    elif isinstance(xs[0], dict):
+        return {k: nested_zip([x[k] for x in xs]) for k in xs[0].keys()}
     else:
         return xs
 
 
 def is_last_level(x):
     """Returns whether pytree is at the last level (children are leaves)."""
-    return not _is_leaf(x) and all(map(_is_leaf, x))
+    if _is_leaf(x):
+        return False
+    if isinstance(x, dict):
+        vs = x.values()
+    else:
+        vs = x
+    return all(map(_is_leaf, vs))
 
 
 def nested_unzip(x):
