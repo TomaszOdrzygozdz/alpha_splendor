@@ -29,6 +29,7 @@ class Runner:
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         trainer_class=trainers.DummyTrainer,
         n_epochs=None,
+        n_precollect_epochs=0,
     ):
         """Initializes the runner.
 
@@ -42,6 +43,8 @@ class Runner:
             trainer_class (type): Trainer class.
             n_epochs (int or None): Number of epochs to run for, or indefinitely
                 if None.
+            n_precollect_epochs (int): Number of initial epochs to run without
+                training (data precollection).
         """
         self._output_dir = os.path.expanduser(output_dir)
         os.makedirs(self._output_dir, exist_ok=True)
@@ -58,6 +61,7 @@ class Runner:
         self._network = network_fn()
         self._trainer = trainer_class(input_shape)
         self._n_epochs = n_epochs
+        self._n_precollect_epochs = n_precollect_epochs
         self._epoch = 0
 
     @staticmethod
@@ -93,13 +97,16 @@ class Runner:
         self._log_episode_metrics(episodes)
         for episode in episodes:
             self._trainer.add_episode(episode)
-        metrics = self._trainer.train_epoch(self._network)
-        self._log_training_metrics(metrics)
 
-        if self._epoch == 0:
+        if self._epoch >= self._n_precollect_epochs:
+            metrics = self._trainer.train_epoch(self._network)
+            self._log_training_metrics(metrics)
+
+        if self._epoch == self._n_precollect_epochs:
             # Save gin operative config into a file. "Operative" means the part
-            # that is actually used in the experiment. We need to run an epoch
-            # first, so gin can figure that out.
+            # that is actually used in the experiment. We need to run an full
+            # epoch (data collection + training) first, so gin can figure that
+            # out.
             self._save_gin()
 
         self._epoch += 1
