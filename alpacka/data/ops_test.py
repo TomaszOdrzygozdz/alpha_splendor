@@ -12,15 +12,15 @@ _TestNamedtuple = collections.namedtuple('_TestNamedtuple', ['test_field'])
 
 
 def test_nested_map():
-    inp = [(1, 2, 3), _TestNamedtuple(4)]
+    inp = [{'x': (1, 2, 3), 'y': 4}, _TestNamedtuple(5)]
     out = ops.nested_map(lambda x: x + 1, inp)
-    assert out == [(2, 3, 4), _TestNamedtuple(5)]
+    assert out == [{'x': (2, 3, 4), 'y': 5}, _TestNamedtuple(6)]
 
 
 def test_nested_zip():
-    inp = [_TestNamedtuple(1), _TestNamedtuple(2)]
+    inp = [_TestNamedtuple({'x': 1, 'y': 2}), _TestNamedtuple({'x': 3, 'y': 4})]
     out = ops.nested_zip(inp)
-    assert out == _TestNamedtuple([1, 2])
+    assert out == _TestNamedtuple({'x': [1, 3], 'y': [2, 4]})
 
 
 def test_nested_unzip():
