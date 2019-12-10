@@ -26,8 +26,8 @@ def mean_aggregate(act_n, episodes):
 @gin.configurable
 def max_aggregate(act_n, episodes):
     scores = np.empty(act_n)
-    for _ in range(act_n):
-        scores = -np.inf
+    for i in range(act_n):
+        scores[i] = -np.inf
     for episode in episodes:
         action = episode.transition_batch[0].action
         scores[action] = max(scores[action], episode.return_)
