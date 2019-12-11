@@ -2,9 +2,9 @@
 
 import gin
 import gym
+import numpy as np
 from gym.envs import classic_control
 from gym_sokoban.envs import sokoban_env_fast
-import numpy as np
 
 from alpacka import data
 
