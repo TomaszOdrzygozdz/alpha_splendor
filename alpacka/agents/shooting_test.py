@@ -155,3 +155,36 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
 
     # Test
     assert actual_action == expected_action
+
+
+@pytest.mark.parametrize('rollout_time_limit', [None, 7])
+def test_rollout_time_limit(mock_env, rollout_time_limit):
+    # Set up
+    rollout_max_len = 10  # It must be greater then rollout_time_limit!
+    mock_env.action_space.sample.return_value = 0
+    mock_env.step.side_effect = \
+        [('d', 0, False, {})] * (rollout_max_len - 1) + [('d', 0, True, {})]
+    mock_env.restore_state.return_value = 's'
+
+    if rollout_time_limit is None:
+        expected_rollout_time_limit = rollout_max_len
+    else:
+        expected_rollout_time_limit = rollout_time_limit
+
+    def _aggregate_fn(_, episodes):
+        # Test
+        actual_rollout_time_limit = len(episodes[0].transition_batch.done)
+        assert actual_rollout_time_limit == expected_rollout_time_limit
+
+    with mock.patch('alpacka.agents.shooting.type') as mock_type:
+        mock_type.return_value = lambda: mock_env
+        agent = agents.ShootingAgent(
+            action_space=mock_env.action_space,
+            aggregate_fn=_aggregate_fn,
+            rollout_time_limit=rollout_time_limit,
+            n_passes=1,
+        )
+
+        # Run
+        agent.reset(mock_env)
+        mcts_test.run_without_suspensions(agent.act(None))

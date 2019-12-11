@@ -9,6 +9,7 @@ import gym
 import numpy as np
 
 from alpacka import batch_steppers
+from alpacka import envs
 from alpacka import networks
 from alpacka.agents import base
 from alpacka.agents import core
@@ -42,16 +43,18 @@ class ShootingAgent(base.OnlineAgent):
         self,
         action_space,
         n_passes=1000,
+        rollout_time_limit=None,
         aggregate_fn=mean_aggregate,
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         agent_class=core.RandomAgent,
         n_envs=10
     ):
-        """Initializes MCTSAgent.
+        """Initializes ShootingAgent.
 
         Args:
             action_space (gym.Space): Action space.
-            n_passes (int): Do at least this number of MC simulations per act().
+            n_passes (int): Do at least this number of MC rollouts per act().
+            rollout_time_limit (int): Maximum number of timesteps for rollouts.
             aggregate_fn (callable): Aggregates simulated episodes. Signature:
                 (n_act, episodes) -> np.ndarray(action_scores).
             batch_stepper_class (type): BatchStepper class.
@@ -63,8 +66,9 @@ class ShootingAgent(base.OnlineAgent):
         )
         super().__init__(action_space)
 
-        self.n_passes = n_passes
-        self.aggregate_fn = aggregate_fn
+        self._n_passes = n_passes
+        self._rollout_time_limit = rollout_time_limit
+        self._aggregate_fn = aggregate_fn
         self._batch_stepper_class = batch_stepper_class
         self._agent_class = agent_class
         self._n_envs = n_envs
@@ -91,7 +95,7 @@ class ShootingAgent(base.OnlineAgent):
         # Lazy initialize batch stepper
         if self._batch_stepper is None:
             self._batch_stepper = self._batch_stepper_class(
-                env_class=type(self._model),
+                env_class=self._env_fn,
                 agent_class=self._agent_class,
                 network_fn=network_fn,
                 n_envs=self._n_envs,
@@ -101,15 +105,27 @@ class ShootingAgent(base.OnlineAgent):
 
         # TODO(pj): Move it to BatchStepper. You should be able to query
         # BatchStepper for a given number of episodes (by default n_envs).
-        global_n_passes = math.ceil(self.n_passes / self._n_envs)
+        global_n_passes = math.ceil(self._n_passes / self._n_envs)
         episodes = []
         for _ in range(global_n_passes):
             episodes.extend(
                 self._batch_stepper.run_episode_batch(params, root_state))
 
         # Aggregate episodes into scores.
-        action_scores = self.aggregate_fn(self._action_space.n, episodes)
+        action_scores = self._aggregate_fn(self._action_space.n, episodes)
 
         # Choose greedy action.
         action = np.argmax(action_scores)
         return action
+
+    @property
+    def _env_fn(self):
+        env_class = type(self._model)
+
+        def _env_fn():
+            env = env_class()
+            if self._rollout_time_limit is not None:
+                return envs.TimeLimitWrapper(env, self._rollout_time_limit)
+            return env
+
+        return _env_fn
