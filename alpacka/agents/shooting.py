@@ -1,5 +1,6 @@
 """Monte Carlo Tree Search agent."""
 
+import asyncio
 import functools
 import math
 
@@ -18,8 +19,8 @@ def mean_aggregate(act_n, episodes):
     scores = np.zeros(act_n)
     counts = np.zeros(act_n)
     for episode in episodes:
-        scores[episode.transition_batch[0].action] += episode.return_
-        counts[episode.transition_batch[0].action] += 1
+        scores[episode.transition_batch.action[0]] += episode.return_
+        counts[episode.transition_batch.action[0]] += 1
     return scores / counts
 
 
@@ -29,7 +30,7 @@ def max_aggregate(act_n, episodes):
     for i in range(act_n):
         scores[i] = -np.inf
     for episode in episodes:
-        action = episode.transition_batch[0].action
+        action = episode.transition_batch.action[0]
         scores[action] = max(scores[action], episode.return_)
     return scores
 
@@ -75,11 +76,13 @@ class ShootingAgent(base.OnlineAgent):
         assert env.action_space == self._action_space
         self._model = env
 
+    @asyncio.coroutine
     def act(self, observation):
         """Runs n_passes simulations and chooses the best action."""
         assert self._model is not None, (
             'Reset ShootingAgent first.'
         )
+        del observation
 
         # TODO(pj): Request network_fn and params here with yield.
         network_fn = functools.partial(networks.DummyNetwork, input_shape=None)
