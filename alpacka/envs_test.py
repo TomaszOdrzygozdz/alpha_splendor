@@ -1,6 +1,7 @@
 """Tests for alpacka.envs."""
 
 import itertools
+import functools
 
 import numpy as np
 import pytest
@@ -10,7 +11,8 @@ from alpacka import envs
 
 @pytest.fixture(scope='module', params=itertools.product(
     [envs.CartPole, envs.Sokoban],
-    [None],  # TODO(koz4k): Add wrappers once we have any.
+    [None,
+     functools.partial(envs.TimeLimitWrapper, max_episode_steps=10)]
 ))
 def env_fn(request):
     """Creates a factory that constructs and wraps an environment."""
