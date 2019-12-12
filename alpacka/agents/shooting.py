@@ -22,6 +22,7 @@ def mean_aggregate(act_n, episodes):
     for episode in episodes:
         scores[episode.transition_batch.action[0]] += episode.return_
         counts[episode.transition_batch.action[0]] += 1
+    counts[counts == 0] = 1
     return scores / counts
 
 
