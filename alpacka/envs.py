@@ -9,6 +9,13 @@ from gym import wrappers
 from gym.envs import classic_control
 from gym_sokoban.envs import sokoban_env_fast
 
+try:
+    import gfootball.env as football_env
+except ImportError:
+    football_env = None
+    print('HINT: To use GoogleFootball perform the setup instructions here: '
+          'https://github.com/google-research/football')
+
 
 class ModelEnv(gym.Env):
     """Environment interface used by model-based agents.
@@ -99,6 +106,98 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, ModelEnv):
     def restore_state(self, state):
         self.restore_full_state(state)
         return self.render(mode=self.mode)
+
+
+@gin.configurable
+class GoogleFootball(ModelEnv):
+    """Google Research Football with state clone/restore and
+    returning a 'solved' flag."""
+    state_size = 480000
+
+    def __init__(self,
+                 env_name='academy_empty_goal_close',
+                 rewards='scoring,checkpoints',
+                 solved_at=1,
+                 **kwargs):
+        if football_env is None:
+            raise ImportError('Could not import gfootball! '
+                              'HINT: Perform the setup instructions here: '
+                              'https://github.com/google-research/football')
+
+        self._solved_at = solved_at
+        self._env = football_env.create_environment(
+            env_name=env_name,
+            rewards=rewards,
+            representation='simple115',
+            **kwargs
+        )
+
+        self.action_space = self._env.action_space
+        self.observation_space = self._env.observation_space
+        self._env.reset()
+
+    def reset(self):
+        return self._env.reset()
+
+    def step(self, action):
+        obs, reward, done, info = self._env.step(action)
+        info['solved'] = info['score_reward'] >= self._solved_at
+
+        return obs, reward, done, info
+
+    def clone_state(self):
+        raw_state = self._env.get_state()
+        size_encoded = len(raw_state).to_bytes(3, byteorder='big')
+        # Byte suffix to enforce self.state_size of state.
+        suffix = bytes(self.state_size - len(size_encoded) - len(raw_state))
+        resized_state = size_encoded + raw_state + suffix
+        state = np.frombuffer(resized_state, dtype=np.uint8)
+
+        return state
+
+    def restore_state(self, state):
+        assert state.size == self.state_size, (
+            f'State size does not match: {state.size} != {self.state_size}')
+
+        # First 3 bytes encodes size of state.
+        size_decoded = int.from_bytes(list(state[:3]),
+                                      byteorder='big')
+        raw_state = state[3:(size_decoded + 3)]
+        assert (state[(size_decoded + 3):] == 0).all()
+
+        self._env.set_state(bytes(raw_state))
+        return self._observation
+
+    @property
+    def _observation(self):
+        # TODO(kc): Hacky, clean it when implementation of football allow it
+        # pylint: disable=protected-access
+        observation = self._env.unwrapped._env.observation()
+        observation = self._env.unwrapped._convert_observations(
+            observation, self._env.unwrapped._agent,
+            self._env.unwrapped._agent_left_position,
+            self._env.unwrapped._agent_right_position
+        )
+        # pylint: enable=protected-access
+
+        # Lets apply observation transformations from wrappers.
+        # WARNING: this assumes that ony ObservationWrapper(s) in the wrappers
+        # stack transform observation.
+        env = self._env
+        observation_wrappers = []
+        while True:
+            if isinstance(env, gym.ObservationWrapper):
+                observation_wrappers.append(env)
+
+            if isinstance(env, gym.Wrapper):
+                env = env.env
+            else:
+                break
+
+        for wrapper in reversed(observation_wrappers):
+            observation = wrapper.observation(observation)
+
+        return observation
 
 
 TimeLimitWrapperState = collections.namedtuple(

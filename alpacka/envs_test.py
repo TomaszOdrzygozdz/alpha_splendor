@@ -9,11 +9,20 @@ import pytest
 from alpacka import envs
 
 
-@pytest.fixture(scope='module', params=itertools.product(
-    [envs.CartPole, envs.Sokoban],
-    [None,
-     functools.partial(envs.TimeLimitWrapper, max_episode_steps=10)]
-))
+envs_to_test = [
+    envs.CartPole,
+    envs.Sokoban
+]
+if envs.football_env is not None:
+    envs_to_test.append(envs.GoogleFootball)
+
+wrappers_to_test = [
+    None,
+    functools.partial(envs.TimeLimitWrapper, max_episode_steps=10)
+]
+
+@pytest.fixture(scope='module',
+                params=itertools.product(envs_to_test, wrappers_to_test))
 def env_fn(request):
     """Creates a factory that constructs and wraps an environment."""
     env_cls, wrapper_cls = request.param
@@ -63,7 +72,7 @@ def test_restore_after_step(env_fn):
     state = env.clone_state()
 
     # Run
-    env.step(0)
+    env.step(0)  # TODO(pj): Make somehow sure the action changes env state/obs.
     obs_ = env.restore_state(state)
     state_ = env.clone_state()
 
