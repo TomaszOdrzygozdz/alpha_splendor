@@ -134,7 +134,6 @@ class GoogleFootball(ModelEnv):
 
         self.action_space = self._env.action_space
         self.observation_space = self._env.observation_space
-        self._env.reset()
 
     def reset(self):
         return self._env.reset()
@@ -144,6 +143,15 @@ class GoogleFootball(ModelEnv):
         info['solved'] = info['score_reward'] >= self._solved_at
 
         return obs, reward, done, info
+
+    def render(self, mode='human'):
+        return self._env.render(mode)
+
+    def close(self):
+        self._env.close()
+
+    def seed(self, seed=None):
+        raise NotImplementedError
 
     def clone_state(self):
         raw_state = self._env.get_state()
@@ -160,8 +168,7 @@ class GoogleFootball(ModelEnv):
             f'State size does not match: {state.size} != {self.state_size}')
 
         # First 3 bytes encodes size of state.
-        size_decoded = int.from_bytes(list(state[:3]),
-                                      byteorder='big')
+        size_decoded = int.from_bytes(list(state[:3]), byteorder='big')
         raw_state = state[3:(size_decoded + 3)]
         assert (state[(size_decoded + 3):] == 0).all()
 
@@ -181,7 +188,7 @@ class GoogleFootball(ModelEnv):
         # pylint: enable=protected-access
 
         # Lets apply observation transformations from wrappers.
-        # WARNING: this assumes that ony ObservationWrapper(s) in the wrappers
+        # WARNING: This assumes that only ObservationWrapper(s) in the wrappers
         # stack transform observation.
         env = self._env
         observation_wrappers = []
