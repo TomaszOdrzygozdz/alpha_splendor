@@ -32,11 +32,12 @@ class BatchStepper:
         del network_fn
         del n_envs
 
-    def run_episode_batch(self, params):
+    def run_episode_batch(self, params, init_state=None):
         """Runs a batch of episodes using the given network parameters.
 
         Args:
             params (Network-dependent): Network parameters.
+            init_state (Env-dependent): Initial state, passed to agent.solve().
 
         Returns:
             List of completed episodes (Agent/Trainer-dependent).
@@ -130,10 +131,10 @@ class LocalBatchStepper(BatchStepper):
             ]
         return episodes
 
-    def run_episode_batch(self, params):
+    def run_episode_batch(self, params, init_state=None):
         self._network.params = params
         episode_cor = self._batch_coroutines([
-            agent.solve(env)
+            agent.solve(env, init_state)
             for (env, agent) in self._envs_and_agents
         ])
         try:
@@ -169,10 +170,12 @@ class RayBatchStepper(BatchStepper):
                 self.agent = agent_class(self.env.action_space)
                 self.network = network_fn()
 
-            def run(self, params):
+            def run(self, params, init_state):
                 """Runs the episode using the given network parameters."""
                 self.network.params = params
-                episode_cor = self.agent.solve(self.env)
+                episode_cor = self.agent.solve(self.env, init_state)
+                # TODO(pj): This block of code is the same in LocalBatchStepper
+                # too. Move it to the BatchStepper base class.
                 try:
                     inputs = next(episode_cor)
                     while True:
@@ -188,7 +191,9 @@ class RayBatchStepper(BatchStepper):
         self._workers = [_Worker.remote(env_class, agent_class, network_fn)
                          for _ in range(n_envs)]
 
-    def run_episode_batch(self, params):
+    def run_episode_batch(self, params, init_state=None):
         params_id = ray.put(params, weakref=True)
-        episodes = ray.get([w.run.remote(params_id) for w in self._workers])
+        init_state_id = ray.put(init_state, weakref=True)
+        episodes = ray.get([w.run.remote(params_id, init_state_id)
+                            for w in self._workers])
         return episodes

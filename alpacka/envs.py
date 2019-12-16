@@ -2,9 +2,9 @@
 
 import gin
 import gym
+import numpy as np
 from gym.envs import classic_control
 from gym_sokoban.envs import sokoban_env_fast
-import numpy as np
 
 from alpacka import data
 
@@ -22,8 +22,25 @@ class ModelEnv(gym.Env):
         raise NotImplementedError
 
     def restore_state(self, state):
-        """Restores environment state."""
+        """Restores environment state, returns the observation."""
         raise NotImplementedError
+
+
+class ModelWrapper(gym.Wrapper):
+    """Base class for wrappers intended for use with model-based environments.
+
+    This class defines an additional interface over gym.Wrapper that is assumed
+    by model-based agents. It's just for documentation purposes, doesn't have to
+    be subclassed by wrappers used with models (but it can be).
+    """
+
+    def clone_state(self):
+        """Returns the current environment state."""
+        return self.env.clone_state()
+
+    def restore_state(self, state):
+        """Restores environment state, returns the observation."""
+        return self.env.restore_state(state)
 
 
 @gin.configurable
@@ -52,6 +69,7 @@ class CartPole(classic_control.CartPoleEnv, ModelEnv):
     def restore_state(self, state):
         (state, self.steps_beyond_done, self._step) = state
         self.state = np.array(state)
+        return self.state
 
 
 @gin.configurable
@@ -82,14 +100,16 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, ModelEnv):
         return self.render(mode=self.mode)
 
 
-class TransitionCollectorWrapper(gym.Wrapper):
-    """Wrapper collecting transitions from the environment."""
+class TransitionCollectorWrapper(ModelWrapper):
+    """Wrapper collecting transitions from the environment.
+
+    Keep in mind that it neither clone nor restore collected transitions!
+    """
 
     def __init__(self, env):
         super().__init__(env)
         self._transitions = []
         self._last_observation = None
-        self.collect = True
 
     def reset(self, **kwargs):
         self._last_observation = super().reset(**kwargs)
@@ -120,6 +140,10 @@ class TransitionCollectorWrapper(gym.Wrapper):
             ]
 
         return (next_observation, reward, done, info)
+
+    def restore_state(self, state):
+        self._last_observation = super().restore_state(state)
+        return self._last_observation
 
     @property
     def transitions(self):
