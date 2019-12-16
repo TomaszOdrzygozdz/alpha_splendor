@@ -10,7 +10,7 @@ before_script:
   - chmod 700 ~/.ssh
   - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
   # Install the package.
-  - pip install -e .[dev]
+  - pip install -e .[dev,mrunner]
 
 stages:
   - Static Analysis

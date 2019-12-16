@@ -34,8 +34,10 @@ def get_configuration(spec_path):
     neptune.init(project_qualified_name=specification['project'])
     # Set pwd property with path to experiment.
     properties = {'pwd': os.getcwd()}
-    neptune.create_experiment(name=specification['name'], tags=specification['tags'],
-                              params=parameters, properties=properties,
+    neptune.create_experiment(name=specification['name'],
+                              tags=specification['tags'],
+                              params=parameters,
+                              properties=properties,
                               git_info=git_info)
     atexit.register(neptune.stop)
 
