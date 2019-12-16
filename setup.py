@@ -18,6 +18,7 @@ setup(
         'tensorflow',
     ],
     extras_require={
+        'mrunner': ['cloudpickle', 'neptune-client'],
         'dev': ['pylint', 'pylint_quotes', 'pytest', 'ray[debug]'],
     }
 )
