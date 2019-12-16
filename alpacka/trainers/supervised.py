@@ -8,8 +8,11 @@ from alpacka.trainers import replay_buffer
 
 
 @gin.configurable
-def target_solved(transition_batch):
-    return transition_batch.solved.astype(np.int32)
+def target_solved(episode):
+    return np.full(
+        shape=episode.transition_batch.observation.shape[:1],
+        fill_value=int(episode.solved),
+    )
 
 
 class SupervisedTrainer(base.Trainer):
@@ -31,7 +34,7 @@ class SupervisedTrainer(base.Trainer):
 
         Args:
             input_shape (tuple): Input shape for the network.
-            target_fn (callable): Function transition_batch -> target for
+            target_fn (callable): Function episode -> target for
                 determining the target for network training.
             batch_size (int): Batch size.
             n_steps_per_epoch (int): Number of optimizer steps to do per
@@ -54,7 +57,7 @@ class SupervisedTrainer(base.Trainer):
     def add_episode(self, episode):
         self._replay_buffer.add((
             episode.transition_batch.observation,  # input
-            self._target_fn(episode.transition_batch),  # target
+            self._target_fn(episode),  # target
         ))
 
     def train_epoch(self, network):

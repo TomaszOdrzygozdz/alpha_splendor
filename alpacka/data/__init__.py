@@ -19,11 +19,8 @@ Transition = collections.namedtuple(
         'done',
         # Observation obtained at S'.
         'next_observation',
-        # Whether the environment is "solved" at S'.
-        'solved',
     ]
 )
-Transition.__new__.__defaults__ = (None,)  # solved
 
 
 # Basic Episode object, summarizing experience collected when solving an episode
@@ -38,5 +35,8 @@ Episode = collections.namedtuple(
         'transition_batch',
         # Undiscounted return (cumulative reward) for the entire episode.
         'return_',
+        # Whether the episode was "solved".
+        'solved',
     ]
 )
+Episode.__new__.__defaults__ = (None,)  # solved

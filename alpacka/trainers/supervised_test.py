@@ -9,9 +9,7 @@ from alpacka.networks import keras
 from alpacka.trainers import supervised
 
 
-_TestTransition = collections.namedtuple(
-    '_TestTransition', ['observation', 'solved']
-)
+_TestTransition = collections.namedtuple('_TestTransition', ['observation'])
 
 
 def test_integration_with_keras():
@@ -28,9 +26,9 @@ def test_integration_with_keras():
     trainer.add_episode(data.Episode(
         transition_batch=_TestTransition(
             observation=np.zeros((n_transitions,) + obs_shape),
-            solved=np.zeros((n_transitions,), dtype=np.bool),
         ),
         return_=123,
+        solved=False,
     ))
     network = keras.KerasNetwork(input_shape=obs_shape)
     trainer.train_epoch(network)

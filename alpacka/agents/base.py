@@ -1,7 +1,6 @@
 """Agent base classes."""
 
 from alpacka import data
-from alpacka import envs
 
 
 class Agent:
@@ -122,11 +121,6 @@ class OnlineAgent(Agent):
         """
         self.reset(env)
 
-        # Wrap the environment in a wrapper for collecting transitions.
-        # Collection is turned on/off for Agent.act() to collect only
-        # transitions on the real environment.
-        env = envs.TransitionCollectorWrapper(env)
-
         if init_state is None:
             # Model-free case...
             observation = env.reset()
@@ -134,15 +128,28 @@ class OnlineAgent(Agent):
             # Model-based case...
             observation = env.restore_state(init_state)
 
+        transitions = []
         done = False
+        info = {}
         while not done:
             # Forward network prediction requests to BatchStepper.
             action = yield from self.act(observation)
-            (observation, _, done, _) = env.step(action)
+            (next_observation, reward, done, info) = env.step(action)
 
-        return_ = sum(transition.reward for transition in env.transitions)
-        transition_batch = data.nested_stack(env.transitions)
+            transitions.append(data.Transition(
+                observation=observation,
+                action=action,
+                reward=reward,
+                done=done,
+                next_observation=next_observation,
+            ))
+            observation = next_observation
+
+        return_ = sum(transition.reward for transition in transitions)
+        solved = info['solved'] if 'solved' in info else None
+        transition_batch = data.nested_stack(transitions)
         return data.Episode(
             transition_batch=transition_batch,
             return_=return_,
+            solved=solved,
         )
