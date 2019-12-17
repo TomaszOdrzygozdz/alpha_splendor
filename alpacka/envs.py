@@ -6,8 +6,6 @@ import numpy as np
 from gym.envs import classic_control
 from gym_sokoban.envs import sokoban_env_fast
 
-from alpacka import data
-
 
 class ModelEnv(gym.Env):
     """Environment interface used by model-based agents.
@@ -98,53 +96,3 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, ModelEnv):
     def restore_state(self, state):
         self.restore_full_state(state)
         return self.render(mode=self.mode)
-
-
-class TransitionCollectorWrapper(ModelWrapper):
-    """Wrapper collecting transitions from the environment.
-
-    Keep in mind that it neither clone nor restore collected transitions!
-    """
-
-    def __init__(self, env):
-        super().__init__(env)
-        self._transitions = []
-        self._last_observation = None
-
-    def reset(self, **kwargs):
-        self._last_observation = super().reset(**kwargs)
-        return self._last_observation
-
-    def step(self, action):
-        assert self._last_observation is not None, (
-            'Environment must be reset before the first step().'
-        )
-        (next_observation, reward, done, info) = super().step(action)
-        self.transitions.append(data.Transition(
-            observation=self._last_observation,
-            action=action,
-            reward=reward,
-            done=done,
-            next_observation=next_observation,
-        ))
-        self._last_observation = next_observation
-
-        if done and 'solved' in info:
-            # Some envs return a "solved" flag in the final step. We can use
-            # it as a supervised target in value network training.
-            # Rewrite the collected transitions, so we know they come from
-            # a "solved" episode.
-            self.transitions[:] = [
-                transition._replace(solved=info['solved'])
-                for transition in self.transitions
-            ]
-
-        return (next_observation, reward, done, info)
-
-    def restore_state(self, state):
-        self._last_observation = super().restore_state(state)
-        return self._last_observation
-
-    @property
-    def transitions(self):
-        return self._transitions

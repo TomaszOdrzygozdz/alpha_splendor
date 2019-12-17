@@ -10,7 +10,7 @@ from alpacka import envs
 
 @pytest.fixture(scope='module', params=itertools.product(
     [envs.CartPole, envs.Sokoban],
-    [None, envs.TransitionCollectorWrapper]
+    [None],  # TODO(koz4k): Add wrappers once we have any.
 ))
 def env_fn(request):
     """Creates a factory that constructs and wraps an environment."""

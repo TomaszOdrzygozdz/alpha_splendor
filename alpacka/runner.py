@@ -79,6 +79,14 @@ class Runner:
         ) / len(episodes)
         metric_logging.log_scalar('return_mean', self._epoch, return_mean)
 
+        solved_list = [
+            int(episode.solved) for episode in episodes
+            if episode.solved is not None
+        ]
+        if solved_list:
+            solved_rate = sum(solved_list) / len(solved_list)
+            metric_logging.log_scalar('solved_rate', self._epoch, solved_rate)
+
     def _log_training_metrics(self, metrics):
         for (name, value) in metrics.items():
             metric_logging.log_scalar('train/' + name, self._epoch, value)
