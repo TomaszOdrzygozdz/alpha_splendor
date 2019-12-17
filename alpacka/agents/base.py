@@ -99,7 +99,9 @@ class OnlineAgent(Agent):
             A stream of Network inputs requested for inference.
 
         Returns:
-            Action to make in the environment.
+            Pair (action, agent_info), where action is the action to make in the
+            environment and agent_info is a dict of additional info to be put as
+            Transition.agent_info.
         """
         raise NotImplementedError
 
@@ -133,7 +135,7 @@ class OnlineAgent(Agent):
         info = {}
         while not done:
             # Forward network prediction requests to BatchStepper.
-            action = yield from self.act(observation)
+            (action, agent_info) = yield from self.act(observation)
             (next_observation, reward, done, info) = env.step(action)
 
             transitions.append(data.Transition(
@@ -142,6 +144,7 @@ class OnlineAgent(Agent):
                 reward=reward,
                 done=done,
                 next_observation=next_observation,
+                agent_info=agent_info,
             ))
             observation = next_observation
 
