@@ -2,9 +2,16 @@
 
 import gin
 import numpy as np
-import ray
 
 from alpacka import data
+
+# WA for: https://github.com/ray-project/ray/issues/5250
+# One of later packages (e.g. gym_sokoban.envs) imports numba internally.
+# This WA ensures its done before Ray to prevent llvm assertion error.
+# TODO(pj): Delete the WA with new Ray release that updates pyarrow.
+import numba  # pylint: disable=wrong-import-order
+import ray  # pylint: disable=wrong-import-order
+del numba
 
 
 class BatchStepper:
