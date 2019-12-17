@@ -8,6 +8,7 @@ KerasNetwork.loss = 'binary_crossentropy'
 KerasNetwork.metrics = ['accuracy']
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
 KerasNetwork.optimizer = 'adam'
+KerasNetwork.weight_decay = 0.0
 KerasNetwork.train_callbacks = None
 
 # Parameters for LocalBatchStepper:

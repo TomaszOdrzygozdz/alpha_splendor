@@ -1,7 +1,8 @@
 """Network interface implementation using the Keras framework."""
 
-import gin
+import functools
 
+import gin
 import tensorflow as tf
 from tensorflow import keras
 
@@ -35,6 +36,7 @@ class KerasNetwork(core.Network):
         model_fn (callable): Function input_shape -> tf.keras.Model.
         optimizer: See tf.keras.Model.compile docstring for possible values.
         loss: See tf.keras.Model.compile docstring for possible values.
+        weight_decay (float): Weight decay to apply to parameters.
         metrics: See tf.keras.Model.compile docstring for possible values
             (Default: None).
         train_callbacks: List of keras.callbacks.Callback instances. List of
@@ -48,18 +50,36 @@ class KerasNetwork(core.Network):
         model_fn=mlp,
         optimizer='adam',
         loss='mean_squared_error',
+        weight_decay=0.0,
         metrics=None,
         train_callbacks=None,
         **compile_kwargs
     ):
         super().__init__(input_shape)
         self._model = model_fn(input_shape)
+        self._add_weight_decay(self._model, weight_decay)
         self._model.compile(optimizer=optimizer,
                             loss=loss,
                             metrics=metrics or [],
                             **compile_kwargs)
 
         self.train_callbacks = train_callbacks or []
+
+    @staticmethod
+    def _add_weight_decay(model, weight_decay):
+        # Add weight decay in form of an auxiliary loss for every layer,
+        # assuming that the weights to be regularized are in the "kernel" field
+        # of every layer (true for dense and convolutional layers). This is
+        # a bit hacky, but still better than having to add those losses manually
+        # in every defined model_fn.
+        for layer in model.layers:
+            if hasattr(layer, 'kernel'):
+                # Keras expects a parameterless function here. We use
+                # functools.partial instead of a lambda to workaround Python's
+                # late binding in closures.
+                layer.add_loss(functools.partial(
+                    keras.regularizers.l2(weight_decay), layer.kernel
+                ))
 
     def train(self, data_stream):
         """Performs one epoch of training on data prepared by the Trainer.
