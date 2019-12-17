@@ -13,8 +13,6 @@ try:
     import gfootball.env as football_env
 except ImportError:
     football_env = None
-    print('HINT: To use GoogleFootball perform the setup instructions here: '
-          'https://github.com/google-research/football')
 
 
 class ModelEnv(gym.Env):
