@@ -25,7 +25,11 @@ def get_configuration(spec_path):
 
     gin_bindings = []
     for key, value in parameters.items():
-        gin_bindings.append(f'{key} = {value}')
+        if isinstance(value, str) and not (value[0] == '@' or value[0] == '%'):
+            binding = f'{key} = "{value}"'
+        else:
+            binding = f'{key} = {value}'
+        gin_bindings.append(binding)
 
     git_info = specification.get('git_info', None)
     if git_info:
