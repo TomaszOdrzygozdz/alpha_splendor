@@ -1,6 +1,7 @@
 """Agent base classes."""
 
 from alpacka import data
+from alpacka import envs
 
 
 class Agent:
@@ -22,7 +23,7 @@ class Agent:
         """
         self._action_space = action_space
 
-    def solve(self, env, init_state=None):
+    def solve(self, env, init_state=None, time_limit=None):
         """Solves a given environment.
 
         Coroutine, suspends execution for every neural network prediction
@@ -56,6 +57,8 @@ class Agent:
             env (gym.Env): Environment to solve.
             init_state (object): Reset the environment to this state.
                 If None, then do normal gym.Env.reset().
+            time_limit (int or None): Maximum number of steps to make on the
+                solved environment. None means no time limit.
 
         Yields:
             A stream of Network inputs requested for inference.
@@ -103,13 +106,15 @@ class OnlineAgent(Agent):
         """
         raise NotImplementedError
 
-    def solve(self, env, init_state=None):
+    def solve(self, env, init_state=None, time_limit=None):
         """Solves a given environment using OnlineAgent.act().
 
         Args:
             env (gym.Env): Environment to solve.
             init_state (object): Reset the environment to this state.
                 If None, then do normal gym.Env.reset().
+            time_limit (int or None): Maximum number of steps to make on the
+                solved environment. None means no time limit.
 
         Yields:
             Network-dependent: A stream of Network inputs requested for
@@ -120,6 +125,13 @@ class OnlineAgent(Agent):
             transitions and the return for the episode.
         """
         self.reset(env)
+
+        if time_limit is not None:
+            # Add the TimeLimitWrapper _after_ passing the model env to the
+            # agent, so the states cloned/restored by the agent do not contain
+            # the number of steps made so far - this would break state lookup
+            # in some Agents.
+            env = envs.TimeLimitWrapper(env, time_limit)
 
         if init_state is None:
             # Model-free case...

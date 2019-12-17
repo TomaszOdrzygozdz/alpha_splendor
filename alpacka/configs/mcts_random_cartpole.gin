@@ -38,6 +38,7 @@ Runner.agent_class = @alpacka.agents.MCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.CartPole
 Runner.n_envs = 4
+Runner.episode_time_limit = 500
 Runner.n_epochs = None
 Runner.n_precollect_epochs = 0
 Runner.network_class = @alpacka.networks.DummyNetwork

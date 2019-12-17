@@ -11,7 +11,6 @@ import gym
 import numpy as np
 
 from alpacka import batch_steppers
-from alpacka import envs
 from alpacka import networks
 from alpacka.agents import base
 from alpacka.agents import core
@@ -98,7 +97,7 @@ class ShootingAgent(base.OnlineAgent):
         # Lazy initialize batch stepper
         if self._batch_stepper is None:
             self._batch_stepper = self._batch_stepper_class(
-                env_class=self._env_fn,
+                env_class=type(self._model),
                 agent_class=self._agent_class,
                 network_fn=network_fn,
                 n_envs=self._n_envs,
@@ -111,8 +110,11 @@ class ShootingAgent(base.OnlineAgent):
         global_n_rollouts = math.ceil(self._n_rollouts / self._n_envs)
         episodes = []
         for _ in range(global_n_rollouts):
-            episodes.extend(
-                self._batch_stepper.run_episode_batch(params, root_state))
+            episodes.extend(self._batch_stepper.run_episode_batch(
+                params,
+                init_state=root_state,
+                time_limit=self._rollout_time_limit,
+            ))
 
         # Aggregate episodes into scores.
         action_scores = self._aggregate_fn(self._action_space.n, episodes)
@@ -120,10 +122,3 @@ class ShootingAgent(base.OnlineAgent):
         # Choose greedy action.
         action = np.argmax(action_scores)
         return action
-
-    def _env_fn(self):
-        env_class = type(self._model)
-        env = env_class()
-        if self._rollout_time_limit is not None:
-            return envs.TimeLimitWrapper(env, self._rollout_time_limit)
-        return env
