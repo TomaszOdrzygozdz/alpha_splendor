@@ -105,6 +105,23 @@ class OnlineAgent(Agent):
         """
         raise NotImplementedError
 
+    @staticmethod
+    def postprocess_transition(transition):
+        """Postprocesses Transitions before passing them to Trainer.
+
+        Can be overridden in subclasses to customize data collection.
+
+        Called after the episode has finished, so can incorporate any
+        information known only in the hindsight to the transitions.
+
+        Args:
+            transition (Transition): Transition to postprocess.
+
+        Returns:
+            Postprocessed Transition.
+        """
+        return transition
+
     def solve(self, env, init_state=None):
         """Solves a given environment using OnlineAgent.act().
 
@@ -147,6 +164,11 @@ class OnlineAgent(Agent):
                 agent_info=agent_info,
             ))
             observation = next_observation
+
+        transitions = [
+            self.postprocess_transition(transition)
+            for transition in transitions
+        ]
 
         return_ = sum(transition.reward for transition in transitions)
         solved = info['solved'] if 'solved' in info else None
