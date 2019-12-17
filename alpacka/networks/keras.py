@@ -27,6 +27,34 @@ def mlp(input_shape, hidden_sizes=(32,), activation='relu',
     return keras.Model(inputs=inputs, outputs=outputs)
 
 
+@gin.configurable
+def convnet_mnist(
+    input_shape,
+    n_conv_layers=5,
+    d_conv=64,
+    d_ff=128,
+    activation='relu',
+    output_activation=None,
+):
+    """Simple convolutional network."""
+    inputs = keras.Input(shape=input_shape)
+    x = inputs
+    for _ in range(n_conv_layers):
+        x = keras.layers.Conv2D(
+            d_conv, kernel_size=(3, 3), padding='same', activation=activation
+        )(x)
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(d_ff, activation=activation)(x)
+    outputs = keras.layers.Dense(
+        # 1 output hardcoded for now (value networks).
+        # TODO(koz4k): Lift this restriction.
+        1,
+        activation=output_activation,
+        name='predictions',
+    )(x)
+    return keras.Model(inputs=inputs, outputs=outputs)
+
+
 class KerasNetwork(core.Network):
     """Network implementation in Keras.
 
