@@ -47,6 +47,20 @@ def test_nested_unstack_stack():
     np.testing.assert_equal(inp, out)
 
 
+@pytest.mark.parametrize('empty', [(), [], {}])
+def test_nested_stack_empty(empty):
+    inp = [empty, empty]
+    out = ops.nested_stack(inp)
+    assert out == empty
+
+
+@pytest.mark.parametrize('empty', [(), [], {}])
+def test_nested_concatenate_empty(empty):
+    inp = [empty, empty]
+    out = ops.nested_concatenate(inp)
+    assert out == empty
+
+
 def test_nested_concatenate():
     inp = (
         _TestNamedtuple(np.array([1, 2])),
