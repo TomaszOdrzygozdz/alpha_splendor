@@ -4,7 +4,7 @@ import gin
 import numpy as np
 
 from alpacka.trainers import base
-from alpacka.trainers import replay_buffer
+from alpacka.trainers import replay_buffers
 
 
 @gin.configurable
@@ -50,7 +50,7 @@ class SupervisedTrainer(base.Trainer):
         # output.
         # TODO(koz4k): Lift this restriction.
         datapoint_spec = (input_shape, ())
-        self._replay_buffer = replay_buffer.ReplayBuffer(
+        self._replay_buffer = replay_buffers.UniformReplayBuffer(
             datapoint_spec, capacity=replay_buffer_capacity
         )
 

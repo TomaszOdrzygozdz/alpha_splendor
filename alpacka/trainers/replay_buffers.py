@@ -1,12 +1,12 @@
-"""Replay buffer."""
+"""Uniform replay buffer."""
 
 import numpy as np
 
 from alpacka import data
 
 
-class ReplayBuffer:
-    """Replay buffer.
+class UniformReplayBuffer:
+    """Replay buffer with uniform sampling.
 
     Stores datapoints in a queue of fixed size. Adding to a full buffer
     overwrites the oldest ones.
