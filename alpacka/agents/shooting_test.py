@@ -164,7 +164,8 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     mock_env.action_space.sample.return_value = 0
     mock_env.step.side_effect = \
         [('d', 0, False, {})] * (rollout_max_len - 1) + [('d', 0, True, {})]
-    mock_env.restore_state.return_value = 's'
+    mock_env.clone_state.return_value = 's'
+    mock_env.restore_state.return_value = 'o'
 
     if rollout_time_limit is None:
         expected_rollout_time_limit = rollout_max_len

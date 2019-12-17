@@ -1,5 +1,7 @@
 """Environments."""
 
+import collections
+
 import gin
 import gym
 import numpy as np
@@ -99,6 +101,12 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, ModelEnv):
         return self.render(mode=self.mode)
 
 
+TimeLimitWrapperState = collections.namedtuple(
+    'TimeLimitWrapperState',
+    ['super_state', 'elapsed_steps']
+)
+
+
 class TimeLimitWrapper(wrappers.TimeLimit, ModelWrapper):
     """Model-based TimeLimit gym.Env wrapper."""
 
@@ -108,18 +116,15 @@ class TimeLimitWrapper(wrappers.TimeLimit, ModelWrapper):
             'Environment must be reset before the first clone_state().'
         )
 
-        return (super().clone_state(),
-                ('TimeLimit._elapsed_step', self._elapsed_steps))
+        return TimeLimitWrapperState(
+            super().clone_state(), self._elapsed_steps)
 
     def restore_state(self, state):
         """Restores environment state, returns the observation."""
         try:
-            env_state, wrapper_state = state
-            if wrapper_state[0] != 'TimeLimit._elapsed_step':
-                raise ValueError()
-            self._elapsed_steps = wrapper_state[1]
-            state = env_state
-        except (AttributeError, ValueError):
+            self._elapsed_steps = state.elapsed_steps
+            state = state.super_state
+        except AttributeError:
             self._elapsed_steps = 0
 
         return super().restore_state(state)
