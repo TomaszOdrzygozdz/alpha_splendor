@@ -18,9 +18,9 @@
 # ==============================================================================
 # None.
 
-# Parameters for MCTSAgent:
+# Parameters for ShootingAgent:
 # ==============================================================================
-ShootingAgent.n_passes = 8
+ShootingAgent.n_rollouts = 8
 ShootingAgent.rollout_time_limit = 12
 ShootingAgent.aggregate_fn = @alpacka.agents.shooting.mean_aggregate
 ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper

@@ -119,7 +119,7 @@ class TimeLimitWrapper(wrappers.TimeLimit, ModelWrapper):
                 raise ValueError()
             self._elapsed_steps = wrapper_state[1]
             state = env_state
-        except ValueError:
+        except (AttributeError, ValueError):
             self._elapsed_steps = 0
 
         return super().restore_state(state)

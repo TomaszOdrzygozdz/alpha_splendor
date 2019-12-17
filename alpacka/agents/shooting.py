@@ -1,4 +1,6 @@
-"""Monte Carlo Tree Search agent."""
+"""Shooting agent.
+
+It does Monte Carlo simulation."""
 
 import asyncio
 import functools
@@ -43,7 +45,7 @@ class ShootingAgent(base.OnlineAgent):
     def __init__(
         self,
         action_space,
-        n_passes=1000,
+        n_rollouts=1000,
         rollout_time_limit=None,
         aggregate_fn=mean_aggregate,
         batch_stepper_class=batch_steppers.LocalBatchStepper,
@@ -54,7 +56,7 @@ class ShootingAgent(base.OnlineAgent):
 
         Args:
             action_space (gym.Space): Action space.
-            n_passes (int): Do at least this number of MC rollouts per act().
+            n_rollouts (int): Do at least this number of MC rollouts per act().
             rollout_time_limit (int): Maximum number of timesteps for rollouts.
             aggregate_fn (callable): Aggregates simulated episodes. Signature:
                 (n_act, episodes) -> np.ndarray(action_scores).
@@ -67,7 +69,7 @@ class ShootingAgent(base.OnlineAgent):
         )
         super().__init__(action_space)
 
-        self._n_passes = n_passes
+        self._n_rollouts = n_rollouts
         self._rollout_time_limit = rollout_time_limit
         self._aggregate_fn = aggregate_fn
         self._batch_stepper_class = batch_stepper_class
@@ -83,7 +85,7 @@ class ShootingAgent(base.OnlineAgent):
 
     @asyncio.coroutine
     def act(self, observation):
-        """Runs n_passes simulations and chooses the best action."""
+        """Runs n_rollouts simulations and chooses the best action."""
         assert self._model is not None, (
             'Reset ShootingAgent first.'
         )
@@ -106,9 +108,9 @@ class ShootingAgent(base.OnlineAgent):
 
         # TODO(pj): Move it to BatchStepper. You should be able to query
         # BatchStepper for a given number of episodes (by default n_envs).
-        global_n_passes = math.ceil(self._n_passes / self._n_envs)
+        global_n_rollouts = math.ceil(self._n_rollouts / self._n_envs)
         episodes = []
-        for _ in range(global_n_passes):
+        for _ in range(global_n_rollouts):
             episodes.extend(
                 self._batch_stepper.run_episode_batch(params, root_state))
 
@@ -119,14 +121,9 @@ class ShootingAgent(base.OnlineAgent):
         action = np.argmax(action_scores)
         return action
 
-    @property
     def _env_fn(self):
         env_class = type(self._model)
-
-        def _env_fn():
-            env = env_class()
-            if self._rollout_time_limit is not None:
-                return envs.TimeLimitWrapper(env, self._rollout_time_limit)
-            return env
-
-        return _env_fn
+        env = env_class()
+        if self._rollout_time_limit is not None:
+            return envs.TimeLimitWrapper(env, self._rollout_time_limit)
+        return env

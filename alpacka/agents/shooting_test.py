@@ -62,7 +62,7 @@ def test_integration_with_cartpole():
     env = envs.CartPole()
     agent = agents.ShootingAgent(
         action_space=env.action_space,
-        n_passes=1
+        n_rollouts=1
     )
 
     # Run
@@ -77,7 +77,7 @@ def test_act_doesnt_change_env_state():
     env = envs.CartPole()
     agent = agents.ShootingAgent(
         action_space=env.action_space,
-        n_passes=10
+        n_rollouts=10
     )
     agent.reset(env)
     observation = env.reset()
@@ -118,12 +118,12 @@ def mock_bstep_class():
 
 def test_number_of_simulations(mock_env, mock_bstep_class):
     # Set up
-    n_passess = 7
+    n_rollouts = 7
     n_envs = 2
     agent = agents.ShootingAgent(
         action_space=mock_env.action_space,
         batch_stepper_class=mock_bstep_class,
-        n_passes=n_passess,
+        n_rollouts=n_rollouts,
         n_envs=n_envs
     )
 
@@ -133,7 +133,7 @@ def test_number_of_simulations(mock_env, mock_bstep_class):
 
     # Test
     assert mock_bstep_class.return_value.run_episode_batch.call_count == \
-        math.ceil(n_passess / n_envs)
+        math.ceil(n_rollouts / n_envs)
 
 
 @pytest.mark.parametrize('aggregate_fn,expected_action',
@@ -146,7 +146,7 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
         action_space=mock_env.action_space,
         aggregate_fn=aggregate_fn,
         batch_stepper_class=mock_bstep_class,
-        n_passes=1,
+        n_rollouts=1,
     )
 
     # Run
@@ -182,7 +182,7 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
             action_space=mock_env.action_space,
             aggregate_fn=_aggregate_fn,
             rollout_time_limit=rollout_time_limit,
-            n_passes=1,
+            n_rollouts=1,
         )
 
         # Run
