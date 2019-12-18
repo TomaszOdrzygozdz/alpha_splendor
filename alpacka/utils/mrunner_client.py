@@ -8,7 +8,6 @@ import cloudpickle
 import neptune
 
 _experiment = None
-_last_step = -1
 
 
 def get_configuration(spec_path):
@@ -51,10 +50,5 @@ def get_configuration(spec_path):
 
 def log_neptune(name, step, value):
     """Logs a scalar to Neptune."""
-    global _experiment  # pylint: disable=global-statement
-    global _last_step  # pylint: disable=global-statement
-    assert step == _last_step + 1, (
-        'Neptune needs to log values in sequence!')
-
+    del step
     _experiment.send_metric(name, value)
-    _last_step += 1

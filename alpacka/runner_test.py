@@ -11,7 +11,7 @@ def test_smoke(tmpdir, capsys):
         output_dir=tmpdir,
         n_envs=2,
         n_epochs=n_epochs,
-        log_fns=[metric_logging.log_scalar]
+        log_scalar_fns=[metric_logging.log_cmd]
     ).run()
 
     # Check that metrics were printed in each epoch.

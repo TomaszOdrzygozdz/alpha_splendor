@@ -32,7 +32,9 @@ class Runner:
         trainer_class=trainers.DummyTrainer,
         n_epochs=None,
         n_precollect_epochs=0,
-        log_fns=None
+        # TODO(pj): Rewrite it to a proper logger class, when we will log other
+        # stuff than only scalars.
+        log_scalar_fns=None
     ):
         """Initializes the runner.
 
@@ -53,8 +55,8 @@ class Runner:
                 if None.
             n_precollect_epochs (int): Number of initial epochs to run without
                 training (data precollection).
-            log_fns (list of callable): Function (name, step, value) -> None.
-                List of logging functions.
+            log_scalar_fns (list of callable): Function (name, step, value) -> None.
+                List of logging scalar functions.
         """
         self._output_dir = os.path.expanduser(output_dir)
         os.makedirs(self._output_dir, exist_ok=True)
@@ -78,7 +80,7 @@ class Runner:
         self._trainer = trainer_class(input_shape)
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
-        self._log_fns = log_fns or []
+        self._log_scalar_fns = log_scalar_fns or []
         self._epoch = 0
 
     @staticmethod
@@ -94,7 +96,7 @@ class Runner:
         return_mean = sum(
             episode.return_ for episode in episodes
         ) / len(episodes)
-        for log_fn in self._log_fns:
+        for log_fn in self._log_scalar_fns:
             log_fn('return_mean', self._epoch, return_mean)
 
         solved_list = [
@@ -103,11 +105,12 @@ class Runner:
         ]
         if solved_list:
             solved_rate = sum(solved_list) / len(solved_list)
-            metric_logging.log_scalar('solved_rate', self._epoch, solved_rate)
+            for log_fn in self._log_scalar_fns:
+                log_fn('solved_rate', self._epoch, solved_rate)
 
     def _log_training_metrics(self, metrics):
         for (name, value) in metrics.items():
-            for log_fn in self._log_fns:
+            for log_fn in self._log_scalar_fns:
                 log_fn('train/' + name, self._epoch, value)
 
     def _save_gin(self):
@@ -175,15 +178,15 @@ if __name__ == '__main__':
     args = _parse_args()
 
     gin_bindings = args.config
-    log_fns = [metric_logging.log_scalar]
+    log_scalar_fns = [metric_logging.log_cmd]
 
     if args.mrunner:
         from alpacka.utils import mrunner_client  # Lazy import
         spec_path = gin_bindings.pop()
 
         gin_bindings.extend(mrunner_client.get_configuration(spec_path))
-        log_fns.append(mrunner_client.log_neptune)
+        log_scalar_fns.append(mrunner_client.log_neptune)
 
     gin.parse_config_files_and_bindings(args.config_file, gin_bindings)
-    runner = Runner(args.output_dir, log_fns=log_fns)
+    runner = Runner(args.output_dir, log_scalar_fns=log_scalar_fns)
     runner.run()
