@@ -174,7 +174,6 @@ class MCTSValue(base.OnlineAgent):
                  avoid_loops=True,
                  avoid_traversal_loop_coeff=0.0,
                  avoid_history_coeff=0.0,
-                 history_process_fn = lambda x, solved: (x, {}),
                  ):
         super().__init__(action_space=action_space)
         self._value_traits = ScalarValueTraits()
@@ -190,7 +189,6 @@ class MCTSValue(base.OnlineAgent):
         else:
             self.avoid_history_coeff = lambda: avoid_history_coeff
         self._node_value_mode = node_value_mode
-        self.history_process_fn = history_process_fn
         assert value_annealing == 1., "Annealing temporarily not supported."  # TODO(pm): reenable
         self._num_mcts_passes = num_mcts_passes
 
@@ -380,9 +378,8 @@ class MCTSValue(base.OnlineAgent):
 
                 game_solved = new_root.solved
                 nodes = [elem[0] for elem in history]
-                history, evaluator_kwargs = self.history_process_fn(history, game_solved)
                 # give each state of the trajectory a value
-                values = game_evaluator_new(history, self._node_value_mode, self._gamma, game_solved, **evaluator_kwargs)
+                values = game_evaluator_new(history, self._node_value_mode, self._gamma, game_solved)
                 transitions = [transition._replace(agent_info={'value': value.item()}) for (transition, value) in zip(transitions, values)]
                 transitions[-1] = transitions[-1]._replace(done=True)
                 game = [(node.state, value, action) for (node, action, _), value in zip(history, values)]
