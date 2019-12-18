@@ -6,25 +6,6 @@ from alpacka.agents import base
 from alpacka.agents import core
 
 
-def neighbours(model, init_state):
-    old_state = model.clone_state()
-
-    model.restore_state(init_state)
-
-    def step_and_rewind(action):
-        (observation, reward, done, info) = model.step(action)
-        state = model.clone_state()
-        solved = 'solved' in info and info['solved']
-        model.restore_state(init_state)
-        return (observation, reward, done, solved, state)
-
-    results = zip(*[
-        step_and_rewind(action) for action in range(model.action_space.n)
-    ])
-    model.restore_state(old_state)
-    return results
-
-
 @gin.configurable
 class ScalarValueTraits:
 
@@ -177,6 +158,25 @@ class MCTSValue(base.OnlineAgent):
         self._state2node = {}
         self._n_passes = n_passes
 
+    def _children_of_state(self, parent_state):
+        old_state = self._model.clone_state()
+
+        self._model.restore_state(parent_state)
+
+        def step_and_rewind(action):
+            (observation, reward, done, info) = self._model.step(action)
+            state = self._model.clone_state()
+            solved = 'solved' in info and info['solved']
+            self._model.restore_state(parent_state)
+            return (observation, reward, done, solved, state)
+
+        results = zip(*[
+            step_and_rewind(action)
+            for action in range(self._model.action_space.n)
+        ])
+        self._model.restore_state(old_state)
+        return results
+
     def run_mcts_pass(self, root: TreeNode) -> None:
         # search_path = list of tuples (node, action)
         # leaf does not belong to search_path (important for not double counting its value)
@@ -255,7 +255,9 @@ class MCTSValue(base.OnlineAgent):
             return self._value_traits.zero
 
         # neighbours are ordered in the order of actions: 0, 1, ..., _model.num_actions
-        obs, rewards, dones, solved, states = neighbours(self._model, leaf.state)
+        obs, rewards, dones, solved, states = self._children_of_state(
+            leaf.state
+        )
 
         value_batch = yield np.array(obs)
 
