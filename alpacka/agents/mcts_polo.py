@@ -252,18 +252,6 @@ class MCTSValue(base.OnlineAgent):
         new_root = TreeNode(new_node)
         return new_root
 
-    def initialize_root(self):
-        # TODO(pm): seemingly unused function. Refactor
-        raise NotImplementedError("should not happen")
-        # 'reset' mcts internal variables: _state2node and _model
-        self._state2node = {}
-        obs = self._model.reset()
-        state = self._model.clone_state()
-        value = self._get_value([obs], [state])[0]
-
-        new_node = self._initialize_graph_node(initial_value=value, state=state, done=False, solved=False)
-        return TreeNode(new_node)
-
     def expand_leaf(self, leaf: TreeNode):
         if leaf is None:  # Dead End
             return self._value_traits.dead_end
