@@ -168,19 +168,16 @@ class MCTSValue(base.OnlineAgent):
                  action_space,
                  node_value_mode='bootstrap',
                  gamma=0.99,
-                 value_annealing=1.,
                  num_mcts_passes=10,
                  avoid_loops=True,
                  ):
         super().__init__(action_space=action_space)
         self._value_traits = ScalarValueTraits()
         self._gamma = gamma
-        self._value_annealing = value_annealing
         self._avoid_loops = avoid_loops
         self._state2node = {}
         self.history = []
         self._node_value_mode = node_value_mode
-        assert value_annealing == 1., "Annealing temporarily not supported."  # TODO(pm): reenable
         self._num_mcts_passes = num_mcts_passes
 
     def run_mcts_pass(self, root: TreeNode) -> None:
@@ -231,8 +228,7 @@ class MCTSValue(base.OnlineAgent):
 
     def _get_value(self, obs, states):
         value = yield np.array(obs)
-        return self._value_annealing * value
-        # return self._value_annealing * value
+        return value
 
     def _initialize_graph_node(self, initial_value, state, done, solved):
         value_acc = ScalarValueAccumulator(initial_value, state)
