@@ -166,7 +166,6 @@ class MCTSValue(base.OnlineAgent):
 
     def __init__(self,
                  action_space,
-                 node_value_mode='bootstrap',
                  gamma=0.99,
                  n_passes=10,
                  avoid_loops=True,
@@ -176,7 +175,6 @@ class MCTSValue(base.OnlineAgent):
         self._gamma = gamma
         self._avoid_loops = avoid_loops
         self._state2node = {}
-        self._node_value_mode = node_value_mode
         self._n_passes = n_passes
 
     def run_mcts_pass(self, root: TreeNode) -> None:
@@ -354,7 +352,7 @@ class MCTSValue(base.OnlineAgent):
                 game_solved = new_root.solved
                 nodes = [elem[0] for elem in history]
                 # give each state of the trajectory a value
-                values = game_evaluator_new(history, self._node_value_mode, self._gamma, game_solved)
+                values = [node.value_acc.target() for node, _, _ in history]
                 transitions = [transition._replace(agent_info={'value': value.item()}) for (transition, value) in zip(transitions, values)]
                 transitions[-1] = transitions[-1]._replace(done=True)
                 game = [(node.state, value, action) for (node, action, _), value in zip(history, values)]
@@ -374,28 +372,6 @@ def calculate_discounted_rewards(rewards, gamma):
     for i in np.arange(len(rewards), 0, -1):
         discounted_rewards[i-1] = gamma*discounted_rewards[i] + rewards[i-1]
     return discounted_rewards[:-1]
-
-
-def game_evaluator_new(game, mode, gamma, solved, **kwargs):
-    if mode == "bootstrap":
-        return [node.value_acc.target() for node, _, _ in game]
-    if "factual" in mode:
-        rewards = np.zeros(len(game))
-        if mode == "factual":  # PM: Possibly remove, kept for backward compatibility
-            rewards[-1] = int(solved)
-            gamma = 1
-        elif mode == "factual_discount":
-            rewards[-1] = int(solved)
-        elif mode == "factual_hindsight":
-            rewards[-1] = kwargs['hindsight_solved']
-        elif mode == "factual_rewards":
-            rewards = [reward for node, action, reward in game]
-        else:
-            raise NotImplementedError("not known mode", mode)
-
-        return calculate_discounted_rewards(rewards, gamma)
-
-    raise NotImplementedError("not known mode", mode)
 
 
 def td_backup(node, action, value, gamma):
