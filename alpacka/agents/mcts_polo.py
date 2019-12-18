@@ -169,7 +169,6 @@ class MCTSValue(base.OnlineAgent):
                  node_value_mode='bootstrap',
                  gamma=0.99,
                  value_annealing=1.,
-                 num_sampling_moves=0,
                  num_mcts_passes=10,
                  avoid_loops=True,
                  ):
@@ -177,7 +176,6 @@ class MCTSValue(base.OnlineAgent):
         self._value_traits = ScalarValueTraits()
         self._gamma = gamma
         self._value_annealing = value_annealing
-        self._num_sampling_moves = num_sampling_moves
         self._avoid_loops = avoid_loops
         self._state2node = {}
         self.history = []
@@ -318,12 +316,7 @@ class MCTSValue(base.OnlineAgent):
         if not values_and_actions:
             # when there are no children (e.g. at the bottom states of ChainEnv)
             return None, None
-        # TODO: can we do below more elegantly
-        if len(self.history) < self._num_sampling_moves:
-            chooser = _softmax_sample
-        else:
-            chooser = max
-        (_, action) = chooser(values_and_actions)
+        (_, action) = max(values_and_actions)
         return root.children[action], action
 
     # Select the child with the highest score
@@ -408,18 +401,6 @@ def game_evaluator_new(game, mode, gamma, solved, **kwargs):
         return calculate_discounted_rewards(rewards, gamma)
 
     raise NotImplementedError("not known mode", mode)
-
-
-def _softmax_sample(values_and_actions):
-    # INFO: below for numerical stability,
-    # see https://stackoverflow.com/questions/34968722/how-to-implement-the-softmax-function-in-python
-    max_values = max([v for v, _ in values_and_actions])
-    sharpening_coeff = 2.  # TODO: make it a parameter
-    prob = np.array([np.exp(sharpening_coeff * v - max_values) for v, _ in values_and_actions])
-    total = np.sum(prob)
-    prob /= total
-    idx = np.random.choice(range(len(values_and_actions)), p=prob)
-    return values_and_actions[idx]
 
 
 def td_backup(node, action, value, gamma):
