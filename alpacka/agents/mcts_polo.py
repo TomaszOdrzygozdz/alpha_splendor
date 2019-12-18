@@ -103,9 +103,6 @@ class ScalarValueAccumulator(ValueAccumulator):
     def index(self, parent_value=None, action=None):
         return self.get() + self.auxiliary_loss  # auxiliary_loss alters tree traversal in mcts
 
-    def final_index(self, parent_value=None, action=None):
-        return self.index(parent_value, action)
-
     def target(self):
         return self.get()
 
@@ -178,7 +175,6 @@ class MCTSValue(base.OnlineAgent):
                  avoid_traversal_loop_coeff=0.0,
                  avoid_history_coeff=0.0,
                  history_process_fn = lambda x, solved: (x, {}),
-                 differ_final_rating=False
                  ):
         super().__init__(action_space=action_space)
         self._value_traits = ScalarValueTraits()
@@ -195,7 +191,6 @@ class MCTSValue(base.OnlineAgent):
             self.avoid_history_coeff = lambda: avoid_history_coeff
         self._node_value_mode = node_value_mode
         self.history_process_fn = history_process_fn
-        self.differ_final_rating = differ_final_rating
         assert value_annealing == 1., "Annealing temporarily not supported."  # TODO(pm): reenable
         self._num_mcts_passes = num_mcts_passes
 
@@ -317,19 +312,15 @@ class MCTSValue(base.OnlineAgent):
 
         return leaf.value_acc.get()
 
-    def _child_index(self, parent, action, final_index=False):
+    def _child_index(self, parent, action):
         accumulator = parent.children[action].value_acc
-        if final_index:
-            value = accumulator.final_index(parent.value_acc, action)
-        else:
-            value = accumulator.index(parent.value_acc, action)
+        value = accumulator.index(parent.value_acc, action)
         return td_backup(parent, action, value, self._gamma)
 
-    def _rate_children(self, node, states_to_avoid, final_rating=False):
-        final_index = final_rating and self.differ_final_rating
+    def _rate_children(self, node, states_to_avoid):
         assert self._avoid_loops or len(states_to_avoid) == 0, "Should not happen. There is a bug."
         return [
-            (self._child_index(node, action, final_index=final_index), action)
+            (self._child_index(node, action), action)
             for action, child in node.children.items()
             if child.state not in states_to_avoid
         ]
@@ -338,7 +329,7 @@ class MCTSValue(base.OnlineAgent):
     def _select_next_node(self, root):
         # INFO: below line guarantees that we do not perform one-step loop (may be considered slight hack)
         states_to_avoid = {root.state} if self._avoid_loops else set()
-        values_and_actions = self._rate_children(root, states_to_avoid, final_rating=True)
+        values_and_actions = self._rate_children(root, states_to_avoid)
         if not values_and_actions:
             # when there are no children (e.g. at the bottom states of ChainEnv)
             return None, None
