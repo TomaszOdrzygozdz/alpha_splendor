@@ -223,10 +223,6 @@ class MCTSValue(base.OnlineAgent):
             value = td_backup(node, action, value, self._gamma)  # returns value if action is None
             node.value_acc.add(value)
 
-    def _get_value(self, obs, states):
-        value = yield np.array(obs)
-        return value
-
     def _initialize_graph_node(self, initial_value, state, done, solved):
         value_acc = ScalarValueAccumulator(initial_value, state)
         new_node = GraphNode(value_acc,
@@ -246,8 +242,7 @@ class MCTSValue(base.OnlineAgent):
         self._state2node = {}
         obs = self._model.reset()
         state = self._model.clone_state()
-        value = yield from self._get_value([obs], [state])
-        value = value[0]
+        (value,) = yield np.array([obs])
         new_node = self._initialize_graph_node(initial_value=value, state=state, done=False, solved=False)
         new_root = TreeNode(new_node)
         return new_root
@@ -262,7 +257,7 @@ class MCTSValue(base.OnlineAgent):
         # neighbours are ordered in the order of actions: 0, 1, ..., _model.num_actions
         obs, rewards, dones, solved, states = neighbours(self._model, leaf.state)
 
-        value_batch = yield from self._get_value(obs=obs, states=states)
+        value_batch = yield np.array(obs)
 
         for idx, action in enumerate(range(self._action_space.n)):
             leaf.rewards[idx] = rewards[idx]
