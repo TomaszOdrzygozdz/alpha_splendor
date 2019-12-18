@@ -172,8 +172,6 @@ class MCTSValue(base.OnlineAgent):
                  num_sampling_moves=0,
                  num_mcts_passes=10,
                  avoid_loops=True,
-                 avoid_traversal_loop_coeff=0.0,
-                 avoid_history_coeff=0.0,
                  ):
         super().__init__(action_space=action_space)
         self._value_traits = ScalarValueTraits()
@@ -183,11 +181,6 @@ class MCTSValue(base.OnlineAgent):
         self._avoid_loops = avoid_loops
         self._state2node = {}
         self.history = []
-        self.avoid_traversal_loop_coeff = avoid_traversal_loop_coeff
-        if callable(avoid_history_coeff):
-            self.avoid_history_coeff = avoid_history_coeff
-        else:
-            self.avoid_history_coeff = lambda: avoid_history_coeff
         self._node_value_mode = node_value_mode
         assert value_annealing == 1., "Annealing temporarily not supported."  # TODO(pm): reenable
         self._num_mcts_passes = num_mcts_passes
@@ -216,9 +209,6 @@ class MCTSValue(base.OnlineAgent):
         search_path = []
         while node.expanded():
             seen_states.add(node.state)
-            node.value_acc.add_auxiliary(self.avoid_traversal_loop_coeff)
-            #  Avoiding visited states in the fashion of https://openreview.net/pdf?id=Hyfn2jCcKm
-
             # INFO: if node Dead End, (new_node, action) = (None, None)
             # INFO: _select_child can SAMPLE an action (to break tie)
             states_to_avoid = seen_states if self._avoid_loops else set()
@@ -240,7 +230,6 @@ class MCTSValue(base.OnlineAgent):
         for node, action in reversed(search_path):
             value = td_backup(node, action, value, self._gamma)  # returns value if action is None
             node.value_acc.add(value)
-            node.value_acc.add_auxiliary(-self.avoid_traversal_loop_coeff)
 
     def _get_value(self, obs, states):
         value = yield np.array(obs)
@@ -259,7 +248,6 @@ class MCTSValue(base.OnlineAgent):
 
     def preprocess(self, root):
         if root is not None and not root.terminal:
-            root.value_acc.add_auxiliary(self.avoid_history_coeff())
             return root
 
         # 'reset' mcts internal variables: _state2node and _model
@@ -271,7 +259,6 @@ class MCTSValue(base.OnlineAgent):
         value = value[0]
         new_node = self._initialize_graph_node(initial_value=value, state=state, done=False, solved=False)
         new_root = TreeNode(new_node)
-        new_root.value_acc.add_auxiliary(self.avoid_history_coeff())
         return new_root
 
     def initialize_root(self):
