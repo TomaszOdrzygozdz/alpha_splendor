@@ -168,7 +168,7 @@ class MCTSValue(base.OnlineAgent):
                  action_space,
                  node_value_mode='bootstrap',
                  gamma=0.99,
-                 num_mcts_passes=10,
+                 n_passes=10,
                  avoid_loops=True,
                  ):
         super().__init__(action_space=action_space)
@@ -177,7 +177,7 @@ class MCTSValue(base.OnlineAgent):
         self._avoid_loops = avoid_loops
         self._state2node = {}
         self._node_value_mode = node_value_mode
-        self._num_mcts_passes = num_mcts_passes
+        self._n_passes = n_passes
 
     def run_mcts_pass(self, root: TreeNode) -> None:
         # search_path = list of tuples (node, action)
@@ -191,7 +191,7 @@ class MCTSValue(base.OnlineAgent):
         root = yield from self.preprocess(root)
 
         # perform MCTS passes. each pass = tree traversal + leaf evaluation + backprop
-        for _ in range(self._num_mcts_passes):
+        for _ in range(self._n_passes):
             yield from self.run_mcts_pass(root)
         next, action = self._select_next_node(root)  # INFO: possible sampling for exploration
 
