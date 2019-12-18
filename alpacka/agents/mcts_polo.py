@@ -176,7 +176,6 @@ class MCTSValue(base.OnlineAgent):
         self._gamma = gamma
         self._avoid_loops = avoid_loops
         self._state2node = {}
-        self.history = []
         self._node_value_mode = node_value_mode
         self._num_mcts_passes = num_mcts_passes
 
