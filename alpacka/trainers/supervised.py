@@ -29,6 +29,7 @@ class SupervisedTrainer(base.Trainer):
         batch_size=64,
         n_steps_per_epoch=1000,
         replay_buffer_capacity=1000000,
+        replay_buffer_sampling_hierarchy=(),
     ):
         """Initializes SupervisedTrainer.
 
@@ -40,6 +41,8 @@ class SupervisedTrainer(base.Trainer):
             n_steps_per_epoch (int): Number of optimizer steps to do per
                 epoch.
             replay_buffer_capacity (int): Maximum size of the replay buffer.
+            replay_buffer_sampling_hierarchy (tuple): Sequence of Episode
+                attribute names, defining the sampling hierarchy.
         """
         super().__init__(input_shape)
         self._target_fn = target_fn
@@ -50,15 +53,25 @@ class SupervisedTrainer(base.Trainer):
         # output.
         # TODO(koz4k): Lift this restriction.
         datapoint_spec = (input_shape, ())
-        self._replay_buffer = replay_buffers.UniformReplayBuffer(
-            datapoint_spec, capacity=replay_buffer_capacity
+        self._replay_buffer = replay_buffers.HierarchicalReplayBuffer(
+            datapoint_spec,
+            capacity=replay_buffer_capacity,
+            hierarchy_depth=len(replay_buffer_sampling_hierarchy),
         )
+        self._sampling_hierarchy = replay_buffer_sampling_hierarchy
 
     def add_episode(self, episode):
-        self._replay_buffer.add((
-            episode.transition_batch.observation,  # input
-            self._target_fn(episode),  # target
-        ))
+        buckets = [
+            getattr(episode, bucket_name)
+            for bucket_name in self._sampling_hierarchy
+        ]
+        self._replay_buffer.add(
+            (
+                episode.transition_batch.observation,  # input
+                self._target_fn(episode),  # target
+            ),
+            buckets,
+        )
 
     def train_epoch(self, network):
         def data_stream():
