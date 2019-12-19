@@ -158,7 +158,7 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
     stochastic_mcts_test.run_without_suspensions(
         agent.reset(mock_env, observation)
     )
-    actual_action = stochastic_mcts_test.run_without_suspensions(
+    (actual_action, _) = stochastic_mcts_test.run_without_suspensions(
         agent.act(None)
     )
 
