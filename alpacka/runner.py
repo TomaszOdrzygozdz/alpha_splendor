@@ -23,6 +23,7 @@ class Runner:
         self,
         output_dir,
         env_class=envs.CartPole,
+        env_kwargs=None,
         agent_class=agents.RandomAgent,
         network_class=networks.DummyNetwork,
         n_envs=16,
@@ -37,6 +38,9 @@ class Runner:
         Args:
             output_dir (str): Output directory for the experiment.
             env_class (type): Environment class.
+            env_kwargs (dict): Keyword arguments to pass to the env class
+                when created. It ensures that only the env in the Runner will be
+                initialized with them.
             agent_class (type): Agent class.
             network_class (type): Network class.
             n_envs (int): Number of environments to run in parallel.
@@ -55,8 +59,13 @@ class Runner:
         input_shape = self._infer_input_shape(env_class)
         network_fn = functools.partial(network_class, input_shape=input_shape)
 
+        if env_kwargs:
+            env_fn = functools.partial(env_class, **env_kwargs)
+        else:
+            env_fn = env_class
+
         self._batch_stepper = batch_stepper_class(
-            env_class=env_class,
+            env_class=env_fn,
             agent_class=agent_class,
             network_fn=network_fn,
             n_envs=n_envs,

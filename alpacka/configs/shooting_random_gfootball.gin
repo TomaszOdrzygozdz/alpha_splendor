@@ -32,6 +32,7 @@ ShootingAgent.n_envs = 1
 Runner.agent_class = @alpacka.agents.ShootingAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.GoogleFootball
+Runner.env_kwargs = {'dump_path': './out'}
 Runner.n_envs = 1
 Runner.episode_time_limit = None
 Runner.n_epochs = None
