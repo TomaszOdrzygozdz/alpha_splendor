@@ -1,4 +1,6 @@
-"""MCTS for deterministic environments."""
+"""Monte Carlo Tree Search for deterministic environments."""
+
+# TODO(koz4k): Clean up more, add comments and tests.
 
 import gin
 import numpy as np
@@ -164,8 +166,8 @@ class TreeNode:
 
 
 @gin.configurable
-class MCTSValue(base.OnlineAgent):
-    """MCTS for deterministic environments.
+class DeterministicMCTSAgent(base.OnlineAgent):
+    """Monte Carlo Tree Search for deterministic environments.
 
     Implements transposition tables (sharing value estimates between multiple
     tree nodes corresponding to the same environment state) and loop avoidance.

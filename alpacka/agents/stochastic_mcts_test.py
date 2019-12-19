@@ -1,4 +1,4 @@
-"""Tests for alpacka.agents.mcts."""
+"""Tests for alpacka.agents.stochastic_mcts."""
 
 import asyncio
 import functools
@@ -93,11 +93,11 @@ def run_with_dummy_network(coroutine):
 @pytest.mark.parametrize('graph_mode', [False, True])
 def test_integration_with_cartpole(graph_mode):
     env = envs.CartPole()
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
-            agents.mcts.rate_new_leaves_with_rollouts,
+            agents.stochastic_mcts.rate_new_leaves_with_rollouts,
             rollout_time_limit=2,
         ),
         graph_mode=graph_mode,
@@ -109,14 +109,14 @@ def test_integration_with_cartpole(graph_mode):
 @pytest.mark.parametrize('graph_mode', [False, True])
 @pytest.mark.parametrize('rate_new_leaves_fn', [
     functools.partial(
-        agents.mcts.rate_new_leaves_with_rollouts,
+        agents.stochastic_mcts.rate_new_leaves_with_rollouts,
         rollout_time_limit=2,
     ),
-    agents.mcts.rate_new_leaves_with_value_network,
+    agents.stochastic_mcts.rate_new_leaves_with_value_network,
 ])
 def test_act_doesnt_change_env_state(graph_mode, rate_new_leaves_fn):
     env = envs.CartPole()
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=rate_new_leaves_fn,
@@ -188,7 +188,7 @@ def test_decision_after_one_pass(
     (env, rate_new_leaves_fn) = make_one_level_binary_tree(
         left_value, right_value, left_reward, right_reward
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=1,
         rate_new_leaves_fn=rate_new_leaves_fn,
@@ -209,7 +209,7 @@ def test_stops_on_done(graph_mode):
         n_actions=1,
         transitions={0: {0: (1, 0, True)}},
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
@@ -246,7 +246,7 @@ def test_backtracks_because_of_value(graph_mode):
             6: {0: (9, 0, True), 1: (10, 0, True)},
         },
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
@@ -275,7 +275,7 @@ def test_backtracks_because_of_reward(graph_mode):
     (env, rate_new_leaves_fn) = make_one_level_binary_tree(
         left_value=1, left_reward=-10, right_value=0, right_reward=0
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=rate_new_leaves_fn,
@@ -314,7 +314,7 @@ def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
             6: {0: (1, 0, False), 1: (7, 0, True)},
         },
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=3,
         rate_new_leaves_fn=functools.partial(
@@ -354,7 +354,7 @@ def test_avoids_real_loops(avoid_loops, expected_action):
         n_actions=2,
         transitions={0: {0: (0, 1, False), 1: (1, 0, True)}},
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
@@ -379,7 +379,7 @@ def test_chooses_something_in_dead_end():
         n_actions=1,
         transitions={0: {0: (0, 0, False)}},
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
@@ -413,7 +413,7 @@ def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
             1: {0: (0, 0, False), 1: (0, 0, False)},
         },
     )
-    agent = agents.MCTSAgent(
+    agent = agents.StochasticMCTSAgent(
         action_space=env.action_space,
         n_passes=2,
         discount=1,

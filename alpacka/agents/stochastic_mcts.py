@@ -1,4 +1,4 @@
-"""Monte Carlo Tree Search agent."""
+"""Monte Carlo Tree Search for stochastic environments."""
 
 import asyncio
 import random
@@ -198,8 +198,14 @@ class DeadEnd(Exception):
     """
 
 
-class MCTSAgent(base.OnlineAgent):
-    """Monte Carlo Tree Search agent."""
+class StochasticMCTSAgent(base.OnlineAgent):
+    """Monte Carlo Tree Search for stochastic environments.
+
+    For now it also supports transpositions and loop avoidance for
+    deterministic environments.
+    TODO(koz4k): Merge those features with DeterministicMCTSAgent. Add features
+    specific to stochastic environments to StochasticMCTSAgent.
+    """
 
     def __init__(
         self,

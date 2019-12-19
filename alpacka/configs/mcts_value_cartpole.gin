@@ -15,14 +15,14 @@ KerasNetwork.train_callbacks = None
 # ==============================================================================
 # None.
 
-# Parameters for MCTSAgent:
+# Parameters for StochasticMCTSAgent:
 # ==============================================================================
-MCTSAgent.avoid_loops = False
-MCTSAgent.discount = 0.99
-MCTSAgent.graph_mode = False
-MCTSAgent.loop_penalty = 0
-MCTSAgent.n_passes = 10
-MCTSAgent.rate_new_leaves_fn = \
+StochasticMCTSAgent.avoid_loops = False
+StochasticMCTSAgent.discount = 0.99
+StochasticMCTSAgent.graph_mode = False
+StochasticMCTSAgent.loop_penalty = 0
+StochasticMCTSAgent.n_passes = 10
+StochasticMCTSAgent.rate_new_leaves_fn = \
     @alpacka.agents.mcts.rate_new_leaves_with_value_network
 
 # Parameters for mlp:
@@ -37,7 +37,7 @@ mlp.output_activation = 'sigmoid'
 
 # Parameters for Runner:
 # ==============================================================================
-Runner.agent_class = @alpacka.agents.MCTSAgent
+Runner.agent_class = @alpacka.agents.StochasticMCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.CartPole
 Runner.n_envs = 1

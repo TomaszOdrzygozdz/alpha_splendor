@@ -20,7 +20,7 @@ KerasNetwork.weight_decay = 0.003
 # ==============================================================================
 # None.
 
-# Parameters for MCTSValue:
+# Parameters for DeterministicMCTSAgent:
 # ==============================================================================
 # None.
 
@@ -38,7 +38,7 @@ convnet_mnist.output_activation = None
 
 # Parameters for Runner:
 # ==============================================================================
-Runner.agent_class = @alpacka.agents.MCTSValue
+Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.Sokoban
 Runner.n_envs = 64
