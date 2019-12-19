@@ -23,7 +23,7 @@ def construct_episodes(actions, rewards):
             data.Transition(None, act, rew, False, None)
             for act, rew in zip(acts[:-1], rews[:-1])]
         transitions.append(
-            data.Transition(None, acts[-1], rews[-1], True, None))
+            data.Transition(None, acts[-1], rews[-1], True, None, {}))
         transition_batch = data.nested_stack(transitions)
         episodes.append(data.Episode(transition_batch, sum(rews)))
     return episodes
@@ -151,7 +151,7 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
 
     # Run
     agent.reset(mock_env)
-    actual_action = mcts_test.run_without_suspensions(agent.act(None))
+    actual_action, _ = mcts_test.run_without_suspensions(agent.act(None))
 
     # Test
     assert actual_action == expected_action
