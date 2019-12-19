@@ -165,7 +165,6 @@ class TreeNode:
         self.node.terminal = terminal
 
 
-@gin.configurable
 class DeterministicMCTSAgent(base.OnlineAgent):
     """Monte Carlo Tree Search for deterministic environments.
 

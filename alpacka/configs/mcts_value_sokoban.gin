@@ -1,11 +1,18 @@
-# Parameters for Sokoban:
+# Parameters for convnet_mnist:
 # ==============================================================================
-Sokoban.dim_room = (8, 8)
-Sokoban.max_steps = 50
-Sokoban.num_boxes = 2
-Sokoban.penalty_for_step = -0.1
-Sokoban.reward_box_on_target = 1
-Sokoban.reward_finished = 10
+convnet_mnist.activation = 'relu'
+convnet_mnist.d_conv = 64
+convnet_mnist.d_ff = 128
+convnet_mnist.n_conv_layers = 5
+convnet_mnist.output_activation = None
+
+# Parameters for DeterministicMCTSAgent:
+# ==============================================================================
+DeterministicMCTSAgent.avoid_loops = True
+DeterministicMCTSAgent.gamma = 0.99
+DeterministicMCTSAgent.n_passes = 10
+DeterministicMCTSAgent.value_traits_class = @alpacka.agents.deterministic_mcts.ScalarValueTraits
+DeterministicMCTSAgent.value_accumulator_class = @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
 
 # Parameters for KerasNetwork:
 # ==============================================================================
@@ -20,42 +27,43 @@ KerasNetwork.weight_decay = 0.003
 # ==============================================================================
 # None.
 
-# Parameters for DeterministicMCTSAgent:
-# ==============================================================================
-# None.
-
-# Parameters for convnet_mnist:
-# ==============================================================================
-convnet_mnist.n_conv_layers = 5
-convnet_mnist.d_conv = 64
-convnet_mnist.d_ff = 128
-convnet_mnist.activation = 'relu'
-convnet_mnist.output_activation = None
-
-# Parameters for rate_new_leaves_with_value_network:
-# ==============================================================================
-# None.
-
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.Sokoban
-Runner.n_envs = 64
 Runner.episode_time_limit = 50
-Runner.n_precollect_epochs = 15
+Runner.n_envs = 64
 Runner.n_epochs = 1500
+Runner.n_precollect_epochs = 15
 Runner.network_class = @alpacka.networks.KerasNetwork
 Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
+# Parameters for ScalarValueAccumulator:
+# ==============================================================================
+# None.
+
+# Parameters for ScalarValueTraits:
+# ==============================================================================
+ScalarValueTraits.dead_end_value = -2.0
+
+# Parameters for Sokoban:
+# ==============================================================================
+Sokoban.dim_room = (8, 8)
+Sokoban.max_steps = 50
+Sokoban.num_boxes = 2
+Sokoban.penalty_for_step = -0.1
+Sokoban.reward_box_on_target = 1
+Sokoban.reward_finished = 10
+
 # Parameters for SupervisedTrainer:
 # ==============================================================================
-SupervisedTrainer.target_fn = @alpacka.trainers.supervised.target_value
 SupervisedTrainer.batch_size = 32
 SupervisedTrainer.n_steps_per_epoch = 13
 SupervisedTrainer.replay_buffer_capacity = 500000
 SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
+SupervisedTrainer.target_fn = @alpacka.trainers.supervised.target_value
 
-# Parameters for target_solved:
+# Parameters for target_value:
 # ==============================================================================
 # None.
