@@ -75,7 +75,7 @@ class ScalarValueAccumulator(ValueAccumulator):
 
 
 
-class GraphNode(object):
+class GraphNode:
     def __init__(self, value_acc,
                  state=None,
                  terminal=False,
@@ -88,8 +88,8 @@ class GraphNode(object):
         self.solved = solved
 
 # tree node
-class TreeNode(object):
-    def __init__(self, node: object) -> object:
+class TreeNode:
+    def __init__(self, node):
         self.node = node
         self.children = {}  # {valid_action: Node}
 
@@ -160,7 +160,7 @@ class MCTSValue(base.OnlineAgent):
         self._model.restore_state(old_state)
         return results
 
-    def run_mcts_pass(self, root: TreeNode) -> None:
+    def run_mcts_pass(self, root):
         # search_path = list of tuples (node, action)
         # leaf does not belong to search_path (important for not double counting its value)
         leaf, search_path = self.tree_traversal(root)
@@ -205,7 +205,7 @@ class MCTSValue(base.OnlineAgent):
         self._state2node[state] = new_node  # store newly initialized node in _state2node
         return new_node
 
-    def expand_leaf(self, leaf: TreeNode):
+    def expand_leaf(self, leaf):
         if leaf is None:  # Dead End
             return self._value_traits.dead_end
 
