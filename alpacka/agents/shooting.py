@@ -122,3 +122,4 @@ class ShootingAgent(base.OnlineAgent):
         # Choose greedy action.
         action = np.argmax(action_scores)
         return action, {}
+        
