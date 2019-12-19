@@ -17,7 +17,7 @@ class ScalarValueTraits:
 
 class ValueAccumulator:
 
-    def __init__(self, value, state=None):
+    def __init__(self, value):
         # Creates and initializes with typical add
         self.add(value)
 
@@ -52,21 +52,17 @@ class ValueAccumulator:
 @gin.configurable
 class ScalarValueAccumulator(ValueAccumulator):
 
-    def __init__(self, value, state=None, mean_max_coeff=1.0):
+    def __init__(self, value):
         self._sum = 0.0
         self._count = 0
-        self._max = value
-        self.mean_max_coeff = mean_max_coeff
-        super().__init__(value, state)
+        super().__init__(value)
 
     def add(self, value):
-        self._max = max(self._max, value)
         self._sum += value
         self._count += 1
 
     def get(self):
-        return (self._sum / self._count)*self.mean_max_coeff \
-               + self._max*(1-self.mean_max_coeff)
+        return self._sum / self._count
 
     def index(self):
         return self.get()
@@ -200,7 +196,7 @@ class MCTSValue(base.OnlineAgent):
             node.value_acc.add(value)
 
     def _initialize_graph_node(self, initial_value, state, done, solved):
-        value_acc = ScalarValueAccumulator(initial_value, state)
+        value_acc = ScalarValueAccumulator(initial_value)
         new_node = GraphNode(value_acc,
                              state=state,
                              terminal=done,
