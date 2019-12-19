@@ -1,5 +1,6 @@
 """Monte Carlo Tree Search agent."""
 
+import asyncio
 import random
 
 import gin
@@ -446,8 +447,10 @@ class MCTSAgent(base.OnlineAgent):
         # Go back to the root state.
         self._model.restore_state(self._root_state)
 
-    def reset(self, env):
+    @asyncio.coroutine
+    def reset(self, env, observation):
         """Reinitializes the search tree for a new environment."""
+        del observation
         assert env.action_space == self._action_space
         self._model = env
         # Initialize root with some reward to avoid division by zero.

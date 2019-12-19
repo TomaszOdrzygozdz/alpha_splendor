@@ -77,8 +77,10 @@ class ShootingAgent(base.OnlineAgent):
         self._model = None
         self._batch_stepper = None
 
-    def reset(self, env):
-        """Reinitializes the agent for a new environment."""
+    @asyncio.coroutine
+    def reset(self, env, observation):
+        """Reinitializes the agentfor a new environment."""
+        del observation
         assert env.action_space == self._action_space
         self._model = env
 

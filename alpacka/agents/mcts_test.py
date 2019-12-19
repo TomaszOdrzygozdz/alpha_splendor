@@ -122,8 +122,8 @@ def test_act_doesnt_change_env_state(graph_mode, rate_new_leaves_fn):
         rate_new_leaves_fn=rate_new_leaves_fn,
         graph_mode=graph_mode,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
 
     state_before = env.clone_state()
     run_with_dummy_network(agent.act(observation))
@@ -194,8 +194,8 @@ def test_decision_after_one_pass(
         rate_new_leaves_fn=rate_new_leaves_fn,
         graph_mode=graph_mode,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     (actual_action, _) = run_without_suspensions(agent.act(observation))
     assert actual_action == expected_action
 
@@ -218,8 +218,8 @@ def test_stops_on_done(graph_mode):
         ),
         graph_mode=graph_mode,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     # rate_new_leaves_fn errors out when rating nodes not in the value table.
     run_without_suspensions(agent.act(observation))
 
@@ -261,8 +261,8 @@ def test_backtracks_because_of_value(graph_mode):
         ),
         graph_mode=graph_mode,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     (action, _) = run_without_suspensions(agent.act(observation))
     assert action == 0
 
@@ -281,8 +281,8 @@ def test_backtracks_because_of_reward(graph_mode):
         rate_new_leaves_fn=rate_new_leaves_fn,
         graph_mode=graph_mode,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     (action, _) = run_without_suspensions(agent.act(observation))
     assert action == 1
 
@@ -332,9 +332,8 @@ def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
         ),
         graph_mode=graph_mode,
     )
-    agent.reset(env)
-
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     (first_action, _) = run_without_suspensions(agent.act(observation))
     assert first_action == 1
 
@@ -365,8 +364,8 @@ def test_avoids_real_loops(avoid_loops, expected_action):
         graph_mode=True,
         avoid_loops=avoid_loops,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     (action, _) = run_without_suspensions(agent.act(observation))
     assert action == expected_action
 
@@ -390,8 +389,8 @@ def test_chooses_something_in_dead_end():
         graph_mode=True,
         avoid_loops=True,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     (action, _) = run_without_suspensions(agent.act(observation))
     assert action == 0
 
@@ -426,7 +425,7 @@ def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
         avoid_loops=avoid_loops,
         loop_penalty=-2,
     )
-    agent.reset(env)
     observation = env.reset()
+    run_without_suspensions(agent.reset(env, observation))
     (action, _) = run_without_suspensions(agent.act(observation))
     assert action == expected_action

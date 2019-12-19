@@ -14,9 +14,6 @@ class ScalarValueTraits:
     def __init__(self, dead_end_value=-2.0):
         self.dead_end = dead_end_value
 
-    def distill_batch(self, value_batch):
-        return np.reshape(value_batch, newshape=-1)
-
 
 class ValueAccumulator:
 
@@ -212,20 +209,6 @@ class MCTSValue(base.OnlineAgent):
         self._state2node[state] = new_node  # store newly initialized node in _state2node
         return new_node
 
-    def preprocess(self, root):
-        if root is not None and not root.terminal:
-            return root
-
-        # 'reset' mcts internal variables: _state2node and _model
-        # TODO(pm): this should be moved to run_one_episode
-        self._state2node = {}
-        obs = self._model.reset()
-        state = self._model.clone_state()
-        (value,) = yield np.array([obs])
-        new_node = self._initialize_graph_node(initial_value=value, state=state, done=False, solved=False)
-        new_root = TreeNode(new_node)
-        return new_root
-
     def expand_leaf(self, leaf: TreeNode):
         if leaf is None:  # Dead End
             return self._value_traits.dead_end
@@ -292,14 +275,17 @@ class MCTSValue(base.OnlineAgent):
             action = argmax[0]
         return node.children[action], action
 
-    def reset(self, env):
+    def reset(self, env, observation):
         self._model = env
-        self._root = None
+        # 'reset' mcts internal variables: _state2node and _model
+        self._state2node = {}
+        state = self._model.clone_state()
+        (value,) = yield np.array([observation])
+        # Initialize root.
+        graph_node = self._initialize_graph_node(initial_value=value, state=state, done=False, solved=False)
+        self._root = TreeNode(graph_node)
 
     def act(self, observation):
-        # if root is None (start of new episode) or Terminal (end of episode), initialize new root
-        self._root = yield from self.preprocess(self._root)
-
         # perform MCTS passes. each pass = tree traversal + leaf evaluation + backprop
         for _ in range(self._n_passes):
             yield from self.run_mcts_pass(self._root)

@@ -20,7 +20,8 @@ def construct_episodes(actions, rewards):
     episodes = []
     for acts, rews in zip(actions, rewards):
         transitions = [
-            data.Transition(None, act, rew, False, None)
+            # TODO(koz4k): Initialize using kwargs.
+            data.Transition(None, act, rew, False, None, {})
             for act, rew in zip(acts[:-1], rews[:-1])]
         transitions.append(
             data.Transition(None, acts[-1], rews[-1], True, None, {}))
@@ -79,8 +80,8 @@ def test_act_doesnt_change_env_state():
         action_space=env.action_space,
         n_rollouts=10
     )
-    agent.reset(env)
     observation = env.reset()
+    mcts_test.run_without_suspensions(agent.reset(env, observation))
 
     # Run
     state_before = env.clone_state()
@@ -128,7 +129,8 @@ def test_number_of_simulations(mock_env, mock_bstep_class):
     )
 
     # Run
-    agent.reset(mock_env)
+    observation = mock_env.reset()
+    mcts_test.run_without_suspensions(agent.reset(mock_env, observation))
     mcts_test.run_without_suspensions(agent.act(None))
 
     # Test
@@ -150,8 +152,14 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
     )
 
     # Run
+<<<<<<< HEAD
     agent.reset(mock_env)
     actual_action, _ = mcts_test.run_without_suspensions(agent.act(None))
+=======
+    observation = mock_env.reset()
+    mcts_test.run_without_suspensions(agent.reset(mock_env, observation))
+    actual_action = mcts_test.run_without_suspensions(agent.act(None))
+>>>>>>> Move MCTSValue.preprocess logic to MCTSValue.reset.
 
     # Test
     assert actual_action == expected_action
@@ -187,5 +195,6 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
         )
 
         # Run
-        agent.reset(mock_env)
+        observation = mock_env.reset()
+        mcts_test.run_without_suspensions(agent.reset(mock_env, observation))
         mcts_test.run_without_suspensions(agent.act(None))
