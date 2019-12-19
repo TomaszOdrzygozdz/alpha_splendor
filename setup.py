@@ -13,6 +13,7 @@ setup(
         # (need to lazily define alpacka.envs.Sokoban then)
         'gym_sokoban @ git+ssh://git@gitlab.com/awarelab/gym-sokoban.git',
         'numpy',
+        'randomdict',
         'ray',
         'tensorflow',
     ],

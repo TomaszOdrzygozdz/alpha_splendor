@@ -75,7 +75,7 @@ class _TestAgent(agents.OnlineAgent):
                 break
             response = yield np.array([self._requests.pop(0)])
             self._responses.append(response[0])
-        return self._actions.pop(0)
+        return (self._actions.pop(0), {})
 
 
 class _TestNetwork(networks.DummyNetwork):

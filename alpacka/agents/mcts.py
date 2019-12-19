@@ -46,7 +46,7 @@ def rate_new_leaves_with_rollouts(
         total_discount = 1
         time = 0
         while not done and time < rollout_time_limit:
-            action = yield from agent.act(observation)
+            (action, _) = yield from agent.act(observation)
             (observation, reward, done, _) = model.step(action)
             value += total_discount * reward
             total_discount *= discount
@@ -474,4 +474,4 @@ class MCTSAgent(base.OnlineAgent):
         except DeadEnd:
             action = random.randrange(len(self._root.children))
         self._root = self._root.children[action]
-        return action
+        return (action, {})

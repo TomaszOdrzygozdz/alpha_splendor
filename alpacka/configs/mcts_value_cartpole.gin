@@ -8,6 +8,7 @@ KerasNetwork.loss = 'binary_crossentropy'
 KerasNetwork.metrics = ['accuracy']
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
 KerasNetwork.optimizer = 'adam'
+KerasNetwork.weight_decay = 0.0
 KerasNetwork.train_callbacks = None
 
 # Parameters for LocalBatchStepper:
@@ -52,6 +53,7 @@ SupervisedTrainer.target_fn = @alpacka.trainers.supervised.target_solved
 SupervisedTrainer.batch_size = 64
 SupervisedTrainer.n_steps_per_epoch = 100
 SupervisedTrainer.replay_buffer_capacity = 1000000
+SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
 
 # Parameters for target_solved:
 # ==============================================================================
