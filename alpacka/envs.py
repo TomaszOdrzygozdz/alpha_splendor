@@ -115,6 +115,7 @@ class GoogleFootball(ModelEnv):
     def __init__(self,
                  env_name='academy_empty_goal_close',
                  rewards='scoring,checkpoints',
+                 dump_path=None,
                  solved_at=1,
                  **kwargs):
         if football_env is None:
@@ -127,6 +128,8 @@ class GoogleFootball(ModelEnv):
             env_name=env_name,
             rewards=rewards,
             representation='simple115',
+            write_full_episode_dumps=dump_path is not None,
+            logdir=dump_path or '',
             **kwargs
         )
 
