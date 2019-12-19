@@ -21,6 +21,20 @@ def dataset():
     return (x_train, y_train)
 
 
+@pytest.mark.parametrize('model_fn,input_shape,output_shape', [
+    (keras_networks.mlp, (15,), (1,)),
+    (keras_networks.convnet_mnist, (3, 3, 6), (1,)),
+])
+def test_model_valid(model_fn, input_shape, output_shape):
+    network = keras_networks.KerasNetwork(
+        model_fn=model_fn, input_shape=input_shape
+    )
+    batch_size = 7
+    inp = np.zeros((batch_size,) + input_shape)
+    out = network.predict(inp)
+    assert out.shape == (batch_size,) + output_shape
+
+
 def test_keras_mlp_train_epoch_on_boston_housing(keras_mlp, dataset):
     # Set up
     (x_train, y_train) = dataset
