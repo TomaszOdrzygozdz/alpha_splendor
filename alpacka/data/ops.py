@@ -92,6 +92,11 @@ def is_last_level(x):
     return all(map(_is_leaf, vs))
 
 
+def _is_last_level_nonempty(x):
+    """Returns whether pytree is at the last level and has any child."""
+    return x and is_last_level(x)
+
+
 def nested_unzip(x):
     """Uzips a pytree of lists.
 
@@ -107,7 +112,7 @@ def nested_unzip(x):
             acc.append(nested_map(
                 lambda l: l[i],
                 x,
-                stop_fn=is_last_level,
+                stop_fn=_is_last_level_nonempty,
             ))
             i += 1
     except IndexError:
@@ -124,7 +129,7 @@ def nested_zip_with(f, xs):
     """
     def f_star(args):
         return f(*args)
-    return nested_map(f_star, nested_zip(xs), stop_fn=is_last_level)
+    return nested_map(f_star, nested_zip(xs), stop_fn=_is_last_level_nonempty)
 
 
 def nested_stack(xs):
@@ -135,7 +140,7 @@ def nested_stack(xs):
     Example:
         nested_stack([(1, 2), (3, 4)]) == (np.array([1, 3]), np.array([2, 4]))
     """
-    return nested_map(np.stack, nested_zip(xs), stop_fn=is_last_level)
+    return nested_map(np.stack, nested_zip(xs), stop_fn=_is_last_level_nonempty)
 
 
 def nested_unstack(x):
@@ -154,7 +159,9 @@ def nested_unstack(x):
 
 def nested_concatenate(xs):
     """Concatenates a list of pytrees of numpy arrays."""
-    return nested_map(np.concatenate, nested_zip(xs), stop_fn=is_last_level)
+    return nested_map(
+        np.concatenate, nested_zip(xs), stop_fn=_is_last_level_nonempty
+    )
 
 
 def choose_leaf(x):

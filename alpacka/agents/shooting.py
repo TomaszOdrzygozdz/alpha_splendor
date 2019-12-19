@@ -119,7 +119,7 @@ class ShootingAgent(base.OnlineAgent):
 
         # Choose greedy action.
         action = np.argmax(action_scores)
-        return action
+        return action, {}
 
     def _env_fn(self):
         env_class = type(self._model)

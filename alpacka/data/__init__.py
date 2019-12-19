@@ -19,6 +19,8 @@ Transition = collections.namedtuple(
         'done',
         # Observation obtained at S'.
         'next_observation',
+        # Dict of any additional info supplied by the agent.
+        'agent_info',
     ]
 )
 

@@ -196,7 +196,7 @@ def test_decision_after_one_pass(
     )
     agent.reset(env)
     observation = env.reset()
-    actual_action = run_without_suspensions(agent.act(observation))
+    (actual_action, _) = run_without_suspensions(agent.act(observation))
     assert actual_action == expected_action
 
 
@@ -263,7 +263,7 @@ def test_backtracks_because_of_value(graph_mode):
     )
     agent.reset(env)
     observation = env.reset()
-    action = run_without_suspensions(agent.act(observation))
+    (action, _) = run_without_suspensions(agent.act(observation))
     assert action == 0
 
 
@@ -283,7 +283,7 @@ def test_backtracks_because_of_reward(graph_mode):
     )
     agent.reset(env)
     observation = env.reset()
-    action = run_without_suspensions(agent.act(observation))
+    (action, _) = run_without_suspensions(agent.act(observation))
     assert action == 1
 
 
@@ -335,12 +335,12 @@ def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
     agent.reset(env)
 
     observation = env.reset()
-    first_action = run_without_suspensions(agent.act(observation))
+    (first_action, _) = run_without_suspensions(agent.act(observation))
     assert first_action == 1
 
     agent.n_passes = 2
     (observation, _, _, _) = env.step(first_action)
-    second_action = run_without_suspensions(agent.act(observation))
+    (second_action, _) = run_without_suspensions(agent.act(observation))
     assert second_action == expected_second_action
 
 
@@ -367,7 +367,7 @@ def test_avoids_real_loops(avoid_loops, expected_action):
     )
     agent.reset(env)
     observation = env.reset()
-    action = run_without_suspensions(agent.act(observation))
+    (action, _) = run_without_suspensions(agent.act(observation))
     assert action == expected_action
 
 
@@ -392,7 +392,7 @@ def test_chooses_something_in_dead_end():
     )
     agent.reset(env)
     observation = env.reset()
-    action = run_without_suspensions(agent.act(observation))
+    (action, _) = run_without_suspensions(agent.act(observation))
     assert action == 0
 
 
@@ -428,5 +428,5 @@ def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
     )
     agent.reset(env)
     observation = env.reset()
-    action = run_without_suspensions(agent.act(observation))
+    (action, _) = run_without_suspensions(agent.act(observation))
     assert action == expected_action

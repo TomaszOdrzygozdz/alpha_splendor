@@ -11,4 +11,4 @@ class RandomAgent(base.OnlineAgent):
     @asyncio.coroutine
     def act(self, observation):
         del observation
-        return self._action_space.sample()
+        return (self._action_space.sample(), {})
