@@ -184,17 +184,6 @@ class MCTSValue(base.OnlineAgent):
         value = yield from self.expand_leaf(leaf)
         self._backpropagate(search_path, value)
 
-    def run_one_step(self, root):
-        # if root is None (start of new episode) or Terminal (end of episode), initialize new root
-        root = yield from self.preprocess(root)
-
-        # perform MCTS passes. each pass = tree traversal + leaf evaluation + backprop
-        for _ in range(self._n_passes):
-            yield from self.run_mcts_pass(root)
-        next, action = self._select_next_node(root)  # INFO: possible sampling for exploration
-
-        return root, next, action
-
     def tree_traversal(self, root):
         node = root
         seen_states = set()
@@ -313,50 +302,27 @@ class MCTSValue(base.OnlineAgent):
             action = argmax[0]
         return node.children[action], action
 
-    # TODO(pm): refactor me
-    def solve(self, env, time_limit):
+    def reset(self, env):
         self._model = env
-        new_root = None
-        history = []
-        transitions = []
-        game_steps = 0
+        self._root = None
 
-        while True:
-            old_root, new_root, action = yield from self.run_one_step(new_root)
+    def act(self, observation):
+        # if root is None (start of new episode) or Terminal (end of episode), initialize new root
+        self._root = yield from self.preprocess(self._root)
 
-            history.append((old_root, action, old_root.rewards[action]))
-            transitions.append(data.Transition(
-                observation=old_root.state.one_hot, action=action, reward=old_root.rewards[action],
-                next_observation=None, done=False, agent_info={},
-            ))
-            game_steps += 1
+        # perform MCTS passes. each pass = tree traversal + leaf evaluation + backprop
+        for _ in range(self._n_passes):
+            yield from self.run_mcts_pass(self._root)
+        info = {'node': self._root}
+        self._root, action = self._select_next_node(self._root)  # INFO: possible sampling for exploration
 
-            # action required if the end of the game (terminal or step limit reached)
-            if new_root.terminal or game_steps >= time_limit:
+        return (action, info)
 
-                game_solved = new_root.solved
-                nodes = [elem[0] for elem in history]
-                # give each state of the trajectory a value
-                values = [node.value_acc.target() for node, _, _ in history]
-                transitions = [transition._replace(agent_info={'value': value.item()}) for (transition, value) in zip(transitions, values)]
-                transitions[-1] = transitions[-1]._replace(done=True)
-                game = [(node.state, value, action) for (node, action, _), value in zip(history, values)]
-                game = [(state.get_np_array_version(), value, action) for state, value, action in game]
-
-                return_ = sum(transition.reward for transition in transitions)
-                transition_batch = data.nested_stack(transitions)
-                return data.Episode(
-                    transition_batch=transition_batch,
-                    return_=return_,
-                    solved=game_solved,
-                )
-
-
-def calculate_discounted_rewards(rewards, gamma):
-    discounted_rewards = np.zeros(len(rewards)+1)
-    for i in np.arange(len(rewards), 0, -1):
-        discounted_rewards[i-1] = gamma*discounted_rewards[i] + rewards[i-1]
-    return discounted_rewards[:-1]
+    @staticmethod
+    def postprocess_transition(transition):
+        node = transition.agent_info['node']
+        value = node.value_acc.target().item()
+        return transition._replace(agent_info={'value': value})
 
 
 def td_backup(node, action, value, gamma):
