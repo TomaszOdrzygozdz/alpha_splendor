@@ -1,5 +1,7 @@
 """Agent base classes."""
 
+import asyncio
+
 from alpacka import data
 from alpacka import envs
 
@@ -77,13 +79,16 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
-    def reset(self, env):
+    @asyncio.coroutine
+    def reset(self, env, observation):  # pylint: disable=missing-param-doc
         """Resets the agent state.
 
         Called for every new environment to be solved. Overriding is optional.
 
         Args:
             env (gym.Env): Environment to solve.
+            observation (Env-dependent): Initial observation returned by
+                env.reset().
         """
 
     def act(self, observation):
@@ -143,7 +148,7 @@ class OnlineAgent(Agent):
             data.Episode: Episode object containing a batch of collected
             transitions and the return for the episode.
         """
-        self.reset(env)
+        model_env = env
 
         if time_limit is not None:
             # Add the TimeLimitWrapper _after_ passing the model env to the
@@ -158,6 +163,8 @@ class OnlineAgent(Agent):
         else:
             # Model-based case...
             observation = env.restore_state(init_state)
+
+        yield from self.reset(model_env, observation)
 
         transitions = []
         done = False

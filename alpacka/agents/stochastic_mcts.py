@@ -1,5 +1,6 @@
-"""Monte Carlo Tree Search agent."""
+"""Monte Carlo Tree Search for stochastic environments."""
 
+import asyncio
 import random
 
 import gin
@@ -197,8 +198,14 @@ class DeadEnd(Exception):
     """
 
 
-class MCTSAgent(base.OnlineAgent):
-    """Monte Carlo Tree Search agent."""
+class StochasticMCTSAgent(base.OnlineAgent):
+    """Monte Carlo Tree Search for stochastic environments.
+
+    For now it also supports transpositions and loop avoidance for
+    deterministic environments.
+    TODO(koz4k): Merge those features with DeterministicMCTSAgent. Add features
+    specific to stochastic environments to StochasticMCTSAgent.
+    """
 
     def __init__(
         self,
@@ -446,8 +453,10 @@ class MCTSAgent(base.OnlineAgent):
         # Go back to the root state.
         self._model.restore_state(self._root_state)
 
-    def reset(self, env):
+    @asyncio.coroutine
+    def reset(self, env, observation):
         """Reinitializes the search tree for a new environment."""
+        del observation
         assert env.action_space == self._action_space
         self._model = env
         # Initialize root with some reward to avoid division by zero.
