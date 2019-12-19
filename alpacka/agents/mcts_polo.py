@@ -32,12 +32,6 @@ class ValueAccumulator:
         """
         raise NotImplementedError
 
-    def add_auxiliary(self, value):
-        """
-        Additional value for traversals
-        """
-        raise NotImplementedError
-
     def get(self):
         """Returns the accumulated abstract value for backpropagation.
 
@@ -45,7 +39,7 @@ class ValueAccumulator:
         """
         raise NotImplementedError
 
-    def index(self, parent_value, action):
+    def index(self):
         """Returns an index for selecting the best node."""
         raise NotImplementedError
 
@@ -66,7 +60,6 @@ class ScalarValueAccumulator(ValueAccumulator):
         self._count = 0
         self._max = value
         self.mean_max_coeff = mean_max_coeff
-        self.auxiliary_loss = 0.0
         super().__init__(value, state)
 
     def add(self, value):
@@ -74,15 +67,12 @@ class ScalarValueAccumulator(ValueAccumulator):
         self._sum += value
         self._count += 1
 
-    def add_auxiliary(self, value):
-        self.auxiliary_loss += value
-
     def get(self):
         return (self._sum / self._count)*self.mean_max_coeff \
                + self._max*(1-self.mean_max_coeff)
 
-    def index(self, parent_value=None, action=None):
-        return self.get() + self.auxiliary_loss  # auxiliary_loss alters tree traversal in mcts
+    def index(self):
+        return self.get()
 
     def target(self):
         return self.get()
@@ -264,7 +254,7 @@ class MCTSValue(base.OnlineAgent):
 
     def _child_index(self, parent, action):
         accumulator = parent.children[action].value_acc
-        value = accumulator.index(parent.value_acc, action)
+        value = accumulator.index()
         return td_backup(parent, action, value, self._gamma)
 
     def _rate_children(self, node, states_to_avoid):
