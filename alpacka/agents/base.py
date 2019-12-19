@@ -80,7 +80,7 @@ class OnlineAgent(Agent):
     """
 
     @asyncio.coroutine
-    def reset(self, env, observation):
+    def reset(self, env, observation):  # pylint: disable=missing-param-doc
         """Resets the agent state.
 
         Called for every new environment to be solved. Overriding is optional.

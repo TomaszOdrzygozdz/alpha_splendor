@@ -1,12 +1,16 @@
+"""MCTS for deterministic environments."""
+
 import gin
 import numpy as np
 
-from alpacka import data
 from alpacka.agents import base
-from alpacka.agents import core
 
 
 class ValueTraits:
+    """Value traits base class.
+
+    Defines constants for abstract value types.
+    """
 
     zero = None
     dead_end = None
@@ -14,6 +18,10 @@ class ValueTraits:
 
 @gin.configurable
 class ScalarValueTraits(ValueTraits):
+    """Scalar value traits.
+
+    Defines constants for the most basic case of scalar values.
+    """
 
     zero = 0.0
 
@@ -22,6 +30,10 @@ class ScalarValueTraits(ValueTraits):
 
 
 class ValueAccumulator:
+    """Value accumulator base class.
+
+    Accumulates abstract values for a given node across multiple MCTS passes.
+    """
 
     def __init__(self, value):
         # Creates and initializes with typical add
@@ -57,6 +69,11 @@ class ValueAccumulator:
 
 @gin.configurable
 class ScalarValueAccumulator(ValueAccumulator):
+    """Scalar value accumulator.
+
+    Calculates a mean over accumulated values and returns it as the
+    backpropagated value, node index and target for value network training.
+    """
 
     def __init__(self, value):
         self._sum = 0.0
@@ -82,19 +99,34 @@ class ScalarValueAccumulator(ValueAccumulator):
 
 
 class GraphNode:
-    def __init__(self, value_acc,
-                 state=None,
-                 terminal=False,
-                 solved=False,
-                 nedges=4):
+    """Graph node, corresponding 1-1 to an environment state.
+
+    Accumulates value across multiple passes through the same environment state.
+    """
+
+    def __init__(
+        self,
+        value_acc,
+        nedges,
+        state=None,
+        terminal=False,
+        solved=False,
+    ):
         self.value_acc = value_acc
         self.rewards = [None] * nedges
         self.state = state
         self.terminal = terminal
         self.solved = solved
 
-# tree node
+
 class TreeNode:
+    """Node in the search tree, corresponding many-1 to GraphNode.
+
+    Stores children, and so defines the structure of the search tree. Many
+    TreeNodes can point to the same GraphNode, because multiple paths from the
+    root of the search tree can lead to the same environment state.
+    """
+
     def __init__(self, node):
         self.node = node
         self.children = {}  # {valid_action: Node}
@@ -116,7 +148,7 @@ class TreeNode:
         self.node.state = state
 
     def expanded(self):
-        return True if self.children else False
+        return bool(self.children)
 
     @property
     def terminal(self):
@@ -133,22 +165,30 @@ class TreeNode:
 
 @gin.configurable
 class MCTSValue(base.OnlineAgent):
+    """MCTS for deterministic environments.
 
-    def __init__(self,
-                 action_space,
-                 gamma=0.99,
-                 n_passes=10,
-                 avoid_loops=True,
-                 value_traits_class=ScalarValueTraits,
-                 value_accumulator_class=ScalarValueAccumulator,
-                 ):
+    Implements transposition tables (sharing value estimates between multiple
+    tree nodes corresponding to the same environment state) and loop avoidance.
+    """
+
+    def __init__(
+        self,
+        action_space,
+        gamma=0.99,
+        n_passes=10,
+        avoid_loops=True,
+        value_traits_class=ScalarValueTraits,
+        value_accumulator_class=ScalarValueAccumulator,
+    ):
         super().__init__(action_space=action_space)
+        self._gamma = gamma
+        self._n_passes = n_passes
+        self._avoid_loops = avoid_loops
         self._value_traits = value_traits_class()
         self._value_acc_class = value_accumulator_class
-        self._gamma = gamma
-        self._avoid_loops = avoid_loops
         self._state2node = {}
-        self._n_passes = n_passes
+        self._model = None
+        self._root = None
 
     def _children_of_state(self, parent_state):
         old_state = self._model.clone_state()
@@ -171,12 +211,13 @@ class MCTSValue(base.OnlineAgent):
 
     def run_mcts_pass(self, root):
         # search_path = list of tuples (node, action)
-        # leaf does not belong to search_path (important for not double counting its value)
-        leaf, search_path = self.tree_traversal(root)
-        value = yield from self.expand_leaf(leaf)
+        # leaf does not belong to search_path (important for not double counting
+        # its value)
+        leaf, search_path = self._traverse(root)
+        value = yield from self._expand_leaf(leaf)
         self._backpropagate(search_path, value)
 
-    def tree_traversal(self, root):
+    def _traverse(self, root):
         node = root
         seen_states = set()
         search_path = []
@@ -188,10 +229,12 @@ class MCTSValue(base.OnlineAgent):
             new_node, action = self._select_child(node, states_to_avoid)  #
             search_path.append((node, action))
             node = new_node
-            if new_node is None:  # new_node is None iff node has no unseen children, i.e. it is Dead End
+            # new_node is None iff node has no unseen children, i.e. it is Dead
+            # End
+            if new_node is None:
                 break
-        # at this point node represents a leaf in the tree (and is None for Dead End).
-        # node does not belong to search_path.
+        # at this point node represents a leaf in the tree (and is None for Dead
+        # End). node does not belong to search_path.
         return node, search_path
 
     def _backpropagate(self, search_path, value):
@@ -201,27 +244,32 @@ class MCTSValue(base.OnlineAgent):
         # (Dead End node, None),
         # (TreeNode, action)
         for node, action in reversed(search_path):
-            value = td_backup(node, action, value, self._gamma)  # returns value if action is None
+            # returns value if action is None
+            value = td_backup(node, action, value, self._gamma)
             node.value_acc.add(value)
 
     def _initialize_graph_node(self, initial_value, state, done, solved):
         value_acc = self._value_acc_class(initial_value)
-        new_node = GraphNode(value_acc,
-                             state=state,
-                             terminal=done,
-                             solved=solved,
-                             nedges=self._action_space.n)
-        self._state2node[state] = new_node  # store newly initialized node in _state2node
+        new_node = GraphNode(
+            value_acc,
+            state=state,
+            terminal=done,
+            solved=solved,
+            nedges=self._action_space.n,
+        )
+        # store newly initialized node in _state2node
+        self._state2node[state] = new_node
         return new_node
 
-    def expand_leaf(self, leaf):
+    def _expand_leaf(self, leaf):
         if leaf is None:  # Dead End
             return self._value_traits.dead_end
 
         if leaf.terminal:  # Terminal state
             return self._value_traits.zero
 
-        # neighbours are ordered in the order of actions: 0, 1, ..., _model.num_actions
+        # neighbours are ordered in the order of actions:
+        # 0, 1, ..., _model.num_actions
         obs, rewards, dones, solved, states = self._children_of_state(
             leaf.state
         )
@@ -232,7 +280,10 @@ class MCTSValue(base.OnlineAgent):
             leaf.rewards[idx] = rewards[idx]
             new_node = self._state2node.get(states[idx], None)
             if new_node is None:
-                child_value = value_batch[idx] if not dones[idx] else self._value_traits.zero
+                if dones[idx]:
+                    child_value = self._value_traits.zero
+                else:
+                    child_value = value_batch[idx]
                 new_node = self._initialize_graph_node(
                     child_value, states[idx], dones[idx], solved=solved[idx]
                 )
@@ -246,16 +297,18 @@ class MCTSValue(base.OnlineAgent):
         return td_backup(parent, action, value, self._gamma)
 
     def _rate_children(self, node, states_to_avoid):
-        assert self._avoid_loops or len(states_to_avoid) == 0, "Should not happen. There is a bug."
+        assert self._avoid_loops or len(states_to_avoid) == 0
         return [
             (self._child_index(node, action), action)
             for action, child in node.children.items()
             if child.state not in states_to_avoid
         ]
 
-    # here UNLIKE alphazero, we choose final action from the root according to value
+    # here UNLIKE alphazero, we choose final action from the root according to
+    # value
     def _select_next_node(self, root):
-        # INFO: below line guarantees that we do not perform one-step loop (may be considered slight hack)
+        # INFO: below line guarantees that we do not perform one-step loop (may
+        # be considered slight hack)
         states_to_avoid = {root.state} if self._avoid_loops else set()
         values_and_actions = self._rate_children(root, states_to_avoid)
         if not values_and_actions:
@@ -287,15 +340,19 @@ class MCTSValue(base.OnlineAgent):
         state = self._model.clone_state()
         (value,) = yield np.array([observation])
         # Initialize root.
-        graph_node = self._initialize_graph_node(initial_value=value, state=state, done=False, solved=False)
+        graph_node = self._initialize_graph_node(
+            initial_value=value, state=state, done=False, solved=False
+        )
         self._root = TreeNode(graph_node)
 
     def act(self, observation):
-        # perform MCTS passes. each pass = tree traversal + leaf evaluation + backprop
+        # perform MCTS passes.
+        # each pass = tree traversal + leaf evaluation + backprop
         for _ in range(self._n_passes):
             yield from self.run_mcts_pass(self._root)
         info = {'node': self._root}
-        self._root, action = self._select_next_node(self._root)  # INFO: possible sampling for exploration
+        # INFO: possible sampling for exploration
+        self._root, action = self._select_next_node(self._root)
 
         return (action, info)
 
