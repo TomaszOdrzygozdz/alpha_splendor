@@ -26,6 +26,7 @@ class Runner:
         agent_class=agents.RandomAgent,
         network_class=networks.DummyNetwork,
         n_envs=16,
+        episode_time_limit=None,
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         trainer_class=trainers.DummyTrainer,
         n_epochs=None,
@@ -39,6 +40,8 @@ class Runner:
             agent_class (type): Agent class.
             network_class (type): Network class.
             n_envs (int): Number of environments to run in parallel.
+            episode_time_limit (int or None): Time limit for solving an episode.
+                None means no time limit.
             batch_stepper_class (type): BatchStepper class.
             trainer_class (type): Trainer class.
             n_epochs (int or None): Number of epochs to run for, or indefinitely
@@ -58,6 +61,7 @@ class Runner:
             network_fn=network_fn,
             n_envs=n_envs,
         )
+        self._episode_time_limit = episode_time_limit
         self._network = network_fn()
         self._trainer = trainer_class(input_shape)
         self._n_epochs = n_epochs
@@ -100,7 +104,7 @@ class Runner:
     def run_epoch(self):
         """Runs a single epoch."""
         episodes = self._batch_stepper.run_episode_batch(
-            self._network.params
+            self._network.params, time_limit=self._episode_time_limit
         )
         self._log_episode_metrics(episodes)
         for episode in episodes:
