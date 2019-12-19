@@ -6,8 +6,14 @@ from alpacka.agents import base
 from alpacka.agents import core
 
 
+class ValueTraits:
+
+    zero = None
+    dead_end = None
+
+
 @gin.configurable
-class ScalarValueTraits:
+class ScalarValueTraits(ValueTraits):
 
     zero = 0.0
 
@@ -133,9 +139,12 @@ class MCTSValue(base.OnlineAgent):
                  gamma=0.99,
                  n_passes=10,
                  avoid_loops=True,
+                 value_traits_class=ScalarValueTraits,
+                 value_accumulator_class=ScalarValueAccumulator,
                  ):
         super().__init__(action_space=action_space)
-        self._value_traits = ScalarValueTraits()
+        self._value_traits = value_traits_class()
+        self._value_acc_class = value_accumulator_class
         self._gamma = gamma
         self._avoid_loops = avoid_loops
         self._state2node = {}
@@ -196,7 +205,7 @@ class MCTSValue(base.OnlineAgent):
             node.value_acc.add(value)
 
     def _initialize_graph_node(self, initial_value, state, done, solved):
-        value_acc = ScalarValueAccumulator(initial_value)
+        value_acc = self._value_acc_class(initial_value)
         new_node = GraphNode(value_acc,
                              state=state,
                              terminal=done,
