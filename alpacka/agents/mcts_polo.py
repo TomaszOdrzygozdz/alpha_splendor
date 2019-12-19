@@ -221,7 +221,9 @@ class MCTSValue(base.OnlineAgent):
         node = self._root
         seen_states = set()
         search_path = []
-        while node.expanded():
+        # new_node is None iff node has no unseen children, i.e. it is Dead
+        # End
+        while node is not None and node.expanded():
             seen_states.add(node.state)
             # INFO: if node Dead End, (new_node, action) = (None, None)
             # INFO: _select_child can SAMPLE an action (to break tie)
@@ -229,10 +231,6 @@ class MCTSValue(base.OnlineAgent):
             new_node, action = self._select_child(node, states_to_avoid)  #
             search_path.append((node, action))
             node = new_node
-            # new_node is None iff node has no unseen children, i.e. it is Dead
-            # End
-            if new_node is None:
-                break
         # at this point node represents a leaf in the tree (and is None for Dead
         # End). node does not belong to search_path.
         return node, search_path
@@ -304,19 +302,6 @@ class MCTSValue(base.OnlineAgent):
             if child.state not in states_to_avoid
         ]
 
-    # here UNLIKE alphazero, we choose final action from the root according to
-    # value
-    def _select_next_node(self, root):
-        # INFO: below line guarantees that we do not perform one-step loop (may
-        # be considered slight hack)
-        states_to_avoid = {root.state} if self._avoid_loops else set()
-        values_and_actions = self._rate_children(root, states_to_avoid)
-        if not values_and_actions:
-            # when there are no children (e.g. at the bottom states of ChainEnv)
-            return None, None
-        (_, action) = max(values_and_actions)
-        return root.children[action], action
-
     # Select the child with the highest score
     def _select_child(self, node, states_to_avoid):
         values_and_actions = self._rate_children(node, states_to_avoid)
@@ -351,8 +336,11 @@ class MCTSValue(base.OnlineAgent):
         for _ in range(self._n_passes):
             yield from self.run_mcts_pass()
         info = {'node': self._root}
+        # INFO: below line guarantees that we do not perform one-step loop (may
+        # be considered slight hack)
+        states_to_avoid = {self._root.state} if self._avoid_loops else set()
         # INFO: possible sampling for exploration
-        self._root, action = self._select_next_node(self._root)
+        self._root, action = self._select_child(self._root, states_to_avoid)
 
         return (action, info)
 
