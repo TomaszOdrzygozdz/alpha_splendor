@@ -209,16 +209,16 @@ class MCTSValue(base.OnlineAgent):
         self._model.restore_state(old_state)
         return results
 
-    def run_mcts_pass(self, root):
+    def run_mcts_pass(self):
         # search_path = list of tuples (node, action)
         # leaf does not belong to search_path (important for not double counting
         # its value)
-        leaf, search_path = self._traverse(root)
+        leaf, search_path = self._traverse()
         value = yield from self._expand_leaf(leaf)
         self._backpropagate(search_path, value)
 
-    def _traverse(self, root):
-        node = root
+    def _traverse(self):
+        node = self._root
         seen_states = set()
         search_path = []
         while node.expanded():
@@ -349,7 +349,7 @@ class MCTSValue(base.OnlineAgent):
         # perform MCTS passes.
         # each pass = tree traversal + leaf evaluation + backprop
         for _ in range(self._n_passes):
-            yield from self.run_mcts_pass(self._root)
+            yield from self.run_mcts_pass()
         info = {'node': self._root}
         # INFO: possible sampling for exploration
         self._root, action = self._select_next_node(self._root)
