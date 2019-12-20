@@ -55,7 +55,7 @@ class Runner:
                 if None.
             n_precollect_epochs (int): Number of initial epochs to run without
                 training (data precollection).
-            log_scalar_fns (list of callable): Function (name, step, value) -> None.
+            log_scalar_fns (list of callable): Function (name, step, value).
                 List of logging scalar functions.
         """
         self._output_dir = os.path.expanduser(output_dir)

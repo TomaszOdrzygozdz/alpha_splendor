@@ -19,7 +19,7 @@ def get_configuration(spec_path):
     except pickle.UnpicklingError:
         with open(spec_path) as f:
             vars_ = {'script': os.path.basename(spec_path)}
-            exec(f.read(), vars_)
+            exec(f.read(), vars_)  # pylint: disable=exec-used
             specification = vars_['experiments_list'][0].to_dict()
             print('NOTE: Only the first experiment from the list will be run!')
 
