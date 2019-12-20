@@ -1,8 +1,8 @@
 """Metric logging."""
 
 
-def log_scalar(name, step, value):
-    """Logs a scalar."""
+def log_cmd(name, step, value):
+    """Logs a scalar to the cmd."""
     # Format:
     #      1 | accuracy:                   0.789
     #   1234 | loss:                      12.345

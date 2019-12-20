@@ -141,8 +141,8 @@ class GoogleFootball(ModelEnv):
 
     def step(self, action):
         obs, reward, done, info = self._env.step(action)
-        info['solved'] = info['score_reward'] >= self._solved_at
-
+        if done:
+            info['solved'] = info['score_reward'] >= self._solved_at
         return obs, reward, done, info
 
     def render(self, mode='human'):
