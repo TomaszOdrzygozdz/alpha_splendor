@@ -184,8 +184,15 @@ if __name__ == '__main__':
         from alpacka.utils import mrunner_client  # Lazy import
         spec_path = gin_bindings.pop()
 
-        gin_bindings.extend(mrunner_client.get_configuration(spec_path))
-        log_scalar_fns.append(mrunner_client.log_neptune)
+        specification, overrides = mrunner_client.get_configuration(spec_path)
+        gin_bindings.extend(overrides)
+
+        try:
+            mrunner_client.configure_neptune(specification)
+            log_scalar_fns.append(mrunner_client.log_neptune)
+        except KeyError:
+            print('HINT: To run with Neptune logging please set your '
+                  'NEPTUNE_API_TOKEN environment variable')
 
     gin.parse_config_files_and_bindings(args.config_file, gin_bindings)
     runner = Runner(args.output_dir, log_scalar_fns=log_scalar_fns)
