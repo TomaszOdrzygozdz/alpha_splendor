@@ -169,7 +169,8 @@ def _parse_args():
         '--mrunner', action='store_true',
         help='Add mrunner spec to gin-config overrides and Neptune to loggers.'
         '\nNOTE: It assumes that the last config override (--config argument) '
-        'is a path to a pickled experiment config created by the mrunner CLI.'
+        'is a path to a pickled experiment config created by the mrunner CLI or'
+        'a mrunner specification file.'
     )
     return parser.parse_args()
 

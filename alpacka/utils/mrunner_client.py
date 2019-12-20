@@ -3,6 +3,7 @@
 import atexit
 import datetime
 import os
+import pickle
 
 import cloudpickle
 import neptune
@@ -12,10 +13,17 @@ _experiment = None
 
 def get_configuration(spec_path):
     """Get mrunner experiment specification and gin-config overrides."""
-    with open(spec_path, 'rb') as f:
-        specification = cloudpickle.load(f)
-    parameters = specification['parameters']
+    try:
+        with open(spec_path, 'rb') as f:
+            specification = cloudpickle.load(f)
+    except pickle.UnpicklingError:
+        with open(spec_path) as f:
+            vars_ = {'script': os.path.basename(spec_path)}
+            exec(f.read(), vars_)
+            specification = vars_['experiments_list'][0].to_dict()
+            print('NOTE: Only the first experiment from the list will be run!')
 
+    parameters = specification['parameters']
     gin_bindings = []
     for key, value in parameters.items():
         if isinstance(value, str) and not (value[0] == '@' or value[0] == '%'):
