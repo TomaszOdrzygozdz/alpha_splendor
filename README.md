@@ -10,6 +10,8 @@ _Work in progress._
 
 ## Run with mrunner
 
+Install mrunner: `pip install -e .[mrunner]`
+
 Add `--mrunner` argument to the normal Alpacka entry point script in
 `create_experiments_helper` function, i.e.:
 

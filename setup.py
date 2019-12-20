@@ -18,7 +18,7 @@ setup(
         'tensorflow',
     ],
     extras_require={
-        'mrunner': ['cloudpickle', 'neptune-client'],
+        'mrunner': ['mrunner @ git+https://gitlab.com/awarelab/mrunner.git'],
         'dev': ['pylint', 'pylint_quotes', 'pytest', 'ray[debug]'],
     }
 )
