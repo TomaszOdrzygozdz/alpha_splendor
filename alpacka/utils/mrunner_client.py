@@ -8,7 +8,18 @@ import pickle
 import cloudpickle
 import neptune
 
-_experiment = None
+
+class NeptuneLogger:
+    """Logs to Neptune."""
+
+    def __init__(self, experiment):
+        """Initialize NeptuneLogger with the Neptune experiment."""
+        self._experiment = experiment
+
+    def log_scalar(self, name, step, value):
+        """Logs a scalar to Neptune."""
+        del step
+        self._experiment.send_metric(name, value)
 
 
 def get_configuration(spec_path):
@@ -36,9 +47,7 @@ def get_configuration(spec_path):
 
 
 def configure_neptune(specification):
-    """Configure the Neptune experiment."""
-    global _experiment  # pylint: disable=global-statement
-
+    """Configures the Neptune experiment, then returns the Neptune logger."""
     if 'NEPTUNE_API_TOKEN' not in os.environ:
         raise KeyError('NEPTUNE_API_TOKEN environment variable is not set!')
 
@@ -56,10 +65,4 @@ def configure_neptune(specification):
                               git_info=git_info)
     atexit.register(neptune.stop)
 
-    _experiment = neptune.get_experiment()
-
-
-def log_neptune(name, step, value):
-    """Logs a scalar to Neptune."""
-    del step
-    _experiment.send_metric(name, value)
+    return NeptuneLogger(neptune.get_experiment())
