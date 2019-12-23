@@ -2,7 +2,6 @@
 
 
 from alpacka import runner
-from alpacka import metric_logging
 
 
 def test_smoke(tmpdir, capsys):
@@ -10,8 +9,7 @@ def test_smoke(tmpdir, capsys):
     runner.Runner(
         output_dir=tmpdir,
         n_envs=2,
-        n_epochs=n_epochs,
-        log_scalar_fns=[metric_logging.log_cmd]
+        n_epochs=n_epochs
     ).run()
 
     # Check that metrics were printed in each epoch.
