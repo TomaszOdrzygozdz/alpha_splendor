@@ -6,6 +6,7 @@ import gin
 import numpy as np
 
 from alpacka.agents import base
+from alpacka.utils import space as space_utils
 
 
 class ValueTraits:
@@ -109,13 +110,12 @@ class GraphNode:
     def __init__(
         self,
         value_acc,
-        nedges,
         state=None,
         terminal=False,
         solved=False,
     ):
         self.value_acc = value_acc
-        self.rewards = [None] * nedges
+        self.rewards = {}
         self.state = state
         self.terminal = terminal
         self.solved = solved
@@ -205,7 +205,9 @@ class DeterministicMCTSAgent(base.OnlineAgent):
 
         results = zip(*[
             step_and_rewind(action)
-            for action in range(self._model.action_space.n)
+            for action in space_utils.space_iter(
+                self._model.action_space
+            )
         ])
         self._model.restore_state(old_state)
         return results
@@ -254,7 +256,6 @@ class DeterministicMCTSAgent(base.OnlineAgent):
             state=state,
             terminal=done,
             solved=solved,
-            nedges=self._action_space.n,
         )
         # store newly initialized node in _state2node
         self._state2node[state] = new_node
@@ -275,8 +276,10 @@ class DeterministicMCTSAgent(base.OnlineAgent):
 
         value_batch = yield np.array(obs)
 
-        for idx, action in enumerate(range(self._action_space.n)):
-            leaf.rewards[idx] = rewards[idx]
+        for idx, action in enumerate(
+            space_utils.space_iter(self._action_space)
+        ):
+            leaf.rewards[action] = rewards[idx]
             new_node = self._state2node.get(states[idx], None)
             if new_node is None:
                 if dones[idx]:

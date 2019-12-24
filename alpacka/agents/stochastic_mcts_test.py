@@ -3,54 +3,12 @@
 import asyncio
 import functools
 
-import gym
 import numpy as np
 import pytest
 
 from alpacka import agents
 from alpacka import envs
-
-
-class TabularEnv(envs.ModelEnv):
-    """Tabular environment with hardcoded transitions.
-
-    Observations are equal to states.
-    """
-
-    def __init__(self, init_state, n_actions, transitions):
-        """Initializes TabularEnv.
-
-        Args:
-            init_state (any): Initial state, returned from reset().
-            n_actions (int): Number of actions.
-            transitions (dict): Dict of structure:
-                {
-                    state: {
-                        action: (state', reward, done),
-                        # ...
-                    },
-                    # ...
-                }
-        """
-        self.observation_space = gym.spaces.Discrete(len(transitions))
-        self.action_space = gym.spaces.Discrete(n_actions)
-        self._init_state = init_state
-        self._transitions = transitions
-        self._state = None
-
-    def reset(self):
-        self._state = self._init_state
-        return self._state
-
-    def step(self, action):
-        (self._state, reward, done) = self._transitions[self._state][action]
-        return (self._state, reward, done, {})
-
-    def clone_state(self):
-        return self._state
-
-    def restore_state(self, state):
-        self._state = state
+from alpacka import testing
 
 
 @asyncio.coroutine
@@ -72,24 +30,6 @@ def rate_new_leaves_tabular(
     return [rating(action) for action in range(model.action_space.n)]
 
 
-def run_without_suspensions(coroutine):
-    try:
-        next(coroutine)
-        assert False, 'Coroutine should return immediately.'
-    except StopIteration as e:
-        return e.value
-
-
-def run_with_dummy_network(coroutine):
-    try:
-        request = next(coroutine)
-        while True:
-            batch_size = request.shape[0]
-            request = coroutine.send(np.zeros((batch_size, 1)))
-    except StopIteration as e:
-        return e.value
-
-
 @pytest.mark.parametrize('graph_mode', [False, True])
 def test_integration_with_cartpole(graph_mode):
     env = envs.CartPole()
@@ -102,7 +42,7 @@ def test_integration_with_cartpole(graph_mode):
         ),
         graph_mode=graph_mode,
     )
-    episode = run_without_suspensions(agent.solve(env))
+    episode = testing.run_without_suspensions(agent.solve(env))
     assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member
 
 
@@ -123,10 +63,10 @@ def test_act_doesnt_change_env_state(graph_mode, rate_new_leaves_fn):
         graph_mode=graph_mode,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
 
     state_before = env.clone_state()
-    run_with_dummy_network(agent.act(observation))
+    testing.run_with_dummy_network(agent.act(observation))
     state_after = env.clone_state()
     np.testing.assert_equal(state_before, state_after)
 
@@ -138,7 +78,7 @@ def make_one_level_binary_tree(
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
     (root_state, left_state, right_state) = (0, 1, 2)
-    env = TabularEnv(
+    env = testing.TabularEnv(
         init_state=root_state,
         n_actions=2,
         transitions={
@@ -195,8 +135,8 @@ def test_decision_after_one_pass(
         graph_mode=graph_mode,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
-    (actual_action, _) = run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
+    (actual_action, _) = testing.run_without_suspensions(agent.act(observation))
     assert actual_action == expected_action
 
 
@@ -204,7 +144,7 @@ def test_decision_after_one_pass(
 def test_stops_on_done(graph_mode):
     # 0 -> 1 (done)
     # 2 passes, env is not stepped from 1.
-    env = TabularEnv(
+    env = testing.TabularEnv(
         init_state=0,
         n_actions=1,
         transitions={0: {0: (1, 0, True)}},
@@ -219,9 +159,9 @@ def test_stops_on_done(graph_mode):
         graph_mode=graph_mode,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
     # rate_new_leaves_fn errors out when rating nodes not in the value table.
-    run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.act(observation))
 
 
 @pytest.mark.parametrize('graph_mode', [False, True])
@@ -231,7 +171,7 @@ def test_backtracks_because_of_value(graph_mode):
     # 2, action 0 -> 3 (very low value)
     # 2, action 1 -> 3 (very low value)
     # 2 passes, should choose 0.
-    env = TabularEnv(
+    env = testing.TabularEnv(
         init_state=0,
         n_actions=2,
         transitions={
@@ -262,8 +202,8 @@ def test_backtracks_because_of_value(graph_mode):
         graph_mode=graph_mode,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
-    (action, _) = run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
+    (action, _) = testing.run_without_suspensions(agent.act(observation))
     assert action == 0
 
 
@@ -282,8 +222,8 @@ def test_backtracks_because_of_reward(graph_mode):
         graph_mode=graph_mode,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
-    (action, _) = run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
+    (action, _) = testing.run_without_suspensions(agent.act(observation))
     assert action == 1
 
 
@@ -301,7 +241,7 @@ def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
     # 6, action 1 -> 7 (medium value)
     # 3 passes for the first and 2 for the second action. In graph mode, should
     # choose 1, then 1. Not in graph mode, should choose 1, then 0.
-    env = TabularEnv(
+    env = testing.TabularEnv(
         init_state=0,
         n_actions=2,
         transitions={
@@ -333,13 +273,13 @@ def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
         graph_mode=graph_mode,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
-    (first_action, _) = run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
+    (first_action, _) = testing.run_without_suspensions(agent.act(observation))
     assert first_action == 1
 
     agent.n_passes = 2
     (observation, _, _, _) = env.step(first_action)
-    (second_action, _) = run_without_suspensions(agent.act(observation))
+    (second_action, _) = testing.run_without_suspensions(agent.act(observation))
     assert second_action == expected_second_action
 
 
@@ -349,7 +289,7 @@ def test_avoids_real_loops(avoid_loops, expected_action):
     # 0, action 1 -> 1 (done)
     # 2 passes: first to expand the root, second to merge child with the root.
     # Should choose 0 or 1 depending on the loop avoidance flag.
-    env = TabularEnv(
+    env = testing.TabularEnv(
         init_state=0,
         n_actions=2,
         transitions={0: {0: (0, 1, False), 1: (1, 0, True)}},
@@ -365,8 +305,8 @@ def test_avoids_real_loops(avoid_loops, expected_action):
         avoid_loops=avoid_loops,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
-    (action, _) = run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
+    (action, _) = testing.run_without_suspensions(agent.act(observation))
     assert action == expected_action
 
 
@@ -374,7 +314,7 @@ def test_chooses_something_in_dead_end():
     # 0 -> 0
     # 2 passes: first to expand the root, second to merge child with the root.
     # Should choose 0 and not error out.
-    env = TabularEnv(
+    env = testing.TabularEnv(
         init_state=0,
         n_actions=1,
         transitions={0: {0: (0, 0, False)}},
@@ -390,8 +330,8 @@ def test_chooses_something_in_dead_end():
         avoid_loops=True,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
-    (action, _) = run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
+    (action, _) = testing.run_without_suspensions(agent.act(observation))
     assert action == 0
 
 
@@ -403,7 +343,7 @@ def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
     # 2 passes: first to expand the root, second to expand the left branch,
     # and backpropagate the loop penalty.
     # Should choose 0 or 1 depending on the loop avoidance flag.
-    env = TabularEnv(
+    env = testing.TabularEnv(
         init_state=0,
         n_actions=2,
         transitions={
@@ -426,6 +366,6 @@ def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
         loop_penalty=-2,
     )
     observation = env.reset()
-    run_without_suspensions(agent.reset(env, observation))
-    (action, _) = run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
+    (action, _) = testing.run_without_suspensions(agent.act(observation))
     assert action == expected_action

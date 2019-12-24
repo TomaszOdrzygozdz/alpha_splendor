@@ -11,7 +11,7 @@ from alpacka import agents
 from alpacka import batch_steppers
 from alpacka import data
 from alpacka import envs
-from alpacka.agents import stochastic_mcts_test
+from alpacka import testing
 from alpacka.agents import shooting
 
 
@@ -67,7 +67,7 @@ def test_integration_with_cartpole():
     )
 
     # Run
-    episode = stochastic_mcts_test.run_without_suspensions(agent.solve(env))
+    episode = testing.run_without_suspensions(agent.solve(env))
 
     # Test
     assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member
@@ -81,11 +81,11 @@ def test_act_doesnt_change_env_state():
         n_rollouts=10
     )
     observation = env.reset()
-    stochastic_mcts_test.run_without_suspensions(agent.reset(env, observation))
+    testing.run_without_suspensions(agent.reset(env, observation))
 
     # Run
     state_before = env.clone_state()
-    stochastic_mcts_test.run_without_suspensions(agent.act(observation))
+    testing.run_without_suspensions(agent.act(observation))
     state_after = env.clone_state()
 
     # Test
@@ -130,10 +130,10 @@ def test_number_of_simulations(mock_env, mock_bstep_class):
 
     # Run
     observation = mock_env.reset()
-    stochastic_mcts_test.run_without_suspensions(
+    testing.run_without_suspensions(
         agent.reset(mock_env, observation)
     )
-    stochastic_mcts_test.run_without_suspensions(agent.act(None))
+    testing.run_without_suspensions(agent.act(None))
 
     # Test
     assert mock_bstep_class.return_value.run_episode_batch.call_count == \
@@ -155,10 +155,10 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
 
     # Run
     observation = mock_env.reset()
-    stochastic_mcts_test.run_without_suspensions(
+    testing.run_without_suspensions(
         agent.reset(mock_env, observation)
     )
-    (actual_action, _) = stochastic_mcts_test.run_without_suspensions(
+    (actual_action, _) = testing.run_without_suspensions(
         agent.act(None)
     )
 
@@ -197,7 +197,7 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
 
         # Run
         observation = mock_env.reset()
-        stochastic_mcts_test.run_without_suspensions(
+        testing.run_without_suspensions(
             agent.reset(mock_env, observation)
         )
-        stochastic_mcts_test.run_without_suspensions(agent.act(None))
+        testing.run_without_suspensions(agent.act(None))
