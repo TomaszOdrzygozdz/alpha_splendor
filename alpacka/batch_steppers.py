@@ -64,7 +64,7 @@ class LocalBatchStepper(BatchStepper):
 
         def make_env_and_agent():
             env = env_class()
-            agent = agent_class(env.action_space)
+            agent = agent_class()
             return (env, agent)
 
         self._envs_and_agents = [make_env_and_agent() for _ in range(n_envs)]
@@ -174,7 +174,7 @@ class RayBatchStepper(BatchStepper):
         class _Worker:
             def __init__(self, env_class, agent_class, network_fn):
                 self.env = env_class()
-                self.agent = agent_class(self.env.action_space)
+                self.agent = agent_class()
                 self.network = network_fn()
 
             def run(self, params, solve_kwargs):

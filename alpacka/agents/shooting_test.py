@@ -61,10 +61,7 @@ def test_max_aggregate_episodes():
 def test_integration_with_cartpole():
     # Set up
     env = envs.CartPole()
-    agent = agents.ShootingAgent(
-        action_space=env.action_space,
-        n_rollouts=1
-    )
+    agent = agents.ShootingAgent(n_rollouts=1)
 
     # Run
     episode = testing.run_without_suspensions(agent.solve(env))
@@ -76,10 +73,7 @@ def test_integration_with_cartpole():
 def test_act_doesnt_change_env_state():
     # Set up
     env = envs.CartPole()
-    agent = agents.ShootingAgent(
-        action_space=env.action_space,
-        n_rollouts=10
-    )
+    agent = agents.ShootingAgent(n_rollouts=10)
     observation = env.reset()
     testing.run_without_suspensions(agent.reset(env, observation))
 
@@ -122,7 +116,6 @@ def test_number_of_simulations(mock_env, mock_bstep_class):
     n_rollouts = 7
     n_envs = 2
     agent = agents.ShootingAgent(
-        action_space=mock_env.action_space,
         batch_stepper_class=mock_bstep_class,
         n_rollouts=n_rollouts,
         n_envs=n_envs
@@ -147,7 +140,6 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
                                              aggregate_fn, expected_action):
     # Set up
     agent = agents.ShootingAgent(
-        action_space=mock_env.action_space,
         aggregate_fn=aggregate_fn,
         batch_stepper_class=mock_bstep_class,
         n_rollouts=1,
@@ -189,7 +181,6 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     with mock.patch('alpacka.agents.shooting.type') as mock_type:
         mock_type.return_value = lambda: mock_env
         agent = agents.ShootingAgent(
-            action_space=mock_env.action_space,
             aggregate_fn=_aggregate_fn,
             rollout_time_limit=rollout_time_limit,
             n_rollouts=1,
