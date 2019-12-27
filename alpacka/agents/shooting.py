@@ -43,7 +43,6 @@ class ShootingAgent(base.OnlineAgent):
 
     def __init__(
         self,
-        action_space,
         n_rollouts=1000,
         rollout_time_limit=None,
         aggregate_fn=mean_aggregate,
@@ -54,7 +53,6 @@ class ShootingAgent(base.OnlineAgent):
         """Initializes ShootingAgent.
 
         Args:
-            action_space (gym.Space): Action space.
             n_rollouts (int): Do at least this number of MC rollouts per act().
             rollout_time_limit (int): Maximum number of timesteps for rollouts.
             aggregate_fn (callable): Aggregates simulated episodes. Signature:
@@ -63,11 +61,7 @@ class ShootingAgent(base.OnlineAgent):
             agent_class (type): Rollout agent class.
             n_envs (int): Number of parallel environments to run.
         """
-        assert isinstance(action_space, gym.spaces.Discrete), (
-            'ShootingAgent only works with Discrete action spaces.'
-        )
-        super().__init__(action_space)
-
+        super().__init__()
         self._n_rollouts = n_rollouts
         self._rollout_time_limit = rollout_time_limit
         self._aggregate_fn = aggregate_fn
@@ -80,8 +74,10 @@ class ShootingAgent(base.OnlineAgent):
     @asyncio.coroutine
     def reset(self, env, observation):
         """Reinitializes the agentfor a new environment."""
-        del observation
-        assert env.action_space == self._action_space
+        assert isinstance(env.action_space, gym.spaces.Discrete), (
+            'ShootingAgent only works with Discrete action spaces.'
+        )
+        yield from super().reset(env, observation)
         self._model = env
 
     @asyncio.coroutine
@@ -124,4 +120,3 @@ class ShootingAgent(base.OnlineAgent):
         # Choose greedy action.
         action = np.argmax(action_scores)
         return action, {}
-        

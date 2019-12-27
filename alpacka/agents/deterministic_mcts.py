@@ -174,14 +174,13 @@ class DeterministicMCTSAgent(base.OnlineAgent):
 
     def __init__(
         self,
-        action_space,
         gamma=0.99,
         n_passes=10,
         avoid_loops=True,
         value_traits_class=ScalarValueTraits,
         value_accumulator_class=ScalarValueAccumulator,
     ):
-        super().__init__(action_space=action_space)
+        super().__init__()
         self._gamma = gamma
         self._n_passes = n_passes
         self._avoid_loops = avoid_loops
@@ -323,6 +322,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         return node.children[action], action
 
     def reset(self, env, observation):
+        yield from super().reset(env, observation)
         self._model = env
         # 'reset' mcts internal variables: _state2node and _model
         self._state2node = {}

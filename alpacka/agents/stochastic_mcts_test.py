@@ -34,7 +34,6 @@ def rate_new_leaves_tabular(
 def test_integration_with_cartpole(graph_mode):
     env = envs.CartPole()
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             agents.stochastic_mcts.rate_new_leaves_with_rollouts,
@@ -57,7 +56,6 @@ def test_integration_with_cartpole(graph_mode):
 def test_act_doesnt_change_env_state(graph_mode, rate_new_leaves_fn):
     env = envs.CartPole()
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=rate_new_leaves_fn,
         graph_mode=graph_mode,
@@ -129,7 +127,6 @@ def test_decision_after_one_pass(
         left_value, right_value, left_reward, right_reward
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=1,
         rate_new_leaves_fn=rate_new_leaves_fn,
         graph_mode=graph_mode,
@@ -150,7 +147,6 @@ def test_stops_on_done(graph_mode):
         transitions={0: {0: (1, 0, True)}},
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
@@ -187,7 +183,6 @@ def test_backtracks_because_of_value(graph_mode):
         },
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
@@ -216,7 +211,6 @@ def test_backtracks_because_of_reward(graph_mode):
         left_value=1, left_reward=-10, right_value=0, right_reward=0
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=rate_new_leaves_fn,
         graph_mode=graph_mode,
@@ -255,7 +249,6 @@ def test_caches_values_in_graph_mode(graph_mode, expected_second_action):
         },
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=3,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
@@ -295,7 +288,6 @@ def test_avoids_real_loops(avoid_loops, expected_action):
         transitions={0: {0: (0, 1, False), 1: (1, 0, True)}},
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
@@ -320,7 +312,6 @@ def test_chooses_something_in_dead_end():
         transitions={0: {0: (0, 0, False)}},
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         rate_new_leaves_fn=functools.partial(
             rate_new_leaves_tabular,
@@ -354,7 +345,6 @@ def test_backtracks_because_of_model_loop(avoid_loops, expected_action):
         },
     )
     agent = agents.StochasticMCTSAgent(
-        action_space=env.action_space,
         n_passes=2,
         discount=1,
         rate_new_leaves_fn=functools.partial(

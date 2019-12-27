@@ -14,17 +14,6 @@ class Agent:
     This is done using a coroutine API, explained in solve().
     """
 
-    def __init__(self, action_space):
-        """Initializes Agent.
-
-        Args:
-            action_space (gym.Space): Action space. It's passed in the
-                constructor instead of being inferred from env in solve(),
-                because it shouldn't change between environments and this way
-                the API for stateless OnlineAgents is simpler.
-        """
-        self._action_space = action_space
-
     def solve(self, env, init_state=None, time_limit=None):
         """Solves a given environment.
 
@@ -79,6 +68,9 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
+    def __init__(self):
+        self._action_space = None
+
     @asyncio.coroutine
     def reset(self, env, observation):  # pylint: disable=missing-param-doc
         """Resets the agent state.
@@ -90,6 +82,8 @@ class OnlineAgent(Agent):
             observation (Env-dependent): Initial observation returned by
                 env.reset().
         """
+        del observation
+        self._action_space = env.action_space
 
     def act(self, observation):
         """Determines the next action to be performed.

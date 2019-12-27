@@ -1,6 +1,5 @@
 """Monte Carlo Tree Search for stochastic environments."""
 
-import asyncio
 import random
 
 import gin
@@ -37,12 +36,13 @@ def rate_new_leaves_with_rollouts(
         list: List of pairs (reward, value) for all actions played from leaf.
     """
     del leaf
-    agent = rollout_agent_class(model.action_space)
+    agent = rollout_agent_class()
     init_state = model.clone_state()
 
     child_ratings = []
     for init_action in range(model.action_space.n):
         (observation, init_reward, done, _) = model.step(init_action)
+        yield from agent.reset(model, observation)
         value = 0
         total_discount = 1
         time = 0
@@ -209,7 +209,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
 
     def __init__(
         self,
-        action_space,
         n_passes=10,
         discount=0.99,
         rate_new_leaves_fn=rate_new_leaves_with_rollouts,
@@ -220,7 +219,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
         """Initializes MCTSAgent.
 
         Args:
-            action_space (gym.Space): Action space.
             n_passes (int): Number of MCTS passes per act().
             discount (float): Discount factor.
             rate_new_leaves_fn (callable): Coroutine estimating rewards and
@@ -236,14 +234,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
                 from which it's impossible to reach a node that hasn't already
                 been visited.
         """
-        assert isinstance(action_space, gym.spaces.Discrete), (
-            'MCTSAgent only works with Discrete action spaces.'
-        )
-        super().__init__(action_space)
-
         if avoid_loops:
             assert graph_mode, 'Loop avoidance only works in graph mode.'
 
+        super().__init__()
         self.n_passes = n_passes
         self._discount = discount
         self._rate_new_leaves = rate_new_leaves_fn
@@ -453,11 +447,12 @@ class StochasticMCTSAgent(base.OnlineAgent):
         # Go back to the root state.
         self._model.restore_state(self._root_state)
 
-    @asyncio.coroutine
     def reset(self, env, observation):
         """Reinitializes the search tree for a new environment."""
-        del observation
-        assert env.action_space == self._action_space
+        assert isinstance(env.action_space, gym.spaces.Discrete), (
+            'MCTSAgent only works with Discrete action spaces.'
+        )
+        yield from super().reset(env, observation)
         self._model = env
         # Initialize root with some reward to avoid division by zero.
         self._root = TreeNode(init_reward=0)

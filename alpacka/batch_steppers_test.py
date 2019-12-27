@@ -53,14 +53,13 @@ class _TestAgent(agents.OnlineAgent):
 
     def __init__(
         self,
-        action_space,
         observations,
         max_n_requests,
         requests,
         responses,
         actions,
     ):
-        super().__init__(action_space)
+        super().__init__()
         self._observations = observations
         self._max_n_requests = max_n_requests
         self._requests = requests
