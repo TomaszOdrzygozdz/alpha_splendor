@@ -23,9 +23,9 @@
 ShootingAgent.n_rollouts = 20
 ShootingAgent.rollout_time_limit = 10
 ShootingAgent.aggregate_fn = @alpacka.agents.shooting.mean_aggregate
-ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
 ShootingAgent.agent_class = @alpacka.agents.RandomAgent
-ShootingAgent.n_envs = 1
+ShootingAgent.n_envs = 4
 
 # Parameters for Runner:
 # ==============================================================================
