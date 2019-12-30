@@ -7,6 +7,7 @@ import random
 
 from unittest import mock
 
+import gin
 import gym
 import numpy as np
 import pytest
@@ -238,5 +239,45 @@ def test_ray_batch_stepper_worker_initialization():
         assert env == env_class.return_value
         assert agent == agent_class.return_value
         assert network == network_fn.return_value
+
+@pytest.mark.skipif(platform.system() == 'Darwin',
+                    reason='Ray does not work on Mac, see awarelab/alpacka#27')
+def test_gin_ray_integration():
+    # Set up
+    msg = 'Hello World!'
+    num = 7
+
+    @gin.configurable
+    class Foo:
+        def __init__(self, msg):
+            self.msg = msg
+
+    @gin.configurable
+    class Bar:
+        def __init__(self, foo_class, n_foo):
+            self.foos = [foo_class() for _ in range(n_foo)]
+
+    gin.bind_parameter('Foo.msg', msg)
+    gin.bind_parameter('Bar.foo_class', Foo)
+    gin.bind_parameter('Bar.n_foo', num)
+
+    @ray.remote
+    class Actor:
+        def __init__(self, bar_class):
+            self._bar = bar_class()
+
+        def test(self):
+            assert len(self._bar.foos) == num
+            for foo in self._bar.foos:
+                assert foo.msg == msg
+            return True
+
+    # Run
+    if not ray.is_initialized():
+        ray.init()
+    actor = Actor.remote(Bar)  # pylint: disable=no-member
+
+    # Test
+    assert ray.get(actor.test.remote())
 
 # TODO(koz4k): Test collecting real/model transitions.
