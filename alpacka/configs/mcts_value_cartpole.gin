@@ -23,7 +23,7 @@ StochasticMCTSAgent.graph_mode = False
 StochasticMCTSAgent.loop_penalty = 0
 StochasticMCTSAgent.n_passes = 10
 StochasticMCTSAgent.rate_new_leaves_fn = \
-    @alpacka.agents.mcts.rate_new_leaves_with_value_network
+    @alpacka.agents.stochastic_mcts.rate_new_leaves_with_value_network
 
 # Parameters for mlp:
 # ==============================================================================
