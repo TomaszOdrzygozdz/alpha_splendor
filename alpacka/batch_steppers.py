@@ -2,16 +2,9 @@
 
 import gin
 import numpy as np
+import ray
 
 from alpacka import data
-
-# WA for: https://github.com/ray-project/ray/issues/5250
-# One of later packages (e.g. gym_sokoban.envs) imports numba internally.
-# This WA ensures its done before Ray to prevent llvm assertion error.
-# TODO(pj): Delete the WA with new Ray release that updates pyarrow.
-import numba  # pylint: disable=wrong-import-order
-import ray  # pylint: disable=wrong-import-order
-del numba
 
 
 class BatchStepper:
@@ -167,40 +160,41 @@ class RayBatchStepper(BatchStepper):
     zero-copy operation on each node.
     """
 
+    class Worker:
+        """Ray actor used to step agent-environment-network in own process."""
+
+        def __init__(self, env_class, agent_class, network_fn):
+            self.env = env_class()
+            self.agent = agent_class()
+            self.network = network_fn()
+
+        def run(self, params, solve_kwargs):
+            """Runs the episode using the given network parameters."""
+            self.network.params = params
+            episode_cor = self.agent.solve(self.env, **solve_kwargs)
+            # TODO(pj): This block of code is the same in LocalBatchStepper
+            # too. Move it to the BatchStepper base class.
+            try:
+                inputs = next(episode_cor)
+                while True:
+                    predictions = self.network.predict(inputs)
+                    inputs = episode_cor.send(predictions)
+            except StopIteration as e:
+                episode = e.value
+                return episode
+
     def __init__(self, env_class, agent_class, network_fn, n_envs):
         super().__init__(env_class, agent_class, network_fn, n_envs)
 
-        @ray.remote
-        class _Worker:
-            def __init__(self, env_class, agent_class, network_fn):
-                self.env = env_class()
-                self.agent = agent_class()
-                self.network = network_fn()
-
-            def run(self, params, solve_kwargs):
-                """Runs the episode using the given network parameters."""
-                self.network.params = params
-                episode_cor = self.agent.solve(self.env, **solve_kwargs)
-                # TODO(pj): This block of code is the same in LocalBatchStepper
-                # too. Move it to the BatchStepper base class.
-                try:
-                    inputs = next(episode_cor)
-                    while True:
-                        predictions = self.network.predict(inputs)
-                        inputs = episode_cor.send(predictions)
-                except StopIteration as e:
-                    episode = e.value
-                    return episode
-
+        ray_worker_cls = ray.remote(RayBatchStepper.Worker)
         if not ray.is_initialized():
             ray.init()
-        # pylint: disable=no-member
-        self._workers = [_Worker.remote(env_class, agent_class, network_fn)
-                         for _ in range(n_envs)]
+        self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
+            env_class, agent_class, network_fn) for _ in range(n_envs)]
 
     def run_episode_batch(self, params, **solve_kwargs):
         params_id = ray.put(params, weakref=True)
         solve_kwargs_id = ray.put(solve_kwargs, weakref=True)
         episodes = ray.get([w.run.remote(params_id, solve_kwargs_id)
-                            for w in self._workers])
+                            for w in self.workers])
         return episodes

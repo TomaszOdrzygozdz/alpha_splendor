@@ -2,10 +2,12 @@
 
 import copy
 import functools
+import platform
 import random
 
 from unittest import mock
 
+import gin
 import gym
 import numpy as np
 import pytest
@@ -14,6 +16,14 @@ from alpacka import agents
 from alpacka import batch_steppers
 from alpacka import data
 from alpacka import networks
+
+# WA for: https://github.com/ray-project/ray/issues/5250
+# One of later packages (e.g. gym_sokoban.envs) imports numba internally.
+# This WA ensures its done before Ray to prevent llvm assertion error.
+# TODO(pj): Delete the WA with new Ray release that updates pyarrow.
+import numba  # pylint: disable=wrong-import-order
+import ray  # pylint: disable=wrong-import-order
+del numba
 
 
 class _TestEnv(gym.Env):
@@ -202,5 +212,72 @@ def test_batch_steppers_run_episode_batch(max_n_requests,
     )
     assert transition_batch.done.sum() == n_envs
 
+
+class _TestWorker(batch_steppers.RayBatchStepper.Worker):
+    def get_state(self):
+        return self.env, self.agent, self.network
+
+
+@mock.patch('alpacka.batch_steppers.RayBatchStepper.Worker', _TestWorker)
+@pytest.mark.skipif(platform.system() == 'Darwin',
+                    reason='Ray does not work on Mac, see awarelab/alpacka#27')
+def test_ray_batch_stepper_worker_initialization():
+    # Set up
+    env_class = mock.Mock(return_value='Env')
+    agent_class = mock.Mock(return_value='Agent')
+    network_fn = mock.Mock(return_value='Network')
+    n_envs = 3
+
+    # Run
+    bs = batch_steppers.RayBatchStepper(
+        env_class, agent_class, network_fn, n_envs)
+
+    # Test
+    assert len(bs.workers) == n_envs
+    for worker in bs.workers:
+        env, agent, network = ray.get(worker.get_state.remote())
+        assert env == env_class.return_value
+        assert agent == agent_class.return_value
+        assert network == network_fn.return_value
+
+@pytest.mark.skipif(platform.system() == 'Darwin',
+                    reason='Ray does not work on Mac, see awarelab/alpacka#27')
+def test_gin_ray_integration():
+    # Set up
+    msg = 'Hello World!'
+    num = 7
+
+    @gin.configurable
+    class Foo:
+        def __init__(self, msg):
+            self.msg = msg
+
+    @gin.configurable
+    class Bar:
+        def __init__(self, foo_class, n_foo):
+            self.foos = [foo_class() for _ in range(n_foo)]
+
+    gin.bind_parameter('Foo.msg', msg)
+    gin.bind_parameter('Bar.foo_class', Foo)
+    gin.bind_parameter('Bar.n_foo', num)
+
+    @ray.remote
+    class Actor:
+        def __init__(self, bar_class):
+            self._bar = bar_class()
+
+        def test(self):
+            assert len(self._bar.foos) == num
+            for foo in self._bar.foos:
+                assert foo.msg == msg
+            return True
+
+    # Run
+    if not ray.is_initialized():
+        ray.init()
+    actor = Actor.remote(Bar)  # pylint: disable=no-member
+
+    # Test
+    assert ray.get(actor.test.remote())
 
 # TODO(koz4k): Test collecting real/model transitions.
