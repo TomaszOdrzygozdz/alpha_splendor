@@ -160,36 +160,35 @@ class RayBatchStepper(BatchStepper):
     zero-copy operation on each node.
     """
 
+    class _Worker:
+        def __init__(self, env_class, agent_class, network_fn):
+            self.env = env_class()
+            self.agent = agent_class()
+            self.network = network_fn()
+
+        def run(self, params, solve_kwargs):
+            """Runs the episode using the given network parameters."""
+            self.network.params = params
+            episode_cor = self.agent.solve(self.env, **solve_kwargs)
+            # TODO(pj): This block of code is the same in LocalBatchStepper
+            # too. Move it to the BatchStepper base class.
+            try:
+                inputs = next(episode_cor)
+                while True:
+                    predictions = self.network.predict(inputs)
+                    inputs = episode_cor.send(predictions)
+            except StopIteration as e:
+                episode = e.value
+                return episode
+
     def __init__(self, env_class, agent_class, network_fn, n_envs):
         super().__init__(env_class, agent_class, network_fn, n_envs)
 
-        @ray.remote
-        class _Worker:
-            def __init__(self, env_class, agent_class, network_fn):
-                self.env = env_class()
-                self.agent = agent_class()
-                self.network = network_fn()
-
-            def run(self, params, solve_kwargs):
-                """Runs the episode using the given network parameters."""
-                self.network.params = params
-                episode_cor = self.agent.solve(self.env, **solve_kwargs)
-                # TODO(pj): This block of code is the same in LocalBatchStepper
-                # too. Move it to the BatchStepper base class.
-                try:
-                    inputs = next(episode_cor)
-                    while True:
-                        predictions = self.network.predict(inputs)
-                        inputs = episode_cor.send(predictions)
-                except StopIteration as e:
-                    episode = e.value
-                    return episode
-
+        ray_worker_cls = ray.remote(RayBatchStepper._Worker)
         if not ray.is_initialized():
             ray.init()
-        # pylint: disable=no-member
-        self._workers = [_Worker.remote(env_class, agent_class, network_fn)
-                         for _ in range(n_envs)]
+        self._workers = [ray_worker_cls.remote(  # pylint: disable=no-member
+            env_class, agent_class, network_fn) for _ in range(n_envs)]
 
     def run_episode_batch(self, params, **solve_kwargs):
         params_id = ray.put(params, weakref=True)

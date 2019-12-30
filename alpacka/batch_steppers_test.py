@@ -2,6 +2,7 @@
 
 import copy
 import functools
+import platform
 import random
 
 from unittest import mock
@@ -14,6 +15,14 @@ from alpacka import agents
 from alpacka import batch_steppers
 from alpacka import data
 from alpacka import networks
+
+# WA for: https://github.com/ray-project/ray/issues/5250
+# One of later packages (e.g. gym_sokoban.envs) imports numba internally.
+# This WA ensures its done before Ray to prevent llvm assertion error.
+# TODO(pj): Delete the WA with new Ray release that updates pyarrow.
+import numba  # pylint: disable=wrong-import-order
+import ray  # pylint: disable=wrong-import-order
+del numba
 
 
 class _TestEnv(gym.Env):
@@ -202,5 +211,32 @@ def test_batch_steppers_run_episode_batch(max_n_requests,
     )
     assert transition_batch.done.sum() == n_envs
 
+
+class _TestWorker(batch_steppers.RayBatchStepper._Worker):  # pylint: disable=protected-access
+    def get_state(self):
+        return self.env, self.agent, self.network
+
+
+@mock.patch('alpacka.batch_steppers.RayBatchStepper._Worker', _TestWorker)
+@pytest.mark.skipif(platform.system() == 'Darwin',
+                    reason='Ray does not work on Mac, see awarelab/alpacka#27')
+def test_ray_batch_stepper_worker_initialization():
+    # Set up
+    env_class = mock.Mock(return_value='Env')
+    agent_class = mock.Mock(return_value='Agent')
+    network_fn = mock.Mock(return_value='Network')
+    n_envs = 3
+
+    # Run
+    bs = batch_steppers.RayBatchStepper(
+        env_class, agent_class, network_fn, n_envs)
+
+    # Test
+    assert len(bs._workers) == n_envs  # pylint: disable=protected-access
+    for worker in bs._workers:  # pylint: disable=protected-access
+        env, agent, network = ray.get(worker.get_state.remote())
+        assert env == env_class.return_value
+        assert agent == agent_class.return_value
+        assert network == network_fn.return_value
 
 # TODO(koz4k): Test collecting real/model transitions.
