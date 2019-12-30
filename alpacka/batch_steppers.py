@@ -160,7 +160,9 @@ class RayBatchStepper(BatchStepper):
     zero-copy operation on each node.
     """
 
-    class _Worker:
+    class Worker:
+        """Ray actor used to step agent-environment-network in own process."""
+
         def __init__(self, env_class, agent_class, network_fn):
             self.env = env_class()
             self.agent = agent_class()
@@ -184,15 +186,15 @@ class RayBatchStepper(BatchStepper):
     def __init__(self, env_class, agent_class, network_fn, n_envs):
         super().__init__(env_class, agent_class, network_fn, n_envs)
 
-        ray_worker_cls = ray.remote(RayBatchStepper._Worker)
+        ray_worker_cls = ray.remote(RayBatchStepper.Worker)
         if not ray.is_initialized():
             ray.init()
-        self._workers = [ray_worker_cls.remote(  # pylint: disable=no-member
+        self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
             env_class, agent_class, network_fn) for _ in range(n_envs)]
 
     def run_episode_batch(self, params, **solve_kwargs):
         params_id = ray.put(params, weakref=True)
         solve_kwargs_id = ray.put(solve_kwargs, weakref=True)
         episodes = ray.get([w.run.remote(params_id, solve_kwargs_id)
-                            for w in self._workers])
+                            for w in self.workers])
         return episodes

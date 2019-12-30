@@ -213,12 +213,12 @@ def test_batch_steppers_run_episode_batch(max_n_requests,
     assert transition_batch.done.sum() == n_envs
 
 
-class _TestWorker(batch_steppers.RayBatchStepper._Worker):  # pylint: disable=protected-access
+class _TestWorker(batch_steppers.RayBatchStepper.Worker):
     def get_state(self):
         return self.env, self.agent, self.network
 
 
-@mock.patch('alpacka.batch_steppers.RayBatchStepper._Worker', _TestWorker)
+@mock.patch('alpacka.batch_steppers.RayBatchStepper.Worker', _TestWorker)
 @pytest.mark.skipif(platform.system() == 'Darwin',
                     reason='Ray does not work on Mac, see awarelab/alpacka#27')
 def test_ray_batch_stepper_worker_initialization():
@@ -233,8 +233,8 @@ def test_ray_batch_stepper_worker_initialization():
         env_class, agent_class, network_fn, n_envs)
 
     # Test
-    assert len(bs._workers) == n_envs  # pylint: disable=protected-access
-    for worker in bs._workers:  # pylint: disable=protected-access
+    assert len(bs.workers) == n_envs
+    for worker in bs.workers:
         env, agent, network = ray.get(worker.get_state.remote())
         assert env == env_class.return_value
         assert agent == agent_class.return_value

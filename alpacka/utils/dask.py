@@ -1,5 +1,9 @@
-"""Source code for dask.utils.
+"""Source code from dask.utils.
 
+GitHub:
+https://github.com/dask/dask
+
+Licence:
 Copyright (c) 2014-2018, Anaconda, Inc. and contributors
 All rights reserved.
 
