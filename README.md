@@ -10,7 +10,7 @@ _Work in progress._
 
 `pip install -e .[dev]`
 
-The `-e` option allows you to make changes to the package, that will be immediately visible in the virtualenv.
+The `-e` option allows you to make changes to the package that will be immediately visible in the virtualenv.
 
 ### Run locally
 
