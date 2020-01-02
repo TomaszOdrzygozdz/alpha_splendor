@@ -2,7 +2,9 @@
 
 AwareLab PACKAge - internal RL framework focusing on model-based methods.
 
-Alpacka is meant to be the workhorse (or work-alpacka) of our experiments. We try to apply high coding standards, to make sure the code is clean, healthy, tested and easy to understand. As such, Alpacka is not the place for your messy, quickly hacked up code just for launching the next batch of experiments. The place for that is [REX](https://gitlab.com/awarelab/rex) - our experimental repo. Most contributions to Alpacka should start in that repository, and get cleaned up and migrated after verifying that they're valuable and useful for other people. For more details on contributing see the [related doc](CONTRIBUTING.md).
+Alpacka is meant to be the workhorse (or work-alpacka) of our experiments. We try to apply high coding standards, to make sure the code is clean, healthy, tested and easy to understand. As such, Alpacka is not the place for messy and quickly hacked up code just for launching the next batch of experiments. The place for that is in [REX](https://gitlab.com/awarelab/rex) - our experimental repo. Most contributions to Alpacka should start in that repository, and then get cleaned up and migrated after verifying that they're valuable and useful changes for the team.
+
+For more details on contributing see the [related doc](CONTRIBUTING.md).
 
 ## Quickstart
 
