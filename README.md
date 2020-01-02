@@ -71,7 +71,7 @@ Experiment specifications can (and should!) be stored in [REX](https://gitlab.co
 
 ### Runner
 
-[`Runner`](alpacka/runner.py) is the main class of the experiment, taking care of running the training loop. Each iteration consists two phases: gathering data from environments and training networks.
+[`Runner`](alpacka/runner.py) is the main class of the experiment, taking care of running the training loop. Each iteration consists of two phases: gathering data from environments and training networks.
 
 ### Agent & Trainer
 
