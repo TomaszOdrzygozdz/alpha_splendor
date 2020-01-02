@@ -181,9 +181,10 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     with mock.patch('alpacka.agents.shooting.type') as mock_type:
         mock_type.return_value = lambda: mock_env
         agent = agents.ShootingAgent(
-            aggregate_fn=_aggregate_fn,
-            rollout_time_limit=rollout_time_limit,
             n_rollouts=1,
+            rollout_time_limit=rollout_time_limit,
+            aggregate_fn=_aggregate_fn,
+            n_envs=1,
         )
 
         # Run
