@@ -1,9 +1,8 @@
 """Monte Carlo Tree Search for stochastic environments."""
 
-import random
-
 import gin
 import gym
+import numpy as np
 
 from alpacka import data
 from alpacka.agents import base
@@ -33,13 +32,13 @@ def rate_new_leaves_with_rollouts(
         Network prediction requests.
 
     Returns:
-        list: List of pairs (reward, value) for all actions played from leaf.
+        list: List of qualities for all actions played from leaf.
     """
     del leaf
     agent = rollout_agent_class()
     init_state = model.clone_state()
 
-    child_ratings = []
+    child_qualities = []
     for init_action in range(model.action_space.n):
         (observation, init_reward, done, _) = model.step(init_action)
         yield from agent.reset(model, observation)
@@ -52,9 +51,9 @@ def rate_new_leaves_with_rollouts(
             value += total_discount * reward
             total_discount *= discount
             time += 1
-        child_ratings.append((init_reward, value))
+        child_qualities.append(init_reward + discount * value)
         model.restore_state(init_state)
-    return child_ratings
+    return child_qualities
 
 
 @gin.configurable
@@ -75,8 +74,10 @@ def rate_new_leaves_with_value_network(leaf, observation, model, discount):
     ])
     # Run the network to predict values for children.
     values = yield observations
-    # Compute the final ratings, masking out "done" states.
-    return rewards + discount * values * (1 - dones)
+    # (batch_size, 1) -> (batch_size,)
+    values = np.reshape(values, -1)
+    # Compute the final qualities, masking out the "done" states.
+    return list(rewards + discount * values * (1 - dones))
 
 
 class TreeNode:
@@ -88,47 +89,37 @@ class TreeNode:
             yet.
     """
 
-    def __init__(self, init_reward, init_value=None):
+    def __init__(self, init_quality=None):
         """Initializes TreeNode.
 
         Args:
-            init_reward (float): Reward collected when stepping into the node
-                the first time.
-            init_value (float or None): Value received from a rate_new_leaves_fn
-                for this node, or None if it's the root.
+            init_quality (float or None): Quality received from
+                the rate_new_leaves_fn for this node, or None if it's the root.
         """
-        self._reward_sum = init_reward
-        self._reward_count = 1
-        self._value_sum = 0
-        self._value_count = 0
+        self._quality_sum = 0
+        self._quality_count = 0
+        if init_quality is not None:
+            self.visit(init_quality)
         self.children = None
-        if init_value is not None:
-            self._value_sum += init_value
-            self._value_count += 1
 
-    def visit(self, reward, value):
+    def visit(self, quality):
         """Records a visit in the node during backpropagation.
 
         Args:
-            reward (float): Reward collected when stepping into the node.
-            value (float or None): Value accumulated on the path out of the
-                node, or None if value should not be accumulated.
+            quality (float): Quality accumulated on the path out of the
+                node.
         """
-        self._reward_sum += reward
-        self._reward_count += 1
-        if value is not None:
-            self._value_sum += value
-            self._value_count += 1
+        self._quality_sum += quality
+        self._quality_count += 1
 
-    def quality(self, discount):
+    @property
+    def quality(self):
         """Returns the quality of going into this node in the search tree.
 
         We use it instead of value, so we can handle dense rewards.
         Quality(s, a) = reward(s, a) + discount * value(s').
         """
-        return self._reward_sum / self._reward_count + discount * (
-            self._value_sum / self._value_count
-        )
+        return self._quality_sum / self._quality_count
 
     @property
     def is_leaf(self):
@@ -149,11 +140,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
         Args:
             n_passes (int): Number of MCTS passes per act().
             discount (float): Discount factor.
-            rate_new_leaves_fn (callable): Coroutine estimating rewards and
-                values of new leaves. Can ask for predictions using a Network.
-                Should return rewards and values for every child of a given leaf
-                node. Signature:
-                (leaf, observation, model, discount) -> [(reward, value)].
+            rate_new_leaves_fn (callable): Coroutine estimating qualities of new
+                leaves. Can ask for predictions using a Network. Should return
+                qualities for every child of a given leaf node. Signature:
+                (leaf, observation, model, discount) -> [quality].
         """
         super().__init__()
         self.n_passes = n_passes
@@ -163,9 +153,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._root = None
         self._root_state = None
 
-    def _rate_children(self, node):
+    @staticmethod
+    def _rate_children(node):
         """Returns qualities of all children of a given node."""
-        return [child.quality(self._discount) for child in node.children]
+        return [child.quality for child in node.children]
 
     def _choose_action(self, node):
         """Chooses the action to take in a given node based on child qualities.
@@ -217,10 +208,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
     def _expand_leaf(self, leaf, observation, done):
         """Expands a leaf and returns its quality.
 
-        The leaf's new children are assigned initial rewards and values. The
-        reward and value of the "best" new leaf is then backpropagated.
+        The leaf's new children are assigned initial quality. The quality of the
+        "best" new leaf is then backpropagated.
 
-        Only modifies leaf - adds children with new rewards and values.
+        Only modifies leaf - adds children with new qualities.
 
         Args:
             leaf (TreeNode): Leaf to expand.
@@ -239,30 +230,26 @@ class StochasticMCTSAgent(base.OnlineAgent):
             # In a "done" state, cumulative future return is 0.
             return 0
 
-        child_ratings = yield from self._rate_new_leaves(
+        child_qualities = yield from self._rate_new_leaves(
             leaf, observation, self._model, self._discount
         )
-        leaf.children = [
-            TreeNode(reward, value) for (reward, value) in child_ratings
-        ]
+        leaf.children = [TreeNode(quality) for quality in child_qualities]
         action = self._choose_action(leaf)
-        return leaf.children[action].quality(self._discount)
+        return leaf.children[action].quality
 
-    def _backpropagate(self, value, path):
-        """Backpropagates value to the root through path.
+    def _backpropagate(self, quality, path):
+        """Backpropagates quality to the root through path.
 
-        Only modifies the rewards and values of nodes on the path.
+        Only modifies the qualities of nodes on the path.
 
         Args:
-            value (float or None): Value collected at the leaf, or None if value
-                should not be backpropagated.
+            quality (float): Quality collected at the leaf.
             path (list): List of (reward, node) pairs, describing a path from
                 the root to a leaf.
         """
         for (reward, node) in reversed(path):
-            node.visit(reward, value)
-            if value is not None:
-                value = reward + self._discount * value
+            quality = reward + self._discount * quality
+            node.visit(quality)
 
     def _run_pass(self, root, observation):
         """Runs a pass of MCTS.
@@ -287,7 +274,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
         Yields:
             Network prediction requests.
         """
-        path = []
         (path, observation, done) = self._traverse(root, observation)
         (_, leaf) = path[-1]
         quality = yield from self._expand_leaf(leaf, observation, done)
@@ -302,8 +288,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         )
         yield from super().reset(env, observation)
         self._model = env
-        # Initialize root with some reward to avoid division by zero.
-        self._root = TreeNode(init_reward=0)
+        self._root = TreeNode()
 
     def act(self, observation):
         """Runs n_passes MCTS passes and chooses the best action."""

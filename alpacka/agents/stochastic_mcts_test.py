@@ -18,16 +18,15 @@ def rate_new_leaves_tabular(
     """Rates new leaves based on hardcoded values."""
     del leaf
     del observation
-    del discount
     init_state = model.clone_state()
 
-    def rating(action):
+    def quality(action):
         (observation, reward, _, _) = model.step(action)
         model.restore_state(init_state)
         # State is the same as observation.
-        return (reward, state_values[observation])
+        return reward + discount * state_values[observation]
 
-    return [rating(action) for action in range(model.action_space.n)]
+    return [quality(action) for action in range(model.action_space.n)]
 
 
 def test_integration_with_cartpole():
