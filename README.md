@@ -96,7 +96,7 @@ The logic of an RL algorithm is split into two classes: [`Agent`](alpacka/agents
 
 ### Gin configs
 
-We use [Gin](https://github.com/google/gin-config) to manage experiment configurations. The assumption is that all the "conventional" experiments supported by Alpacka can be run using the entrypoint `alpacka/runner.py` with an appropriate Gin config specified, so that in most cases you won't need to write your own training pipeline, but rather override the necessary classes and provide your own Gin config. If you have a use-case that warrants customizing the entrypoint, please contact us - it might make sense to support it natively in Alpacka.
+We use [Gin](https://github.com/google/gin-config) to manage experiment configurations. The assumption is that all the "conventional" experiments supported by Alpacka can be run using the entrypoint `alpacka/runner.py` with an appropriate Gin config specified so that in most cases you won't need to write your own training pipeline, but rather override the necessary classes and provide your own Gin config. If you have a use-case that warrants customizing the entrypoint, please contact us - it might make sense to support it natively in Alpacka.
 
 Some predefined config files are in `alpacka/configs`. Some are usage examples for the implemented algorithms, and some serve as regression tests for the most important experiments.
 
