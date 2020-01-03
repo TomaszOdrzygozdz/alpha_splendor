@@ -16,10 +16,7 @@
 
 # Parameters for StochasticMCTSAgent:
 # ==============================================================================
-StochasticMCTSAgent.avoid_loops = False
 StochasticMCTSAgent.discount = 0.99
-StochasticMCTSAgent.graph_mode = False
-StochasticMCTSAgent.loop_penalty = 0
 StochasticMCTSAgent.n_passes = 2
 StochasticMCTSAgent.rate_new_leaves_fn = @alpacka.agents.stochastic_mcts.rate_new_leaves_with_rollouts
 
