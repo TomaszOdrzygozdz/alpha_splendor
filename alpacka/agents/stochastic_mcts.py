@@ -1,12 +1,12 @@
 """Monte Carlo Tree Search for stochastic environments."""
 
 import gin
-import gym
 import numpy as np
 
 from alpacka import data
 from alpacka.agents import base
 from alpacka.agents import core
+from alpacka.utils import space as space_utils
 
 
 @gin.configurable
@@ -39,7 +39,7 @@ def rate_new_leaves_with_rollouts(
     init_state = model.clone_state()
 
     child_qualities = []
-    for init_action in range(model.action_space.n):
+    for init_action in space_utils.space_iter(model.action_space):
         (observation, init_reward, done, _) = model.step(init_action)
         yield from agent.reset(model, observation)
         value = 0
@@ -70,7 +70,8 @@ def rate_new_leaves_with_value_network(leaf, observation, model, discount):
         return (observation, reward, done)
 
     (observations, rewards, dones) = data.nested_stack([
-        step_and_rewind(action) for action in range(model.action_space.n)
+        step_and_rewind(action)
+        for action in space_utils.space_iter(model.action_space)
     ])
     # Run the network to predict values for children.
     values = yield observations
@@ -283,9 +284,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
 
     def reset(self, env, observation):
         """Reinitializes the search tree for a new environment."""
-        assert isinstance(env.action_space, gym.spaces.Discrete), (
-            'MCTSAgent only works with Discrete action spaces.'
-        )
         yield from super().reset(env, observation)
         self._model = env
         self._root = TreeNode()
