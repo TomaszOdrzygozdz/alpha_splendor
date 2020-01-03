@@ -101,7 +101,7 @@ class TreeNode:
         self._quality_count = 0
         if init_quality is not None:
             self.visit(init_quality)
-        self.children = None
+        self.children = []
 
     def visit(self, quality):
         """Records a visit in the node during backpropagation.
@@ -118,13 +118,29 @@ class TreeNode:
         """Returns the quality of going into this node in the search tree.
 
         We use it instead of value, so we can handle dense rewards.
-        Quality(s, a) = reward(s, a) + discount * value(s').
+        quality(s, a) = reward(s, a) + discount * value(s')
         """
         return self._quality_sum / self._quality_count
 
     @property
+    def count(self):
+        return self._quality_count
+
+    @property
+    def value(self):
+        """Returns the value of going into this node in the search tree.
+
+        We use it only to provide targets for value network training.
+        value(s) = expected_a quality(s, a)
+        """
+        return (
+            sum(child.quality * child.count for child in self.children) /
+            sum(child.count for child in self.children)
+        )
+
+    @property
     def is_leaf(self):
-        return self.children is None
+        return not self.children
 
 
 class StochasticMCTSAgent(base.OnlineAgent):
@@ -136,7 +152,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         discount=0.99,
         rate_new_leaves_fn=rate_new_leaves_with_rollouts,
     ):
-        """Initializes MCTSAgent.
+        """Initializes StochasticMCTSAgent.
 
         Args:
             n_passes (int): Number of MCTS passes per act().
@@ -296,7 +312,14 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._root_state = self._model.clone_state()
         for _ in range(self.n_passes):
             yield from self._run_pass(self._root, observation)
+        info = {'node': self._root}
 
         action = self._choose_action(self._root)
         self._root = self._root.children[action]
-        return (action, {})
+        return (action, info)
+
+    @staticmethod
+    def postprocess_transition(transition):
+        node = transition.agent_info['node']
+        value = node.value
+        return transition._replace(agent_info={'value': value})
