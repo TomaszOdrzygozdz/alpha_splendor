@@ -163,7 +163,9 @@ class RayBatchStepper(BatchStepper):
     class Worker:
         """Ray actor used to step agent-environment-network in own process."""
 
-        def __init__(self, env_class, agent_class, network_fn):
+        def __init__(self, env_class, agent_class, network_fn, config):
+            gin.parse_config(config)
+
             self.env = env_class()
             self.agent = agent_class()
             self.network = network_fn()
@@ -186,11 +188,13 @@ class RayBatchStepper(BatchStepper):
     def __init__(self, env_class, agent_class, network_fn, n_envs):
         super().__init__(env_class, agent_class, network_fn, n_envs)
 
+        config = RayBatchStepper._get_config(env_class, agent_class, network_fn)
         ray_worker_cls = ray.remote(RayBatchStepper.Worker)
+
         if not ray.is_initialized():
             ray.init()
         self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
-            env_class, agent_class, network_fn) for _ in range(n_envs)]
+            env_class, agent_class, network_fn, config) for _ in range(n_envs)]
 
     def run_episode_batch(self, params, **solve_kwargs):
         params_id = ray.put(params, weakref=True)
@@ -198,3 +202,23 @@ class RayBatchStepper(BatchStepper):
         episodes = ray.get([w.run.remote(params_id, solve_kwargs_id)
                             for w in self.workers])
         return episodes
+
+    @staticmethod
+    def _get_config(env_class, agent_class, network_fn):
+        """Returns gin operative config for (at least) env, agent and network.
+
+        It creates env, agent and network to initialize operative gin-config.
+        It deletes them afterwords.
+        """
+
+        env = env_class()
+        agent = agent_class()
+        network = network_fn()
+
+        config = gin.operative_config_str()
+
+        del env
+        del agent
+        del network
+
+        return config
