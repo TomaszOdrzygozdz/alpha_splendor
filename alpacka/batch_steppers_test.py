@@ -248,13 +248,13 @@ def test_ray_batch_stepper_worker_members_initialization_with_gin_config():
                          time_limit=10)
 
     # Test
-    assert env.solved_at == solved_at  # pylint: disable=protected-access
+    assert env.solved_at == solved_at
     assert len(bs.workers) == n_envs
     for worker in bs.workers:
         env, agent, network = ray.get(worker.get_state.remote())
         assert isinstance(env, env_class)
         assert isinstance(agent, agent_class)
         assert isinstance(network, network_class)
-        assert env.solved_at == solved_at  # pylint: disable=protected-access
+        assert env.solved_at == solved_at
 
 # TODO(koz4k): Test collecting real/model transitions.
