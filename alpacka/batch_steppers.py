@@ -211,14 +211,7 @@ class RayBatchStepper(BatchStepper):
         It deletes them afterwords.
         """
 
-        env = env_class()
-        agent = agent_class()
-        network = network_fn()
-
-        config = gin.operative_config_str()
-
-        del env
-        del agent
-        del network
-
-        return config
+        env_class()
+        agent_class()
+        network_fn()
+        return gin.operative_config_str()

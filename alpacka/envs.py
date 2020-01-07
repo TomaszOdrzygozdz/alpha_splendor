@@ -55,7 +55,9 @@ class CartPole(classic_control.CartPoleEnv, ModelEnv):
 
     def __init__(self, solved_at=500, **kwargs):
         super().__init__(**kwargs)
-        self._solved_at = solved_at
+
+        self.solved_at = solved_at
+
         self._step = None
 
     def reset(self):
@@ -65,7 +67,7 @@ class CartPole(classic_control.CartPoleEnv, ModelEnv):
     def step(self, action):
         (observation, reward, done, info) = super().step(action)
         if done:
-            info['solved'] = self._step >= self._solved_at
+            info['solved'] = self._step >= self.solved_at
         self._step += 1
         return (observation, reward, done, info)
 
