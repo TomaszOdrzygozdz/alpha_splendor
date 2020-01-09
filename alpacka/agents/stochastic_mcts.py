@@ -1,5 +1,7 @@
 """Monte Carlo Tree Search for stochastic environments."""
 
+import math
+
 import gin
 import numpy as np
 
@@ -81,6 +83,22 @@ def rate_new_leaves_with_value_network(leaf, observation, model, discount):
     return list(rewards + discount * values * (1 - dones))
 
 
+@gin.configurable
+def puct_exploration_bonus(child_count, parent_count):
+    """PUCT exploration bonus.
+
+    A variant with weight changing over time is used in AlphaZero.
+
+    Args:
+        child_count (int): Number of visits in the child node so far.
+        parent_count (int): Number of visits in the parent node so far.
+
+    Returns:
+        float: Exploration bonus to apply to the child. In this case, 0.
+    """
+    return math.sqrt(parent_count) / (child_count + 1)
+
+
 class TreeNode:
     """Node of the search tree.
 
@@ -151,6 +169,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
         n_passes=10,
         discount=0.99,
         rate_new_leaves_fn=rate_new_leaves_with_rollouts,
+        exploration_bonus_fn=puct_exploration_bonus,
+        exploration_weight=1.0,
     ):
         """Initializes StochasticMCTSAgent.
 
@@ -161,21 +181,23 @@ class StochasticMCTSAgent(base.OnlineAgent):
                 leaves. Can ask for predictions using a Network. Should return
                 qualities for every child of a given leaf node. Signature:
                 (leaf, observation, model, discount) -> [quality].
+            exploration_bonus_fn (callable): Function calculating an
+                exploration bonus for a given node. It's added to the node's
+                quality when choosing a node to explore in an MCTS pass.
+                Signature: (child_count, parent_count) -> bonus.
+            exploration_weight (float): Weight of the exploration bonus.
         """
         super().__init__()
         self.n_passes = n_passes
         self._discount = discount
         self._rate_new_leaves = rate_new_leaves_fn
+        self._exploration_bonus = exploration_bonus_fn
+        self._exploration_weight = exploration_weight
         self._model = None
         self._root = None
         self._root_state = None
 
-    @staticmethod
-    def _rate_children(node):
-        """Returns qualities of all children of a given node."""
-        return [child.quality for child in node.children]
-
-    def _choose_action(self, node):
+    def _choose_action(self, node, exploratory):
         """Chooses the action to take in a given node based on child qualities.
 
         If avoid_loops is turned on, tries to avoid nodes visited on the path
@@ -183,12 +205,22 @@ class StochasticMCTSAgent(base.OnlineAgent):
 
         Args:
             node (TreeNode): Node to choose an action from.
+            exploratory (bool): Whether the choice should be exploratory (in
+                an MCTS pass) or not (when choosing the final action on the real
+                environment).
 
         Returns:
             Action to take.
         """
-        # TODO(koz4k): Distinguish exploratory/not.
-        child_qualities = self._rate_children(node)
+        def rate_child(child):
+            quality = child.quality
+            if exploratory:
+                quality += self._exploration_weight * self._exploration_bonus(
+                    child.count, node.count
+                )
+            return quality
+
+        child_qualities = [rate_child(child) for child in node.children]
         child_qualities_and_actions = zip(
             child_qualities, range(len(child_qualities))
         )
@@ -216,7 +248,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         node = root
         done = False
         while not node.is_leaf and not done:
-            action = self._choose_action(node)
+            action = self._choose_action(node, exploratory=True)
             node = node.children[action]
             (observation, reward, done, _) = self._model.step(action)
             path.append((reward, node))
@@ -251,7 +283,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
             leaf, observation, self._model, self._discount
         )
         leaf.children = [TreeNode(quality) for quality in child_qualities]
-        action = self._choose_action(leaf)
+        action = self._choose_action(leaf, exploratory=True)
         return leaf.children[action].quality
 
     def _backpropagate(self, quality, path):
@@ -314,7 +346,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
             yield from self._run_pass(self._root, observation)
         info = {'node': self._root}
 
-        action = self._choose_action(self._root)
+        action = self._choose_action(self._root, exploratory=False)
         self._root = self._root.children[action]
         return (action, info)
 

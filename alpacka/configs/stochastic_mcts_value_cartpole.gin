@@ -18,6 +18,8 @@ KerasNetwork.train_callbacks = None
 # Parameters for StochasticMCTSAgent:
 # ==============================================================================
 StochasticMCTSAgent.discount = 0.99
+StochasticMCTSAgent.exploration_bonus_fn = @alpacka.agents.stochastic_mcts.puct_exploration_bonus
+StochasticMCTSAgent.exploration_weight = 1.0
 StochasticMCTSAgent.n_passes = 10
 StochasticMCTSAgent.rate_new_leaves_fn = \
     @alpacka.agents.stochastic_mcts.rate_new_leaves_with_value_network
@@ -27,6 +29,10 @@ StochasticMCTSAgent.rate_new_leaves_fn = \
 mlp.activation = 'relu'
 mlp.hidden_sizes = (16,)
 mlp.output_activation = None
+
+# Parameters for puct_exploration_bonus:
+# ==============================================================================
+# None.
 
 # Parameters for rate_new_leaves_with_value_network:
 # ==============================================================================
