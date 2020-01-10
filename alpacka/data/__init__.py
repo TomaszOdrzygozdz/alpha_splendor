@@ -2,6 +2,8 @@
 
 import collections
 
+import numpy as np
+
 from alpacka.data.ops import *
 
 
@@ -49,6 +51,7 @@ Episode.__new__.__defaults__ = (None,)  # solved
 TensorSignature = collections.namedtuple(
     'TensorSignature', ['shape', 'dtype']
 )
+TensorSignature.__new__.__defaults__ = (np.float32,)  # dtype
 # Register TensorSignature as a leaf type, so we can for example do nested_map
 # over a structure of TensorSignatures to initialize a pytree of arrays.
 register_leaf_type(TensorSignature)

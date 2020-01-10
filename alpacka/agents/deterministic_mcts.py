@@ -360,7 +360,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         del action_space
         return data.NetworkSignature(
             input=space_utils.space_signature(observation_space),
-            output=data.TensorSignature(shape=(1,), dtype=np.float32),
+            output=data.TensorSignature(shape=(1,)),
         )
 
 

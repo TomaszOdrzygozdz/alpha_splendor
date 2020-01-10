@@ -17,8 +17,8 @@ def test_integration_with_keras():
     n_transitions = 10
     obs_shape = (4,)
     network_sig = data.NetworkSignature(
-        input=data.TensorSignature(shape=obs_shape, dtype=np.float32),
-        output=data.TensorSignature(shape=(1,), dtype=np.float32),
+        input=data.TensorSignature(shape=obs_shape),
+        output=data.TensorSignature(shape=(1,)),
     )
     trainer = supervised.SupervisedTrainer(
         network_signature=network_sig,

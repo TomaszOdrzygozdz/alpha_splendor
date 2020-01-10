@@ -91,7 +91,7 @@ class _TestAgent(agents.OnlineAgent):
 class _TestNetwork(networks.DummyNetwork):
 
     def __init__(self, inputs, outputs):
-        tensor_sig = data.TensorSignature(shape=(1,), dtype=np.float32)
+        tensor_sig = data.TensorSignature(shape=(1,))
         super().__init__(
             network_signature=data.NetworkSignature(
                 input=tensor_sig, output=tensor_sig

@@ -15,8 +15,8 @@ from alpacka.networks import keras as keras_networks
 def keras_mlp():
     return keras_networks.KerasNetwork(
         network_signature=data.NetworkSignature(
-            input=data.TensorSignature(shape=(13,), dtype=np.float32),
-            output=data.TensorSignature(shape=(1,), dtype=np.float32),
+            input=data.TensorSignature(shape=(13,)),
+            output=data.TensorSignature(shape=(1,)),
         )
     )
 
@@ -35,8 +35,8 @@ def test_model_valid(model_fn, input_shape, output_shape):
     network = keras_networks.KerasNetwork(
         model_fn=model_fn,
         network_signature=data.NetworkSignature(
-            input=data.TensorSignature(shape=input_shape, dtype=np.float32),
-            output=data.TensorSignature(shape=output_shape, dtype=np.float32),
+            input=data.TensorSignature(shape=input_shape),
+            output=data.TensorSignature(shape=output_shape),
         ),
     )
     batch_size = 7

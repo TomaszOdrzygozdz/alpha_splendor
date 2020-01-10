@@ -13,7 +13,7 @@ _TestTransition = collections.namedtuple('_TestTransition', ['test_field'])
 
 # Keep _TestTransitions with a single number in the buffer.
 _test_datapoint_sig = _TestTransition(
-    test_field=data.TensorSignature(shape=(), dtype=np.float32),
+    test_field=data.TensorSignature(shape=()),
 )
 
 

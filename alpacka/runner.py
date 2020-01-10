@@ -6,11 +6,9 @@ import itertools
 import os
 
 import gin
-import numpy as np
 
 from alpacka import agents
 from alpacka import batch_steppers
-from alpacka import data
 from alpacka import envs
 from alpacka import metric_logging
 from alpacka import networks
