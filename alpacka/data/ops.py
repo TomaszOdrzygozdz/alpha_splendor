@@ -9,8 +9,25 @@ Behavior of those ops is well described in alpacka.data.ops_test.
 import numpy as np
 
 
+_leaf_types = set()
+
+
+def register_leaf_type(leaf_type):
+    """Registers a leaf type.
+
+    Leaf type is a type that should not be recursed into in nested_* functions.
+    Useful for defining namedtuples such as data.TensorSignature.
+
+    Args:
+        leaf_type (type): Type to register as a leaf.
+    """
+    _leaf_types.add(leaf_type)
+
+
 def _is_leaf(x):
     """Returns whether pytree is a leaf."""
+    if type(x) in _leaf_types:  # pylint: disable=unidiomatic-typecheck
+        return True
     return not isinstance(x, (tuple, list, dict))
 
 
@@ -83,7 +100,7 @@ def nested_zip(xs):
         return xs
 
 
-def is_last_level(x):
+def _is_last_level(x):
     """Returns whether pytree is at the last level (children are leaves)."""
     if _is_leaf(x):
         return False
@@ -96,7 +113,7 @@ def is_last_level(x):
 
 def _is_last_level_nonempty(x):
     """Returns whether pytree is at the last level and has any child."""
-    return x and is_last_level(x)
+    return x and _is_last_level(x)
 
 
 def nested_unzip(x):

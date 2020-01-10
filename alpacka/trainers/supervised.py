@@ -3,6 +3,7 @@
 import gin
 import numpy as np
 
+from alpacka import data
 from alpacka.trainers import base
 from alpacka.trainers import replay_buffers
 
@@ -59,9 +60,12 @@ class SupervisedTrainer(base.Trainer):
         # (input, target). For now we assume that all networks return a single
         # output.
         # TODO(koz4k): Lift this restriction.
-        datapoint_spec = (input_shape, (1,))
+        datapoint_sig = (
+            data.TensorSignature(shape=input_shape, dtype=np.float32),
+            data.TensorSignature(shape=(1,), dtype=np.float32),
+        )
         self._replay_buffer = replay_buffers.HierarchicalReplayBuffer(
-            datapoint_spec,
+            datapoint_sig,
             capacity=replay_buffer_capacity,
             hierarchy_depth=len(replay_buffer_sampling_hierarchy),
         )
