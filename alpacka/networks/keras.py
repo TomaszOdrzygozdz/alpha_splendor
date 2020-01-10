@@ -122,12 +122,14 @@ class KerasNetwork(core.Network):
 
         dataset = tf.data.Dataset.from_generator(
             generator=data_stream,
-            output_types=(self._model.input.dtype, self._model.output.dtype)
+            output_types=(self._model.input.dtype, self._model.output.dtype),
+            output_shapes=(self._model.input.shape, self._model.output.shape),
         )
 
         # WA for bug: https://github.com/tensorflow/tensorflow/issues/32912
-        history = self._model.fit_generator(dataset, epochs=1, verbose=0,
-                                            callbacks=self.train_callbacks)
+        history = self._model.fit(
+            dataset, epochs=1, verbose=0, callbacks=self.train_callbacks
+        )
         # history contains epoch-indexed sequences. We run only one epoch, so
         # we take the only element.
         return {name: values[0] for (name, values) in history.history.items()}

@@ -39,7 +39,7 @@ def test_keras_mlp_train_epoch_on_boston_housing(keras_mlp, dataset):
     # Set up
     (x_train, y_train) = dataset
     x_train = x_train[:16]
-    y_train = y_train[:16]
+    y_train = np.expand_dims(y_train[:16], 1)
 
     def data_stream():
         for _ in range(3):

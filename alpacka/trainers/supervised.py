@@ -10,14 +10,16 @@ from alpacka.trainers import replay_buffers
 @gin.configurable
 def target_solved(episode):
     return np.full(
-        shape=episode.transition_batch.observation.shape[:1],
+        shape=(episode.transition_batch.observation.shape[:1] + (1,)),
         fill_value=int(episode.solved),
     )
 
 
 @gin.configurable
 def target_value(episode):
-    return episode.transition_batch.agent_info['value']
+    return np.expand_dims(
+        episode.transition_batch.agent_info['value'], axis=1
+    )
 
 
 class SupervisedTrainer(base.Trainer):
@@ -57,7 +59,7 @@ class SupervisedTrainer(base.Trainer):
         # (input, target). For now we assume that all networks return a single
         # output.
         # TODO(koz4k): Lift this restriction.
-        datapoint_spec = (input_shape, ())
+        datapoint_spec = (input_shape, (1,))
         self._replay_buffer = replay_buffers.HierarchicalReplayBuffer(
             datapoint_spec,
             capacity=replay_buffer_capacity,
