@@ -6,6 +6,7 @@ import itertools
 import os
 
 import gin
+import numpy as np
 
 from alpacka import agents
 from alpacka import batch_steppers
@@ -58,8 +59,12 @@ class Runner:
         os.makedirs(self._output_dir, exist_ok=True)
 
         input_signature = self._infer_input_signature(env_class)
+        network_signature = data.NetworkSignature(
+            input=input_signature,
+            output=data.TensorSignature(shape=(1,), dtype=np.float32),
+        )
         network_fn = functools.partial(
-            network_class, input_signature=input_signature
+            network_class, network_signature=network_signature
         )
 
         if env_kwargs:
@@ -75,7 +80,7 @@ class Runner:
         )
         self._episode_time_limit = episode_time_limit
         self._network = network_fn()
-        self._trainer = trainer_class(input_signature)
+        self._trainer = trainer_class(network_signature)
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
         self._epoch = 0

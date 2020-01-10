@@ -3,6 +3,7 @@
 import functools
 
 import gin
+import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
@@ -14,39 +15,55 @@ def _make_inputs(input_signature):
     """Initializes keras.Input layers for a given signature.
 
     Args:
-        input_signature (pytree): Pytree of TensorSignatures.
+        input_signature (pytree of TensorSignatures): Input signature.
 
     Returns:
-        Pytree of keras.Input layers.
+        Pytree of tf.keras.Input layers.
     """
     def init_layer(signature):
         return keras.Input(shape=signature.shape, dtype=signature.dtype)
     return data.nested_map(init_layer, input_signature)
 
 
+def _make_output_heads(hidden, output_signature, output_activation):
+    """Initializes Dense layers for heads.
+
+    Args:
+        hidden (tf.Tensor): Output of the last hidden layer.
+        output_signature (pytree of TensorSignatures): Output signature.
+        output_activation: Activation of every head. See
+            tf.keras.layers.Activation docstring for possible values. For now
+            we only support the same activation for all heads.
+            TODO(koz4k): Lift this restriction.
+
+    Returns:
+        Pytree of head output tensors.
+    """
+    def init_head(signature):
+        assert signature.dtype == np.float32
+        (depth,) = signature.shape
+        return keras.layers.Dense(depth, activation=output_activation)(hidden)
+    return data.nested_map(init_head, output_signature)
+
+
 @gin.configurable
-def mlp(input_signature, hidden_sizes=(32,), activation='relu',
+def mlp(network_signature, hidden_sizes=(32,), activation='relu',
         output_activation=None):
     """Simple multilayer perceptron."""
     # TODO(koz4k): Consider moving common boilerplate code to KerasNetwork.
-    inputs = _make_inputs(input_signature)
+    inputs = _make_inputs(network_signature.input)
+
     x = inputs
     for h in hidden_sizes:
         x = keras.layers.Dense(h, activation=activation)(x)
-    outputs = keras.layers.Dense(
-        # 1 output hardcoded for now (value networks).
-        # TODO(koz4k): Lift this restriction.
-        1,
-        activation=output_activation,
-        name='predictions',
-    )(x)
 
+    outputs = _make_output_heads(x, network_signature.output, output_activation)
     return keras.Model(inputs=inputs, outputs=outputs)
 
 
 @gin.configurable
 def convnet_mnist(
-    input_signature,
+    network_signature,
     n_conv_layers=5,
     d_conv=64,
     d_ff=128,
@@ -54,7 +71,8 @@ def convnet_mnist(
     output_activation=None,
 ):
     """Simple convolutional network."""
-    inputs = _make_inputs(input_signature)
+    inputs = _make_inputs(network_signature.input)
+
     x = inputs
     for _ in range(n_conv_layers):
         x = keras.layers.Conv2D(
@@ -62,13 +80,8 @@ def convnet_mnist(
         )(x)
     x = keras.layers.Flatten()(x)
     x = keras.layers.Dense(d_ff, activation=activation)(x)
-    outputs = keras.layers.Dense(
-        # 1 output hardcoded for now (value networks).
-        # TODO(koz4k): Lift this restriction.
-        1,
-        activation=output_activation,
-        name='predictions',
-    )(x)
+
+    outputs = _make_output_heads(x, network_signature.output, output_activation)
     return keras.Model(inputs=inputs, outputs=outputs)
 
 
@@ -76,8 +89,8 @@ class KerasNetwork(core.Network):
     """Network implementation in Keras.
 
     Args:
-        input_signature (tuple): Input signature.
-        model_fn (callable): Function input_shape -> tf.keras.Model.
+        network_signature (NetworkSignature): Network signature.
+        model_fn (callable): Function network_signature -> tf.keras.Model.
         optimizer: See tf.keras.Model.compile docstring for possible values.
         loss: See tf.keras.Model.compile docstring for possible values.
         weight_decay (float): Weight decay to apply to parameters.
@@ -90,7 +103,7 @@ class KerasNetwork(core.Network):
 
     def __init__(
         self,
-        input_signature,
+        network_signature,
         model_fn=mlp,
         optimizer='adam',
         loss='mean_squared_error',
@@ -99,8 +112,8 @@ class KerasNetwork(core.Network):
         train_callbacks=None,
         **compile_kwargs
     ):
-        super().__init__(input_signature)
-        self._model = model_fn(input_signature)
+        super().__init__(network_signature)
+        self._model = model_fn(network_signature)
         self._add_weight_decay(self._model, weight_decay)
         self._model.compile(optimizer=optimizer,
                             loss=loss,

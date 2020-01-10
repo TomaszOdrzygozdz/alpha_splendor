@@ -10,9 +10,9 @@ class Trainer:
     learning on a tree.
     """
 
-    def __init__(self, input_signature):
+    def __init__(self, network_signature):
         """No-op constructor just to specify the interface."""
-        del input_signature
+        del network_signature
 
     def add_episode(self, episode):
         """Adds an episode to memory."""

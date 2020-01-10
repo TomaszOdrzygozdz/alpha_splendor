@@ -14,7 +14,10 @@ from alpacka.networks import keras as keras_networks
 @pytest.fixture
 def keras_mlp():
     return keras_networks.KerasNetwork(
-        input_signature=data.TensorSignature(shape=(13,), dtype=np.float32)
+        network_signature=data.NetworkSignature(
+            input=data.TensorSignature(shape=(13,), dtype=np.float32),
+            output=data.TensorSignature(shape=(1,), dtype=np.float32),
+        )
     )
 
 
@@ -31,8 +34,9 @@ def dataset():
 def test_model_valid(model_fn, input_shape, output_shape):
     network = keras_networks.KerasNetwork(
         model_fn=model_fn,
-        input_signature=data.TensorSignature(
-            shape=input_shape, dtype=np.float32
+        network_signature=data.NetworkSignature(
+            input=data.TensorSignature(shape=input_shape, dtype=np.float32),
+            output=data.TensorSignature(shape=output_shape, dtype=np.float32),
         ),
     )
     batch_size = 7
@@ -41,6 +45,7 @@ def test_model_valid(model_fn, input_shape, output_shape):
     assert out.shape == (batch_size,) + output_shape
 
 
+# TODO(koz4k): Switch to MNIST to test multidimensional outputs.
 def test_keras_mlp_train_epoch_on_boston_housing(keras_mlp, dataset):
     # Set up
     (x_train, y_train) = dataset

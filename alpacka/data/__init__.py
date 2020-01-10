@@ -52,3 +52,10 @@ TensorSignature = collections.namedtuple(
 # Register TensorSignature as a leaf type, so we can for example do nested_map
 # over a structure of TensorSignatures to initialize a pytree of arrays.
 register_leaf_type(TensorSignature)
+
+
+# Signature of a network: input -> output. Both input and output are pytrees of
+# TensorSignatures.
+NetworkSignature = collections.namedtuple(
+    'NetworkSignature', ['input', 'output']
+)

@@ -90,7 +90,7 @@ class ShootingAgent(base.OnlineAgent):
 
         # TODO(pj): Request network_fn and params here with yield.
         network_fn = functools.partial(
-            networks.DummyNetwork, input_signature=None
+            networks.DummyNetwork, network_signature=None
         )
         params = None
 
