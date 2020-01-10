@@ -94,7 +94,7 @@ def puct_exploration_bonus(child_count, parent_count):
         parent_count (int): Number of visits in the parent node so far.
 
     Returns:
-        float: Exploration bonus to apply to the child. In this case, 0.
+        float: Exploration bonus to apply to the child.
     """
     return math.sqrt(parent_count) / (child_count + 1)
 
