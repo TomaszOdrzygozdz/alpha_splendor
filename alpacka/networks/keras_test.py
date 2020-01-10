@@ -7,12 +7,15 @@ import numpy as np
 import pytest
 from tensorflow import keras
 
+from alpacka import data
 from alpacka.networks import keras as keras_networks
 
 
 @pytest.fixture
 def keras_mlp():
-    return keras_networks.KerasNetwork(input_shape=(13,))
+    return keras_networks.KerasNetwork(
+        input_signature=data.TensorSignature(shape=(13,), dtype=np.float32)
+    )
 
 
 @pytest.fixture
@@ -27,7 +30,10 @@ def dataset():
 ])
 def test_model_valid(model_fn, input_shape, output_shape):
     network = keras_networks.KerasNetwork(
-        model_fn=model_fn, input_shape=input_shape
+        model_fn=model_fn,
+        input_signature=data.TensorSignature(
+            shape=input_shape, dtype=np.float32
+        ),
     )
     batch_size = 7
     inp = np.zeros((batch_size,) + input_shape)

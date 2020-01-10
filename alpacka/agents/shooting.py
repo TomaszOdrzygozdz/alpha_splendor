@@ -89,7 +89,9 @@ class ShootingAgent(base.OnlineAgent):
         del observation
 
         # TODO(pj): Request network_fn and params here with yield.
-        network_fn = functools.partial(networks.DummyNetwork, input_shape=None)
+        network_fn = functools.partial(
+            networks.DummyNetwork, input_signature=None
+        )
         params = None
 
         # Lazy initialize batch stepper

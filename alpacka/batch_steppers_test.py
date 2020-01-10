@@ -91,7 +91,9 @@ class _TestAgent(agents.OnlineAgent):
 class _TestNetwork(networks.DummyNetwork):
 
     def __init__(self, inputs, outputs):
-        super().__init__(input_shape=(1,))
+        super().__init__(
+            input_signature=data.TensorSignature(shape=(1,), dtype=np.float32)
+        )
         self._inputs = inputs
         self._outputs = outputs
 
@@ -240,7 +242,7 @@ def test_ray_batch_stepper_worker_members_initialization_with_gin_config():
     bs = batch_steppers.RayBatchStepper(
         env_class=env_class,
         agent_class=agent_class,
-        network_fn=functools.partial(network_class, input_shape=None),
+        network_fn=functools.partial(network_class, input_signature=None),
         n_envs=n_envs
     )
     bs.run_episode_batch(None,

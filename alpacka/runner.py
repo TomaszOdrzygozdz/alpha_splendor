@@ -9,6 +9,7 @@ import gin
 
 from alpacka import agents
 from alpacka import batch_steppers
+from alpacka import data
 from alpacka import envs
 from alpacka import metric_logging
 from alpacka import networks
@@ -56,8 +57,10 @@ class Runner:
         self._output_dir = os.path.expanduser(output_dir)
         os.makedirs(self._output_dir, exist_ok=True)
 
-        input_shape = self._infer_input_shape(env_class)
-        network_fn = functools.partial(network_class, input_shape=input_shape)
+        input_signature = self._infer_input_signature(env_class)
+        network_fn = functools.partial(
+            network_class, input_signature=input_signature
+        )
 
         if env_kwargs:
             env_fn = functools.partial(env_class, **env_kwargs)
@@ -72,19 +75,21 @@ class Runner:
         )
         self._episode_time_limit = episode_time_limit
         self._network = network_fn()
-        self._trainer = trainer_class(input_shape)
+        self._trainer = trainer_class(input_signature)
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
         self._epoch = 0
 
     @staticmethod
-    def _infer_input_shape(env_class):
+    def _infer_input_signature(env_class):
         # For now we assume that all Networks take an observation as input.
         # TODO(koz4k): Lift this requirement.
         # Initialize an environment to get observation_space.
         # TODO(koz4k): Figure something else out if this becomes a problem.
         env = env_class()
-        return env.observation_space.shape
+        return data.TensorSignature(
+            shape=env.observation_space.shape, dtype=env.observation_space.dtype
+        )
 
     def _log_episode_metrics(self, episodes):
         return_mean = sum(
