@@ -355,3 +355,11 @@ class StochasticMCTSAgent(base.OnlineAgent):
         node = transition.agent_info['node']
         value = node.value
         return transition._replace(agent_info={'value': value})
+
+    @staticmethod
+    def network_signature(observation_space, action_space):
+        del action_space
+        return data.NetworkSignature(
+            input=space_utils.space_signature(observation_space),
+            output=data.TensorSignature(shape=(1,), dtype=np.float32),
+        )

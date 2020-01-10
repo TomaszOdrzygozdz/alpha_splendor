@@ -5,6 +5,7 @@
 import gin
 import numpy as np
 
+from alpacka import data
 from alpacka.agents import base
 from alpacka.utils import space as space_utils
 
@@ -353,6 +354,14 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         node = transition.agent_info['node']
         value = node.value_acc.target().item()
         return transition._replace(agent_info={'value': value})
+
+    @staticmethod
+    def network_signature(observation_space, action_space):
+        del action_space
+        return data.NetworkSignature(
+            input=space_utils.space_signature(observation_space),
+            output=data.TensorSignature(shape=(1,), dtype=np.float32),
+        )
 
 
 def td_backup(node, action, value, gamma):

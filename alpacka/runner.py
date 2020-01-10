@@ -58,10 +58,8 @@ class Runner:
         self._output_dir = os.path.expanduser(output_dir)
         os.makedirs(self._output_dir, exist_ok=True)
 
-        input_signature = self._infer_input_signature(env_class)
-        network_signature = data.NetworkSignature(
-            input=input_signature,
-            output=data.TensorSignature(shape=(1,), dtype=np.float32),
+        network_signature = self._infer_network_signature(
+            env_class, agent_class
         )
         network_fn = functools.partial(
             network_class, network_signature=network_signature
@@ -86,15 +84,12 @@ class Runner:
         self._epoch = 0
 
     @staticmethod
-    def _infer_input_signature(env_class):
-        # For now we assume that all Networks take an observation as input.
-        # TODO(koz4k): Lift this requirement.
-        # Initialize an environment to get observation_space.
+    def _infer_network_signature(env_class, agent_class):
+        # Initialize an environment and an agent to get a network signature.
         # TODO(koz4k): Figure something else out if this becomes a problem.
         env = env_class()
-        return data.TensorSignature(
-            shape=env.observation_space.shape, dtype=env.observation_space.dtype
-        )
+        agent = agent_class()
+        return agent.network_signature(env.observation_space, env.action_space)
 
     def _log_episode_metrics(self, episodes):
         return_mean = sum(
