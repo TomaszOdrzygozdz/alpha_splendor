@@ -60,9 +60,10 @@ class Agent:
         """
         raise NotImplementedError
 
-    @staticmethod
-    def network_signature(observation_space, action_space):  # pylint: disable=redundant-returns-doc,useless-return
+    def network_signature(self, observation_space, action_space):  # pylint: disable=no-self-use,redundant-returns-doc,useless-return
         """Defines the signature of networks used by this Agent.
+
+        Overriding is optional.
 
         Args:
             observation_space (gym.Space): Environment observation space.
