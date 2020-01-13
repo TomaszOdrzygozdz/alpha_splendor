@@ -8,5 +8,8 @@ from alpacka import testing
 def test_integration_with_cartpole():
     env = envs.CartPole()
     agent = agents.DeterministicMCTSAgent(n_passes=2)
-    episode = testing.run_with_dummy_network(agent.solve(env))
+    network_sig = agent.network_signature(
+        env.observation_space, env.action_space
+    )
+    episode = testing.run_with_dummy_network(agent.solve(env), network_sig)
     assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member

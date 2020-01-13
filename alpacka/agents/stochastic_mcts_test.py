@@ -51,6 +51,7 @@ def test_integration_with_cartpole():
         rollout_time_limit=2,
     ),
     agents.stochastic_mcts.ValueNetworkNewLeafRater,
+    agents.stochastic_mcts.QualityNetworkNewLeafRater,
 ])
 def test_act_doesnt_change_env_state(new_leaf_rater_class):
     env = envs.CartPole()
@@ -62,7 +63,10 @@ def test_act_doesnt_change_env_state(new_leaf_rater_class):
     testing.run_without_suspensions(agent.reset(env, observation))
 
     state_before = env.clone_state()
-    testing.run_with_dummy_network(agent.act(observation))
+    network_sig = agent.network_signature(
+        env.observation_space, env.action_space
+    )
+    testing.run_with_dummy_network(agent.act(observation), network_sig)
     state_after = env.clone_state()
     np.testing.assert_equal(state_before, state_after)
 

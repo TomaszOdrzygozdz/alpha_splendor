@@ -56,11 +56,25 @@ def run_without_suspensions(coroutine):
         return e.value
 
 
-def run_with_dummy_network(coroutine):
+def run_with_dummy_network(coroutine, network_signature):
+    """Runs a coroutine with a dummy network.
+
+    Args:
+        coroutine: Coroutine yielding network requests.
+        network_signature (NetworkSignature or None): Signature of the network
+            to emulate, or None if the coroutine should not need a network.
+
+    Returns:
+        Return value of the coroutine.
+    """
     try:
         request = next(coroutine)
         while True:
             batch_size = request.shape[0]
-            request = coroutine.send(np.zeros((batch_size, 1)))
+            assert network_signature is not None, 'Coroutine needs a network.'
+            output_sig = network_signature.output
+            request = coroutine.send(np.zeros(
+                (batch_size,) + output_sig.shape, dtype=output_sig.dtype
+            ))
     except StopIteration as e:
         return e.value
