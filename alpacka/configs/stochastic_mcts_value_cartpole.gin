@@ -21,8 +21,7 @@ StochasticMCTSAgent.discount = 0.99
 StochasticMCTSAgent.exploration_bonus_fn = @alpacka.agents.stochastic_mcts.puct_exploration_bonus
 StochasticMCTSAgent.exploration_weight = 1.0
 StochasticMCTSAgent.n_passes = 10
-StochasticMCTSAgent.rate_new_leaves_fn = \
-    @alpacka.agents.stochastic_mcts.rate_new_leaves_with_value_network
+StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.ValueNetworkNewLeafRater
 
 # Parameters for mlp:
 # ==============================================================================
@@ -34,7 +33,7 @@ mlp.output_activation = None
 # ==============================================================================
 # None.
 
-# Parameters for rate_new_leaves_with_value_network:
+# Parameters for ValueNetworkNewLeafRater:
 # ==============================================================================
 # None.
 
