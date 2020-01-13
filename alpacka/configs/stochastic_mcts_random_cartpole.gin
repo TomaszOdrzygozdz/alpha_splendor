@@ -20,7 +20,7 @@ StochasticMCTSAgent.discount = 0.99
 StochasticMCTSAgent.exploration_bonus_fn = @alpacka.agents.stochastic_mcts.puct_exploration_bonus
 StochasticMCTSAgent.exploration_weight = 1.0
 StochasticMCTSAgent.n_passes = 2
-StochasticMCTSAgent.rate_new_leaves_fn = @alpacka.agents.stochastic_mcts.rate_new_leaves_with_rollouts
+StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.RolloutNewLeafRater
 
 # Parameters for RandomAgent:
 # ==============================================================================
@@ -30,10 +30,10 @@ StochasticMCTSAgent.rate_new_leaves_fn = @alpacka.agents.stochastic_mcts.rate_ne
 # ==============================================================================
 # None.
 
-# Parameters for rate_new_leaves_with_rollouts:
+# Parameters for RolloutNewLeafRater:
 # ==============================================================================
-rate_new_leaves_with_rollouts.rollout_agent_class = @alpacka.agents.RandomAgent
-rate_new_leaves_with_rollouts.rollout_time_limit = 20
+RolloutNewLeafRater.rollout_agent_class = @alpacka.agents.RandomAgent
+RolloutNewLeafRater.rollout_time_limit = 20
 
 # Parameters for Runner:
 # ==============================================================================

@@ -11,76 +11,116 @@ from alpacka.agents import core
 from alpacka.utils import space as space_utils
 
 
+class NewLeafRater:
+    """Base class for rating the children of an expanded leaf."""
+
+    def __init__(self, discount):
+        """Initializes NewLeafRater.
+
+        Args:
+            discount (float): Discount factor.
+        """
+        self._discount = discount
+
+    def __call__(self, observation, model):
+        """Rates the children of an expanded leaf.
+
+        Args:
+            observation (np.ndarray): Observation received at leaf.
+            model (gym.Env): Model environment.
+
+        Yields:
+            Network prediction requests.
+
+        Returns:
+            list: List of qualities for all actions played from leaf.
+        """
+        raise NotImplementedError
+
+    def network_signature(self, observation_space, action_space):
+        """Defines the signature of networks used by this NewLeafRater.
+
+        Args:
+            observation_space (gym.Space): Environment observation space.
+            action_space (gym.Space): Environment action space.
+
+        Returns:
+            NetworkSignature or None: Either the network signature or None if
+            the NewLeafRater doesn't use a network.
+        """
+        raise NotImplementedError
+
+
 @gin.configurable
-def rate_new_leaves_with_rollouts(
-    leaf,
-    observation,
-    model,
-    discount,
-    rollout_agent_class=core.RandomAgent,
-    rollout_time_limit=100,
-):
-    """Basic rate_new_leaves_fn based on rollouts with an Agent.
+class RolloutNewLeafRater(NewLeafRater):
+    """Rates new leaves using rollouts with an Agent."""
 
-    Args:
-        leaf (TreeNode): Node whose children are to be rated.
-        observation (np.ndarray): Observation received at leaf.
-        model (gym.Env): Model environment.
-        discount (float): Discount factor.
-        rollout_agent_class (type): Agent class to use for rollouts.
-        rollout_time_limit (int): Maximum number of timesteps for rollouts.
+    def __init__(
+        self,
+        discount,
+        rollout_agent_class=core.RandomAgent,
+        rollout_time_limit=100,
+    ):
+        super().__init__(discount)
+        self._agent = rollout_agent_class()
+        self._time_limit = rollout_time_limit
 
-    Yields:
-        Network prediction requests.
+    def __call__(self, observation, model):
+        init_state = model.clone_state()
 
-    Returns:
-        list: List of qualities for all actions played from leaf.
-    """
-    del leaf
-    agent = rollout_agent_class()
-    init_state = model.clone_state()
+        child_qualities = []
+        for init_action in space_utils.space_iter(model.action_space):
+            (observation, init_reward, done, _) = model.step(init_action)
+            yield from self._agent.reset(model, observation)
+            value = 0
+            total_discount = 1
+            time = 0
+            while not done and time < self._time_limit:
+                (action, _) = yield from self._agent.act(observation)
+                (observation, reward, done, _) = model.step(action)
+                value += total_discount * reward
+                total_discount *= self._discount
+                time += 1
+            child_qualities.append(init_reward + self._discount * value)
+            model.restore_state(init_state)
+        return child_qualities
 
-    child_qualities = []
-    for init_action in space_utils.space_iter(model.action_space):
-        (observation, init_reward, done, _) = model.step(init_action)
-        yield from agent.reset(model, observation)
-        value = 0
-        total_discount = 1
-        time = 0
-        while not done and time < rollout_time_limit:
-            (action, _) = yield from agent.act(observation)
+    def network_signature(self, observation_space, action_space):
+        return self._agent.network_signature(observation_space, action_space)
+
+
+@gin.configurable
+class ValueNetworkNewLeafRater(NewLeafRater):
+    """Rates new leaves using a value network."""
+
+    def __call__(self, observation, model):
+        del observation
+
+        init_state = model.clone_state()
+
+        def step_and_rewind(action):
             (observation, reward, done, _) = model.step(action)
-            value += total_discount * reward
-            total_discount *= discount
-            time += 1
-        child_qualities.append(init_reward + discount * value)
-        model.restore_state(init_state)
-    return child_qualities
+            model.restore_state(init_state)
+            return (observation, reward, done)
 
+        (observations, rewards, dones) = data.nested_stack([
+            step_and_rewind(action)
+            for action in space_utils.space_iter(model.action_space)
+        ])
+        # Run the network to predict values for children.
+        values = yield observations
+        # (batch_size, 1) -> (batch_size,)
+        values = np.reshape(values, -1)
+        # Compute the final qualities, masking out the "done" states.
+        return list(rewards + self._discount * values * (1 - dones))
 
-@gin.configurable
-def rate_new_leaves_with_value_network(leaf, observation, model, discount):
-    """rate_new_leaves_fn based on a value network (observation -> value)."""
-    del leaf
-    del observation
-
-    init_state = model.clone_state()
-
-    def step_and_rewind(action):
-        (observation, reward, done, _) = model.step(action)
-        model.restore_state(init_state)
-        return (observation, reward, done)
-
-    (observations, rewards, dones) = data.nested_stack([
-        step_and_rewind(action)
-        for action in space_utils.space_iter(model.action_space)
-    ])
-    # Run the network to predict values for children.
-    values = yield observations
-    # (batch_size, 1) -> (batch_size,)
-    values = np.reshape(values, -1)
-    # Compute the final qualities, masking out the "done" states.
-    return list(rewards + discount * values * (1 - dones))
+    def network_signature(self, observation_space, action_space):
+        del action_space
+        # Input: observation, output: scalar value.
+        return data.NetworkSignature(
+            input=space_utils.space_signature(observation_space),
+            output=data.TensorSignature(shape=(1,)),
+        )
 
 
 @gin.configurable
@@ -113,7 +153,7 @@ class TreeNode:
 
         Args:
             init_quality (float or None): Quality received from
-                the rate_new_leaves_fn for this node, or None if it's the root.
+                the NewLeafRater for this node, or None if it's the root.
         """
         self._quality_sum = 0
         self._quality_count = 0
@@ -168,7 +208,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self,
         n_passes=10,
         discount=0.99,
-        rate_new_leaves_fn=rate_new_leaves_with_rollouts,
+        new_leaf_rater_class=RolloutNewLeafRater,
         exploration_bonus_fn=puct_exploration_bonus,
         exploration_weight=1.0,
     ):
@@ -177,10 +217,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
         Args:
             n_passes (int): Number of MCTS passes per act().
             discount (float): Discount factor.
-            rate_new_leaves_fn (callable): Coroutine estimating qualities of new
-                leaves. Can ask for predictions using a Network. Should return
-                qualities for every child of a given leaf node. Signature:
-                (leaf, observation, model, discount) -> [quality].
+            new_leaf_rater_class (type): NewLeafRater for estimating qualities
+                of new leaves.
             exploration_bonus_fn (callable): Function calculating an
                 exploration bonus for a given node. It's added to the node's
                 quality when choosing a node to explore in an MCTS pass.
@@ -190,7 +228,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         super().__init__()
         self.n_passes = n_passes
         self._discount = discount
-        self._rate_new_leaves = rate_new_leaves_fn
+        self._new_leaf_rater = new_leaf_rater_class(self._discount)
         self._exploration_bonus = exploration_bonus_fn
         self._exploration_weight = exploration_weight
         self._model = None
@@ -279,8 +317,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
             # In a "done" state, cumulative future return is 0.
             return 0
 
-        child_qualities = yield from self._rate_new_leaves(
-            leaf, observation, self._model, self._discount
+        child_qualities = yield from self._new_leaf_rater(
+            observation, self._model
         )
         leaf.children = [TreeNode(quality) for quality in child_qualities]
         action = self._choose_action(leaf, exploratory=True)
@@ -310,8 +348,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
             3. Backpropagation of the value of the best child of the old leaf.
 
         During leaf expansion, new children are rated only using
-        the rate_new_leaves_fn - no actual stepping into those states in the
-        environment takes place for efficiency, so that rate_new_leaves_fn can
+        the NewLeafRater - no actual stepping into those states in the
+        environment takes place for efficiency, so that NewLeafRater can
         be implemented by running a neural network that rates all children of
         a given node at the same time. In case of a "done", traversal is
         interrupted, the leaf is not expanded and value 0 is backpropagated.
@@ -356,10 +394,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
         value = node.value
         return transition._replace(agent_info={'value': value})
 
-    @staticmethod
-    def network_signature(observation_space, action_space):
-        del action_space
-        return data.NetworkSignature(
-            input=space_utils.space_signature(observation_space),
-            output=data.TensorSignature(shape=(1,)),
+    def network_signature(self, observation_space, action_space):
+        # Delegate defining the network signature to NewLeafRater. This is the
+        # only part of the agent that uses a network, so it shiuld decide what
+        # sort of network it needs.
+        return self._new_leaf_rater.network_signature(
+            observation_space, action_space
         )
