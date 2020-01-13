@@ -2,7 +2,6 @@
 
 import warnings
 
-import gin
 import numpy as np
 import tensorflow as tf
 
