@@ -11,30 +11,33 @@ from alpacka import envs
 from alpacka import testing
 
 
-@asyncio.coroutine
-def rate_new_leaves_tabular(
-    leaf, observation, model, discount, state_values
-):
+class TabularNewLeafRater(agents.stochastic_mcts.NewLeafRater):
     """Rates new leaves based on hardcoded values."""
-    del leaf
-    del observation
-    init_state = model.clone_state()
 
-    def quality(action):
-        (observation, reward, _, _) = model.step(action)
-        model.restore_state(init_state)
-        # State is the same as observation.
-        return reward + discount * state_values[observation]
+    def __init__(self, discount, state_values):
+        super().__init__(discount)
+        self._state_values = state_values
 
-    return [quality(action) for action in range(model.action_space.n)]
+    @asyncio.coroutine
+    def __call__(self, observation, model):
+        del observation
+        init_state = model.clone_state()
+
+        def quality(action):
+            (observation, reward, _, _) = model.step(action)
+            model.restore_state(init_state)
+            # State is the same as observation.
+            return reward + self._discount * self._state_values[observation]
+
+        return [quality(action) for action in range(model.action_space.n)]
 
 
 def test_integration_with_cartpole():
     env = envs.CartPole()
     agent = agents.StochasticMCTSAgent(
         n_passes=2,
-        rate_new_leaves_fn=functools.partial(
-            agents.stochastic_mcts.rate_new_leaves_with_rollouts,
+        new_leaf_rater_class=functools.partial(
+            agents.stochastic_mcts.RolloutNewLeafRater,
             rollout_time_limit=2,
         ),
     )
@@ -42,24 +45,28 @@ def test_integration_with_cartpole():
     assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member
 
 
-@pytest.mark.parametrize('rate_new_leaves_fn', [
+@pytest.mark.parametrize('new_leaf_rater_class', [
     functools.partial(
-        agents.stochastic_mcts.rate_new_leaves_with_rollouts,
+        agents.stochastic_mcts.RolloutNewLeafRater,
         rollout_time_limit=2,
     ),
-    agents.stochastic_mcts.rate_new_leaves_with_value_network,
+    agents.stochastic_mcts.ValueNetworkNewLeafRater,
+    agents.stochastic_mcts.QualityNetworkNewLeafRater,
 ])
-def test_act_doesnt_change_env_state(rate_new_leaves_fn):
+def test_act_doesnt_change_env_state(new_leaf_rater_class):
     env = envs.CartPole()
     agent = agents.StochasticMCTSAgent(
         n_passes=2,
-        rate_new_leaves_fn=rate_new_leaves_fn,
+        new_leaf_rater_class=new_leaf_rater_class,
     )
     observation = env.reset()
     testing.run_without_suspensions(agent.reset(env, observation))
 
     state_before = env.clone_state()
-    testing.run_with_dummy_network(agent.act(observation))
+    network_sig = agent.network_signature(
+        env.observation_space, env.action_space
+    )
+    testing.run_with_dummy_network(agent.act(observation), network_sig)
     state_after = env.clone_state()
     np.testing.assert_equal(state_before, state_after)
 
@@ -67,7 +74,7 @@ def test_act_doesnt_change_env_state(rate_new_leaves_fn):
 def make_one_level_binary_tree(
     left_value, right_value, left_reward=0, right_reward=0
 ):
-    """Makes a TabularEnv and rate_new_leaves_fn for a 1-level binary tree."""
+    """Makes a TabularEnv and new_leaf_rater_class for a 1-level binary tree."""
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
     (root_state, left_state, right_state) = (0, 1, 2)
@@ -85,8 +92,8 @@ def make_one_level_binary_tree(
             right_state: {0: (5, 0, True), 1: (6, 0, True)},
         }
     )
-    rate_new_leaves_fn = functools.partial(
-        rate_new_leaves_tabular,
+    new_leaf_rater_class = functools.partial(
+        TabularNewLeafRater,
         state_values={
             root_state: 0,
             left_state: left_value,
@@ -95,7 +102,7 @@ def make_one_level_binary_tree(
             3: 0, 4: 0, 5: 0, 6: 0,
         },
     )
-    return (env, rate_new_leaves_fn)
+    return (env, new_leaf_rater_class)
 
 
 @pytest.mark.parametrize(
@@ -116,12 +123,12 @@ def test_decision_after_one_pass(
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
     # 1 pass, should choose depending on qualities.
-    (env, rate_new_leaves_fn) = make_one_level_binary_tree(
+    (env, new_leaf_rater_class) = make_one_level_binary_tree(
         left_value, right_value, left_reward, right_reward
     )
     agent = agents.StochasticMCTSAgent(
         n_passes=1,
-        rate_new_leaves_fn=rate_new_leaves_fn,
+        new_leaf_rater_class=new_leaf_rater_class,
     )
     observation = env.reset()
     testing.run_without_suspensions(agent.reset(env, observation))
@@ -139,8 +146,8 @@ def test_stops_on_done():
     )
     agent = agents.StochasticMCTSAgent(
         n_passes=2,
-        rate_new_leaves_fn=functools.partial(
-            rate_new_leaves_tabular,
+        new_leaf_rater_class=functools.partial(
+            TabularNewLeafRater,
             state_values={0: 0, 1: 0},
         ),
     )
@@ -173,8 +180,8 @@ def test_backtracks_because_of_value():
     )
     agent = agents.StochasticMCTSAgent(
         n_passes=2,
-        rate_new_leaves_fn=functools.partial(
-            rate_new_leaves_tabular,
+        new_leaf_rater_class=functools.partial(
+            TabularNewLeafRater,
             state_values={
                 0: 0,
                 1: 0,
@@ -194,12 +201,12 @@ def test_backtracks_because_of_reward():
     # 0, action 0 -> 1 (high value, very low reward)
     # 0, action 1 -> 2 (medium value)
     # 2 passes, should choose 1.
-    (env, rate_new_leaves_fn) = make_one_level_binary_tree(
+    (env, new_leaf_rater_class) = make_one_level_binary_tree(
         left_value=1, left_reward=-10, right_value=0, right_reward=0
     )
     agent = agents.StochasticMCTSAgent(
         n_passes=2,
-        rate_new_leaves_fn=rate_new_leaves_fn,
+        new_leaf_rater_class=new_leaf_rater_class,
     )
     observation = env.reset()
     testing.run_without_suspensions(agent.reset(env, observation))

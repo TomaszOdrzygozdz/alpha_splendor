@@ -1,14 +1,15 @@
 # Parameters for CartPole:
 # ==============================================================================
-# None.
+CartPole.solved_at = 100
 
-# Parameters for DummyNetwork:
+# Parameters for KerasNetwork:
 # ==============================================================================
-# None.
-
-# Parameters for DummyTrainer:
-# ==============================================================================
-# None.
+KerasNetwork.loss = 'mean_squared_error'
+KerasNetwork.metrics = ['mae', 'mse']
+KerasNetwork.model_fn = @alpacka.networks.keras.mlp
+KerasNetwork.optimizer = 'adam'
+KerasNetwork.weight_decay = 0.0
+KerasNetwork.train_callbacks = None
 
 # Parameters for LocalBatchStepper:
 # ==============================================================================
@@ -19,30 +20,43 @@
 StochasticMCTSAgent.discount = 0.99
 StochasticMCTSAgent.exploration_bonus_fn = @alpacka.agents.stochastic_mcts.puct_exploration_bonus
 StochasticMCTSAgent.exploration_weight = 1.0
-StochasticMCTSAgent.n_passes = 2
-StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.RolloutNewLeafRater
+StochasticMCTSAgent.n_passes = 10
+StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.QualityNetworkNewLeafRater
 
-# Parameters for RandomAgent:
+# Parameters for mlp:
 # ==============================================================================
-# None.
+mlp.activation = 'relu'
+mlp.hidden_sizes = (16,)
+mlp.output_activation = None
 
 # Parameters for puct_exploration_bonus:
 # ==============================================================================
 # None.
 
-# Parameters for RolloutNewLeafRater:
+# Parameters for QualityNetworkNewLeafRater:
 # ==============================================================================
-RolloutNewLeafRater.rollout_agent_class = @alpacka.agents.RandomAgent
-RolloutNewLeafRater.rollout_time_limit = 20
+# None.
 
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.StochasticMCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.CartPole
-Runner.n_envs = 4
+Runner.n_envs = 1
 Runner.episode_time_limit = 500
 Runner.n_epochs = None
 Runner.n_precollect_epochs = 0
-Runner.network_class = @alpacka.networks.DummyNetwork
-Runner.trainer_class = @alpacka.trainers.DummyTrainer
+Runner.network_class = @alpacka.networks.KerasNetwork
+Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
+
+# Parameters for SupervisedTrainer:
+# ==============================================================================
+SupervisedTrainer.target_fn = @alpacka.trainers.supervised.target_qualities
+SupervisedTrainer.batch_size = 64
+SupervisedTrainer.n_steps_per_epoch = 100
+SupervisedTrainer.replay_buffer_capacity = 1000000
+SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
+
+# Parameters for target_qualities:
+# ==============================================================================
+# None.

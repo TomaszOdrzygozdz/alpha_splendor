@@ -205,7 +205,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
 
         results = zip(*[
             step_and_rewind(action)
-            for action in space_utils.space_iter(
+            for action in space_utils.element_iter(
                 self._model.action_space
             )
         ])
@@ -277,7 +277,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         value_batch = yield np.array(obs)
 
         for idx, action in enumerate(
-            space_utils.space_iter(self._action_space)
+            space_utils.element_iter(self._action_space)
         ):
             leaf.rewards[action] = rewards[idx]
             new_node = self._state2node.get(states[idx], None)
@@ -359,7 +359,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
     def network_signature(observation_space, action_space):
         del action_space
         return data.NetworkSignature(
-            input=space_utils.space_signature(observation_space),
+            input=space_utils.signature(observation_space),
             output=data.TensorSignature(shape=(1,)),
         )
 
