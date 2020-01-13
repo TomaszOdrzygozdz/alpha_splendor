@@ -56,7 +56,7 @@ class Agent:
 
         Returns:
             (Agent/Trainer-specific) Episode object summarizing the collected
-            data for training the Network.
+            data for training the TrainableNetwork.
         """
         raise NotImplementedError
 

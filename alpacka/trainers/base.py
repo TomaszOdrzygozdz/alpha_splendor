@@ -11,13 +11,26 @@ class Trainer:
     """
 
     def __init__(self, network_signature):
-        """No-op constructor just to specify the interface."""
+        """No-op constructor just to specify the interface.
+
+        Args:
+            network_signature (pytree): Input signature for the network.
+        """
         del network_signature
 
     def add_episode(self, episode):
-        """Adds an episode to memory."""
+        """Adds an episode to memory.
+
+        Args:
+            episode (Agent/Trainer-specific): Episode object summarizing the
+                collected data for training the TrainableNetwork.
+        """
         raise NotImplementedError
 
     def train_epoch(self, network):
-        """Runs one epoch of training."""
+        """Runs one epoch of training.
+
+        Args:
+            network (TrainableNetwork): TrainableNetwork instance to be trained.
+        """
         raise NotImplementedError
