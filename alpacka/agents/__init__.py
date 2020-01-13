@@ -18,6 +18,7 @@ def configure_agent(agent_class):
 
 
 RandomAgent = configure_agent(core.RandomAgent)  # pylint: disable=invalid-name
+SoftmaxAgent = configure_agent(core.SoftmaxAgent)  # pylint: disable=invalid-name
 DeterministicMCTSAgent = configure_agent(  # pylint: disable=invalid-name
     deterministic_mcts.DeterministicMCTSAgent
 )
