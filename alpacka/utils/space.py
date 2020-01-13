@@ -5,8 +5,8 @@ import gym
 from alpacka import data
 
 
-def space_iter(action_space):
-    """Returns an iterator over points in a gym space."""
+def element_iter(action_space):
+    """Returns an iterator over elements of a gym space."""
     try:
         return iter(action_space)
     except TypeError:
@@ -18,12 +18,12 @@ def space_iter(action_space):
             ))
 
 
-def space_signature(space):
+def signature(space):
     """Returns a TensorSignature of elements of the given space."""
     return data.TensorSignature(shape=space.shape, dtype=space.dtype)
 
 
-def space_max_size(space):
+def max_size(space):
     """Returns the maximum number of elements in the space."""
     try:
         return space.max_size

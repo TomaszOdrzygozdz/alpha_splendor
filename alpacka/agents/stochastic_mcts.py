@@ -69,7 +69,7 @@ class RolloutNewLeafRater(NewLeafRater):
         init_state = model.clone_state()
 
         child_qualities = []
-        for init_action in space_utils.space_iter(model.action_space):
+        for init_action in space_utils.element_iter(model.action_space):
             (observation, init_reward, done, _) = model.step(init_action)
             yield from self._agent.reset(model, observation)
             value = 0
@@ -105,7 +105,7 @@ class ValueNetworkNewLeafRater(NewLeafRater):
 
         (observations, rewards, dones) = data.nested_stack([
             step_and_rewind(action)
-            for action in space_utils.space_iter(model.action_space)
+            for action in space_utils.element_iter(model.action_space)
         ])
         # Run the network to predict values for children.
         values = yield observations
@@ -118,7 +118,7 @@ class ValueNetworkNewLeafRater(NewLeafRater):
         del action_space
         # Input: observation, output: scalar value.
         return data.NetworkSignature(
-            input=space_utils.space_signature(observation_space),
+            input=space_utils.signature(observation_space),
             output=data.TensorSignature(shape=(1,)),
         )
 
@@ -133,10 +133,10 @@ class QualityNetworkNewLeafRater(NewLeafRater):
         return list(qualities[0])
 
     def network_signature(self, observation_space, action_space):
-        n_actions = space_utils.space_max_size(action_space)
+        n_actions = space_utils.max_size(action_space)
         # Input: observation, output: scalar value.
         return data.NetworkSignature(
-            input=space_utils.space_signature(observation_space),
+            input=space_utils.signature(observation_space),
             output=data.TensorSignature(shape=(n_actions,)),
         )
 
@@ -339,9 +339,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
             observation, self._model
         )
         # This doesn't work with dynamic action spaces. TODO(koz4k): Fix.
-        assert len(child_qualities) == space_utils.space_max_size(
-            self._action_space
-        )
+        assert len(child_qualities) == space_utils.max_size(self._action_space)
         leaf.children = [TreeNode(quality) for quality in child_qualities]
         action = self._choose_action(leaf, exploratory=True)
         return leaf.children[action].quality
