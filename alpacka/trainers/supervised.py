@@ -22,6 +22,11 @@ def target_value(episode):
     )
 
 
+@gin.configurable
+def target_qualities(episode):
+    return episode.transition_batch.agent_info['qualities']
+
+
 class SupervisedTrainer(base.Trainer):
     """Supervised trainer.
 

@@ -124,6 +124,24 @@ class ValueNetworkNewLeafRater(NewLeafRater):
 
 
 @gin.configurable
+class QualityNetworkNewLeafRater(NewLeafRater):
+    """Rates new leaves using a value network."""
+
+    def __call__(self, observation, model):
+        del model
+        qualities = yield np.expand_dims(observation, axis=0)
+        return list(qualities[0])
+
+    def network_signature(self, observation_space, action_space):
+        n_actions = space_utils.space_max_size(action_space)
+        # Input: observation, output: scalar value.
+        return data.NetworkSignature(
+            input=space_utils.space_signature(observation_space),
+            output=data.TensorSignature(shape=(n_actions,)),
+        )
+
+
+@gin.configurable
 def puct_exploration_bonus(child_count, parent_count):
     """PUCT exploration bonus.
 
@@ -320,6 +338,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
         child_qualities = yield from self._new_leaf_rater(
             observation, self._model
         )
+        # This doesn't work with dynamic action spaces. TODO(koz4k): Fix.
+        assert len(child_qualities) == space_utils.space_max_size(
+            self._action_space
+        )
         leaf.children = [TreeNode(quality) for quality in child_qualities]
         action = self._choose_action(leaf, exploratory=True)
         return leaf.children[action].quality
@@ -392,11 +414,14 @@ class StochasticMCTSAgent(base.OnlineAgent):
     def postprocess_transition(transition):
         node = transition.agent_info['node']
         value = node.value
-        return transition._replace(agent_info={'value': value})
+        qualities = np.array([child.quality for child in node.children])
+        return transition._replace(
+            agent_info={'value': value, 'qualities': qualities}
+        )
 
     def network_signature(self, observation_space, action_space):
         # Delegate defining the network signature to NewLeafRater. This is the
-        # only part of the agent that uses a network, so it shiuld decide what
+        # only part of the agent that uses a network, so it should decide what
         # sort of network it needs.
         return self._new_leaf_rater.network_signature(
             observation_space, action_space
