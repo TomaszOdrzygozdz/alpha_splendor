@@ -164,7 +164,8 @@ class RayBatchStepper(BatchStepper):
         """Ray actor used to step agent-environment-network in own process."""
 
         def __init__(self, env_class, agent_class, network_fn, config):
-            gin.parse_config(config)
+            # TODO(pj): Test that skip_unknown is required!
+            gin.parse_config(config, skip_unknown=True)
 
             self.env = env_class()
             self.agent = agent_class()
