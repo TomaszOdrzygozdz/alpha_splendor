@@ -29,8 +29,10 @@ class TabularNewLeafRater(agents.stochastic_mcts.NewLeafRater):
             # State is the same as observation.
             return reward + self._discount * self._state_values[observation]
 
-        return [quality(action) for action in range(model.action_space.n)]
-
+        return [
+            (quality(action), 1 / model.action_space.n)
+            for action in range(model.action_space.n)
+        ]
 
 def test_integration_with_cartpole():
     env = envs.CartPole()
