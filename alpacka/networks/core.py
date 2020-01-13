@@ -4,13 +4,13 @@
 class Network:
     """Base class for networks."""
 
-    def __init__(self, input_shape):
+    def __init__(self, network_signature):
         """Initializes Network.
 
         Args:
-            input_shape (tuple): Input shape.
+            network_signature (NetworkSignature): Network signature.
         """
-        self._input_shape = input_shape
+        self._network_signature = network_signature
 
     def train(self, data_stream):
         """Performs one epoch of training on data prepared by the Trainer.

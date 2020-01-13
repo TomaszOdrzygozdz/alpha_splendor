@@ -16,8 +16,12 @@ def test_integration_with_keras():
     # Just a smoke test, that nothing errors out.
     n_transitions = 10
     obs_shape = (4,)
+    network_sig = data.NetworkSignature(
+        input=data.TensorSignature(shape=obs_shape),
+        output=data.TensorSignature(shape=(1,)),
+    )
     trainer = supervised.SupervisedTrainer(
-        input_shape=obs_shape,
+        network_signature=network_sig,
         target_fn=supervised.target_solved,
         batch_size=2,
         n_steps_per_epoch=3,
@@ -30,5 +34,5 @@ def test_integration_with_keras():
         return_=123,
         solved=False,
     ))
-    network = keras.KerasNetwork(input_shape=obs_shape)
+    network = keras.KerasNetwork(network_signature=network_sig)
     trainer.train_epoch(network)

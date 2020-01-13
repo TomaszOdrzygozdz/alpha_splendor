@@ -60,6 +60,22 @@ class Agent:
         """
         raise NotImplementedError
 
+    @staticmethod
+    def network_signature(observation_space, action_space):  # pylint: disable=redundant-returns-doc,useless-return
+        """Defines the signature of networks used by this Agent.
+
+        Args:
+            observation_space (gym.Space): Environment observation space.
+            action_space (gym.Space): Environment action space.
+
+        Returns:
+            NetworkSignature or None: Either the network signature or None if
+            the agent doesn't use a network.
+        """
+        del observation_space
+        del action_space
+        return None
+
 
 class OnlineAgent(Agent):
     """Base class for online agents, i.e. planning on a per-action basis.

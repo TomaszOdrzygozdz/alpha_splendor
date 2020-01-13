@@ -15,27 +15,22 @@ class UniformReplayBuffer:
     overwrites the oldest ones.
     """
 
-    def __init__(self, datapoint_spec, capacity):
+    def __init__(self, datapoint_signature, capacity):
         """Initializes the replay buffer.
 
         Args:
-            datapoint_spec (pytree): Pytree of shape tuples, defining the
-                structure of data to be stored.
+            datapoint_signature (pytree): Pytree of TensorSignatures, defining
+                the structure of data to be stored.
             capacity (int): Maximum size of the buffer.
         """
         self._capacity = capacity
         self._size = 0
         self._insert_index = 0
 
-        def init_array(shape):
-            shape = (self._capacity,) + shape
-            return np.zeros(shape)
-        self._data_buffer = data.nested_map(
-            init_array, datapoint_spec,
-            # datapoint_spec has shape tuples at leaves, we don't want to map
-            # over them so we stop one level higher.
-            stop_fn=data.is_last_level,
-        )
+        def init_array(signature):
+            shape = (self._capacity,) + signature.shape
+            return np.zeros(shape, dtype=signature.dtype)
+        self._data_buffer = data.nested_map(init_array, datapoint_signature)
 
     def add(self, stacked_datapoints):
         """Adds datapoints to the buffer.
@@ -89,17 +84,17 @@ class HierarchicalReplayBuffer:
     uniformly, in a fixed order. Each sequence of buckets has its own capacity.
     """
 
-    def __init__(self, datapoint_spec, capacity, hierarchy_depth):
+    def __init__(self, datapoint_signature, capacity, hierarchy_depth):
         """Initializes HierarchicalReplayBuffer.
 
         Args:
-            datapoint_spec (pytree): Pytree of shape tuples, defining the
-                structure of data to be stored.
+            datapoint_signature (pytree): Pytree of TensorSignatures, defining
+                the structure of data to be stored.
             capacity (int): Maximum size of the buffer.
             hierarchy_depth (int): Number of buckets in the hierarchy.
         """
         self._raw_buffer_fn = functools.partial(
-            UniformReplayBuffer, datapoint_spec, capacity
+            UniformReplayBuffer, datapoint_signature, capacity
         )
         # Data is stored in a tree, where inner nodes are dicts with fast
         # random sampling (RandomDicts) and leaves are UniformReplayBuffers.
