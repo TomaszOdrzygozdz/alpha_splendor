@@ -87,7 +87,7 @@ The logic of an RL algorithm is split into two classes: [`Agent`](alpacka/agents
 
 ### Network
 
-[`Network`](alpacka/networks/core.py) abstracts out the deep learning framework used for network training and inference. For now, we only support Keras.
+[`Network/TrainableNetwork`](alpacka/networks/core.py) abstracts out the deep learning framework used for network inference and training.
 
 ### BatchStepper
 
