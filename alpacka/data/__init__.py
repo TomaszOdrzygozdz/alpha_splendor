@@ -57,6 +57,13 @@ TensorSignature.__new__.__defaults__ = (np.float32,)  # dtype
 register_leaf_type(TensorSignature)
 
 
+# Request of a network_fn: Function () -> Network and the current parameters.
+NetworkRequest = collections.namedtuple(
+    'NetworkRequest', ['network_fn', 'params']
+)
+NetworkRequest.__new__.__defaults__ = (None, None)  # empty request
+
+
 # Signature of a network: input -> output. Both input and output are pytrees of
 # TensorSignatures.
 NetworkSignature = collections.namedtuple(

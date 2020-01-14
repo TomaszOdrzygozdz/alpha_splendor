@@ -219,9 +219,41 @@ def test_batch_steppers_run_episode_batch(max_n_requests,
     assert transition_batch.done.sum() == n_envs
 
 
+@pytest.mark.parametrize('batch_stepper_cls', [
+    batch_steppers.LocalBatchStepper,
+    batch_steppers.RayBatchStepper
+])
+def test_batch_steppers_network_request_handling(batch_stepper_cls):
+    # Set up
+    network_class = networks.DummyNetwork
+    network_fn = functools.partial(network_class, network_signature=None)
+    xparams = 'params'
+    episode = 'yoghurt'
+    n_envs = 3
+
+    class TestAgent:
+        def solve(self, _):
+            network_fn, params = yield data.NetworkRequest()
+            assert isinstance(network_fn(), network_class)
+            assert params == xparams
+            return episode
+
+    # Run
+    bs = batch_stepper_cls(
+        env_class=envs.CartPole,
+        agent_class=TestAgent,
+        network_fn=network_fn,
+        n_envs=n_envs
+    )
+
+    # Test
+    episodes = bs.run_episode_batch(xparams)
+    assert episodes == [episode] * n_envs
+
+
 class _TestWorker(batch_steppers.RayBatchStepper.Worker):
     def get_state(self):
-        return self.env, self.agent, self.network
+        return self.env, self.agent, self.request_handler.network
 
 
 @mock.patch('alpacka.batch_steppers.RayBatchStepper.Worker', _TestWorker)

@@ -45,6 +45,132 @@ class BatchStepper:
         raise NotImplementedError
 
 
+class _AgentRequestHandler:
+    """Handles requests from the agent coroutine to the network."""
+
+    def __init__(self, network_fn):
+        """Initializes AgentRequestHandler.
+
+        Args:
+            network_fn (callable): Function () -> Network.
+        """
+        self.network_fn = network_fn
+
+        self._network = None  # Lazy initialize if needed
+        self._new_params_flag = None
+
+    def run_coroutine(self, episode_cor, params):  # pylint: disable=missing-param-doc
+        """Runs an episode coroutine using the given network parameters.
+
+        Args:
+            episode_cor (coroutine): Agent.solve coroutine.
+            params (Network-dependent): Network parameters.
+
+        Returns:
+            List of completed episodes (Agent/Trainer-dependent).
+        """
+        self._new_params_flag = True
+
+        try:
+            request = next(episode_cor)
+            while True:
+                if isinstance(request, data.NetworkRequest):
+                    request_handler = self._handle_network_request
+                else:
+                    request_handler = self._handle_prediction_request
+                response = request_handler(request, params)
+                request = episode_cor.send(response)
+        except StopIteration as e:
+            return e.value  # episodes
+
+    def _handle_network_request(self, request, params):
+        del request
+        return data.NetworkRequest(self.network_fn, params)
+
+    def _handle_prediction_request(self, request, params):
+        return self.get_network(params).predict(request)
+
+    def get_network(self, params=None):
+        if self._network is None:
+            self._network = self.network_fn()
+        if params is not None and self._new_params_flag:
+            self.network.params = params
+            self._new_params_flag = False
+        return self._network
+    network = property(get_network)
+
+
+class _NetworkRequestBatcher:
+    """Batches network requests."""
+
+    def __init__(self, requests):
+        self._requests = requests
+        self._model_request = None
+
+    @property
+    def batched_request(self):
+        """Determines model request and returns it."""
+        if self._model_request is not None:
+            return self._model_request
+        self._model_request = next(x for x in self._requests if x is not None)
+        return self._model_request
+
+    def unbatch_responses(self, x):
+        return (x if req is not None else None for req in self._requests)
+
+
+class _PredictionRequestBatcher:
+    """Batches prediction requests."""
+
+    def __init__(self, requests):
+        self._requests = requests
+        self._n_agents = len(requests)
+        self._batched_request = None
+
+    @property
+    def batched_request(self):
+        """Batches requests and returns batched request."""
+        if self._batched_request is not None:
+            return self._batched_request
+
+        # Request used as a filler for coroutines that have already
+        # finished.
+        filler = next(x for x in self._requests if x is not None)
+        # Fill with 0s for easier debugging.
+        filler = data.nested_map(np.zeros_like, filler)
+
+        # Substitute the filler for Nones.
+        self._requests = [x if x is not None else filler
+                          for x in self._requests]
+
+        def assert_not_scalar(x):
+            assert np.array(x).shape, (
+                'All arrays in a PredictRequest must be at least rank 1.'
+            )
+        data.nested_map(assert_not_scalar, self._requests)
+
+        def flatten_first_2_dims(x):
+            return np.reshape(x, (-1,) + x.shape[2:])
+
+        # Stack instead of concatenate to ensure that all requests have
+        # the same shape.
+        self._batched_request = data.nested_stack(self._requests)
+        # (n_agents, n_requests, ...) -> (n_agents * n_requests, ...)
+        self._batched_request = data.nested_map(flatten_first_2_dims,
+                                                self._batched_request)
+        return self._batched_request
+
+    def unbatch_responses(self, x):
+        def unflatten_first_2_dims(x):
+            return np.reshape(
+                x, (self._n_agents, -1) + x.shape[1:]
+            )
+        # (n_agents * n_requests, ...) -> (n_agents, n_requests, ...)
+        return data.nested_unstack(
+            data.nested_map(unflatten_first_2_dims, x)
+        )
+
+
 @gin.configurable
 class LocalBatchStepper(BatchStepper):
     """Batch stepper running locally.
@@ -61,7 +187,17 @@ class LocalBatchStepper(BatchStepper):
             return (env, agent)
 
         self._envs_and_agents = [make_env_and_agent() for _ in range(n_envs)]
-        self._network = network_fn()
+        self._request_handler = _AgentRequestHandler(network_fn)
+
+    def _get_request_batcher(self, requests):
+        """Determines requests common type (all requests must be of the same
+        type!) and returns batcher."""
+        model_request = next(x for x in requests if x is not None)
+        if isinstance(model_request, data.NetworkRequest):
+            request_batcher = _NetworkRequestBatcher(requests)
+        else:
+            request_batcher = _PredictionRequestBatcher(requests)
+        return request_batcher
 
     def _batch_coroutines(self, cors):
         """Batches a list of coroutines into one.
@@ -83,69 +219,22 @@ class LocalBatchStepper(BatchStepper):
         def all_finished(xs):
             return all(x is None for x in xs)
 
-        def batch_requests(xs):
-            assert xs
-
-            # Request used as a filler for coroutines that have already
-            # finished.
-            filler = next(x for x in xs if x is not None)
-            # Fill with 0s for easier debugging.
-            filler = data.nested_map(np.zeros_like, filler)
-
-            # Substitute the filler for Nones.
-            xs = [x if x is not None else filler for x in xs]
-
-            def assert_not_scalar(x):
-                assert np.array(x).shape, (
-                    'All arrays in a PredictRequest must be at least rank 1.'
-                )
-            data.nested_map(assert_not_scalar, xs)
-
-            # Stack instead of concatenate to ensure that all requests have
-            # the same shape.
-            x = data.nested_stack(xs)
-
-            def flatten_first_2_dims(x):
-                return np.reshape(x, (-1,) + x.shape[2:])
-            # (n_agents, n_requests, ...) -> (n_agents * n_requests, ...)
-            return data.nested_map(flatten_first_2_dims, x)
-
-        def unbatch_responses(x):
-            def unflatten_first_2_dims(x):
-                return np.reshape(
-                    x, (len(self._envs_and_agents), -1) + x.shape[1:]
-                )
-            # (n_agents * n_requests, ...) -> (n_agents, n_requests, ...)
-            return data.nested_unstack(
-                data.nested_map(unflatten_first_2_dims, x)
-            )
-
-        requests = [next(cor) for (i, cor) in enumerate(cors)]
+        requests = [next(cor) for cor in cors]
         while not all_finished(requests):
-            responses = yield batch_requests(requests)
+            batcher = self._get_request_batcher(requests)
+            responses = yield batcher.batched_request
             requests = [
                 cor.send(inp)
-                for (i, (cor, inp)) in enumerate(
-                    zip(cors, unbatch_responses(responses))
-                )
+                for cor, inp in zip(cors, batcher.unbatch_responses(responses))
             ]
         return episodes
 
     def run_episode_batch(self, params, **solve_kwargs):
-        self._network.params = params
         episode_cor = self._batch_coroutines([
             agent.solve(env, **solve_kwargs)
             for (env, agent) in self._envs_and_agents
         ])
-        try:
-            inputs = next(episode_cor)
-            while True:
-                predictions = self._network.predict(inputs)
-                inputs = episode_cor.send(predictions)
-        except StopIteration as e:
-            episodes = e.value
-            assert len(episodes) == len(self._envs_and_agents)
-            return episodes
+        return self._request_handler.run_coroutine(episode_cor, params)
 
 
 @gin.configurable
@@ -169,22 +258,12 @@ class RayBatchStepper(BatchStepper):
 
             self.env = env_class()
             self.agent = agent_class()
-            self.network = network_fn()
+            self.request_handler = _AgentRequestHandler(network_fn)
 
         def run(self, params, solve_kwargs):
             """Runs the episode using the given network parameters."""
-            self.network.params = params
             episode_cor = self.agent.solve(self.env, **solve_kwargs)
-            # TODO(pj): This block of code is the same in LocalBatchStepper
-            # too. Move it to the BatchStepper base class.
-            try:
-                inputs = next(episode_cor)
-                while True:
-                    predictions = self.network.predict(inputs)
-                    inputs = episode_cor.send(predictions)
-            except StopIteration as e:
-                episode = e.value
-                return episode
+            return self.request_handler.run_coroutine(episode_cor, params)
 
     def __init__(self, env_class, agent_class, network_fn, n_envs):
         super().__init__(env_class, agent_class, network_fn, n_envs)
