@@ -1,10 +1,13 @@
 """Testing utilities."""
 
+import functools
+
 import gym
 import numpy as np
 
 from alpacka import data
 from alpacka import envs
+from alpacka import networks
 
 
 class TabularEnv(envs.ModelEnv):
@@ -76,6 +79,17 @@ def run_with_dummy_network(coroutine, network_signature):
             output_sig = network_signature.output
             response = zero_pytree(output_sig, shape_prefix=(batch_size,))
             request = coroutine.send(response)
+    except StopIteration as e:
+        return e.value
+
+
+def run_with_dummy_network_request(coroutine):
+    try:
+        next(coroutine)
+        coroutine.send(data.NetworkRequest(
+            functools.partial(networks.DummyNetwork, network_signature=None),
+            None))
+        assert False, 'Coroutine should return immediately.'
     except StopIteration as e:
         return e.value
 
