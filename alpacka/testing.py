@@ -3,6 +3,7 @@
 import gym
 import numpy as np
 
+from alpacka import data
 from alpacka import envs
 
 
@@ -73,8 +74,12 @@ def run_with_dummy_network(coroutine, network_signature):
             batch_size = request.shape[0]
             assert network_signature is not None, 'Coroutine needs a network.'
             output_sig = network_signature.output
-            request = coroutine.send(np.zeros(
-                (batch_size,) + output_sig.shape, dtype=output_sig.dtype
-            ))
+            response = data.nested_map(
+                lambda sig: np.zeros(
+                    shape=(batch_size,) + sig.shape, dtype=sig.dtype
+                ),
+                output_sig,
+            )
+            request = coroutine.send(response)
     except StopIteration as e:
         return e.value

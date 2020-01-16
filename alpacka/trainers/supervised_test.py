@@ -22,7 +22,7 @@ def test_integration_with_keras():
     )
     trainer = supervised.SupervisedTrainer(
         network_signature=network_sig,
-        target_fn=supervised.target_solved,
+        target=supervised.target_solved,
         batch_size=2,
         n_steps_per_epoch=3,
         replay_buffer_capacity=n_transitions,

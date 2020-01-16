@@ -3,6 +3,7 @@
 import gin
 import numpy as np
 
+from alpacka import data
 from alpacka.trainers import base
 from alpacka.trainers import replay_buffers
 
@@ -27,6 +28,11 @@ def target_qualities(episode):
     return episode.transition_batch.agent_info['qualities']
 
 
+@gin.configurable
+def target_action_histogram(episode):
+    return episode.transition_batch.agent_info['action_histogram']
+
+
 class SupervisedTrainer(base.Trainer):
     """Supervised trainer.
 
@@ -37,7 +43,7 @@ class SupervisedTrainer(base.Trainer):
     def __init__(
         self,
         network_signature,
-        target_fn=target_solved,
+        target=target_solved,
         batch_size=64,
         n_steps_per_epoch=1000,
         replay_buffer_capacity=1000000,
@@ -47,8 +53,9 @@ class SupervisedTrainer(base.Trainer):
 
         Args:
             network_signature (pytree): Input signature for the network.
-            target_fn (callable): Function episode -> target for
-                determining the target for network training.
+            target (pytree): Pytree of functions episode -> target for
+                determining the targets for network training. The structure of
+                the tree should reflect the structure of a target.
             batch_size (int): Batch size.
             n_steps_per_epoch (int): Number of optimizer steps to do per
                 epoch.
@@ -57,7 +64,9 @@ class SupervisedTrainer(base.Trainer):
                 attribute names, defining the sampling hierarchy.
         """
         super().__init__(network_signature)
-        self._target_fn = target_fn
+        self._target_fn = lambda episode: data.nested_map(
+            lambda f: f(episode), target
+        )
         self._batch_size = batch_size
         self._n_steps_per_epoch = n_steps_per_epoch
 

@@ -54,6 +54,10 @@ def test_integration_with_cartpole():
     ),
     agents.stochastic_mcts.ValueNetworkNewLeafRater,
     agents.stochastic_mcts.QualityNetworkNewLeafRater,
+    functools.partial(
+        agents.stochastic_mcts.QualityNetworkNewLeafRater,
+        use_policy=True,
+    ),
 ])
 def test_act_doesnt_change_env_state(new_leaf_rater_class):
     env = envs.CartPole()

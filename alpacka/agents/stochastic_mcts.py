@@ -136,18 +136,34 @@ class ValueNetworkNewLeafRater(NewLeafRater):
 class QualityNetworkNewLeafRater(NewLeafRater):
     """Rates new leaves using a value network."""
 
+    def __init__(self, discount, use_policy=False):
+        super().__init__(discount)
+        self._use_policy = use_policy
+
     def __call__(self, observation, model):
         del model
-        qualities = yield np.expand_dims(observation, axis=0)
-        prior = _uniform_prior(qualities.shape[1])
-        return list(zip(qualities[0], prior))
+        result = yield np.expand_dims(observation, axis=0)
+        if self._use_policy:
+            (qualities, prior) = result
+            qualities = qualities[0]
+            prior = prior[0]
+        else:
+            qualities = result[0]
+            prior = _uniform_prior(qualities.shape[0])
+        return list(zip(qualities, prior))
 
     def network_signature(self, observation_space, action_space):
         n_actions = space_utils.max_size(action_space)
-        # Input: observation, output: scalar value.
+        action_vector_sig = data.TensorSignature(shape=(n_actions,))
+        if self._use_policy:
+            output_sig = (action_vector_sig,) * 2
+        else:
+            output_sig = action_vector_sig
+        # Input: observation, output: quality vector and optionally policy
+        # vector.
         return data.NetworkSignature(
             input=space_utils.signature(observation_space),
-            output=data.TensorSignature(shape=(n_actions,)),
+            output=output_sig,
         )
 
 
@@ -268,9 +284,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
 
     def _choose_action(self, node, exploratory):
         """Chooses the action to take in a given node based on child qualities.
-
-        If avoid_loops is turned on, tries to avoid nodes visited on the path
-        from the root.
 
         Args:
             node (TreeNode): Node to choose an action from.
@@ -432,9 +445,14 @@ class StochasticMCTSAgent(base.OnlineAgent):
         node = transition.agent_info['node']
         value = node.value
         qualities = np.array([child.quality for child in node.children])
-        return transition._replace(
-            agent_info={'value': value, 'qualities': qualities}
+        action_histogram = np.array(
+            [child.count / node.count for child in node.children]
         )
+        return transition._replace(agent_info={
+            'value': value,
+            'qualities': qualities,
+            'action_histogram': action_histogram,
+        })
 
     def network_signature(self, observation_space, action_space):
         # Delegate defining the network signature to NewLeafRater. This is the
