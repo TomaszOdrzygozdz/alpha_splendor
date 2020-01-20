@@ -11,20 +11,13 @@ import gin
 import gym
 import numpy as np
 import pytest
+import ray
 
 from alpacka import agents
 from alpacka import batch_steppers
 from alpacka import data
 from alpacka import envs
 from alpacka import networks
-
-# WA for: https://github.com/ray-project/ray/issues/5250
-# One of later packages (e.g. gym_sokoban.envs) imports numba internally.
-# This WA ensures its done before Ray to prevent llvm assertion error.
-# TODO(pj): Delete the WA with new Ray release that updates pyarrow.
-import numba  # pylint: disable=wrong-import-order
-import ray  # pylint: disable=wrong-import-order
-del numba
 
 
 class _TestEnv(gym.Env):
@@ -219,6 +212,10 @@ def test_batch_steppers_run_episode_batch(max_n_requests,
     assert transition_batch.done.sum() == n_envs
 
 
+@mock.patch('ray.remote', _mock_ray_remote)
+@mock.patch('ray.get', _mock_ray_put_get)
+@mock.patch('ray.put', _mock_ray_put_get)
+@mock.patch('ray.init', _mock_ray_init)
 @pytest.mark.parametrize('batch_stepper_cls', [
     batch_steppers.LocalBatchStepper,
     batch_steppers.RayBatchStepper
@@ -253,7 +250,7 @@ def test_batch_steppers_network_request_handling(batch_stepper_cls):
 
 class _TestWorker(batch_steppers.RayBatchStepper.Worker):
     def get_state(self):
-        return self.env, self.agent, self.request_handler.network
+        return self.env, self.agent, self.network
 
 
 @mock.patch('alpacka.batch_steppers.RayBatchStepper.Worker', _TestWorker)
