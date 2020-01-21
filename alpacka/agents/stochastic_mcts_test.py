@@ -72,7 +72,8 @@ def test_act_doesnt_change_env_state(new_leaf_rater_class):
     network_sig = agent.network_signature(
         env.observation_space, env.action_space
     )
-    testing.run_with_dummy_network(agent.act(observation), network_sig)
+    testing.run_with_dummy_network_prediction(
+        agent.act(observation), network_sig)
     state_after = env.clone_state()
     np.testing.assert_equal(state_before, state_after)
 

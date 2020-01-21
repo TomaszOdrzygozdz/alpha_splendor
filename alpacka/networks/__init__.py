@@ -15,6 +15,8 @@ def configure_network(network_class):
     )
 
 
+Network = core.Network  # pylint: disable=invalid-name
+TrainableNetwork = core.TrainableNetwork  # pylint: disable=invalid-name
 DummyNetwork = configure_network(core.DummyNetwork)  # pylint: disable=invalid-name
 KerasNetwork = configure_network(keras.KerasNetwork)  # pylint: disable=invalid-name
 TFMetaGraphNetwork = configure_network(tensorflow.TFMetaGraphNetwork)  # pylint: disable=invalid-name

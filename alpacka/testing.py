@@ -59,7 +59,16 @@ def run_without_suspensions(coroutine):
         return e.value
 
 
-def run_with_dummy_network(coroutine, network_signature):
+def run_with_constant_network_prediction(coroutine, logits):
+    try:
+        next(coroutine)
+        coroutine.send(logits)
+        assert False, 'Coroutine should return after the first prediction.'
+    except StopIteration as e:
+        return e.value
+
+
+def run_with_dummy_network_prediction(coroutine, network_signature):
     """Runs a coroutine with a dummy network.
 
     Args:
@@ -82,14 +91,14 @@ def run_with_dummy_network(coroutine, network_signature):
         return e.value
 
 
-def run_with_dummy_network_request(coroutine):
+def run_with_dummy_network_response(coroutine):
     try:
         next(coroutine)
         coroutine.send((
             functools.partial(networks.DummyNetwork, network_signature=None),
             None
         ))
-        assert False, 'Coroutine should return immediately.'
+        assert False, 'Coroutine should return after one request.'
     except StopIteration as e:
         return e.value
 

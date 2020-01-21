@@ -2,6 +2,7 @@
 
 import warnings
 
+import gin
 import numpy as np
 import tensorflow as tf
 
@@ -12,7 +13,7 @@ class TFMetaGraphNetwork(core.Network):
     """Fixed network loaded from the TF v1 MetaGraph checkpoint."""
 
     def __init__(self, network_signature,
-                 model_path,
+                 model_path=gin.REQUIRED,
                  x_name='ppo2_model/Ob:0',
                  y_name='ppo2_model/pi_1/add:0'):
         """Initialize TF session from MetaGraph.

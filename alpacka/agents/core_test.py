@@ -1,10 +1,13 @@
 """Tests for alpacka.agents.core."""
 
+import collections
+
 import gym
 import numpy as np
 import pytest
 
 from alpacka import agents
+from alpacka import testing
 
 
 def test_softmax_agent_network_signature():
@@ -23,9 +26,9 @@ def test_softmax_agent_network_signature():
 
 
 @pytest.mark.parametrize('logits',
-                         [np.array([3, 2, 1]),
-                          np.array([1, 3, 2]),
-                          np.array([2, 1, 3])])
+                         [np.array([[3, 2, 1]]),
+                          np.array([[1, 3, 2]]),
+                          np.array([[2, 1, 3]])])
 def test_softmax_agent_the_most_common_action_is_the_most_probable(logits):
     # Set up
     agent = agents.SoftmaxAgent()
@@ -34,13 +37,11 @@ def test_softmax_agent_the_most_common_action_is_the_most_probable(logits):
 
     # Run
     for _ in range(100):
-        coroutine = agent.act(np.zeros((7, 7)))
-        try:
-            next(coroutine)
-            coroutine.send(logits)
-            assert False, 'Coroutine should return immediately.'
-        except StopIteration as e:
-            actions.append(e.value[0])
+        action, _ = testing.run_with_constant_network_prediction(
+            agent.act(np.zeros((7, 7))),
+            logits
+        )
+        actions.append(action)
 
     (_, counts) = np.unique(actions, return_counts=True)
     most_common = np.argmax(counts)
@@ -53,23 +54,21 @@ def test_softmax_agent_action_counts_for_different_temperature():
     # Set up
     low_temp_agent = agents.SoftmaxAgent(temperature=.5)
     high_temp_agent = agents.SoftmaxAgent(temperature=2.)
-    low_temp_action_count = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
-    high_temp_action_count = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
-    logits = (2, 1, 1, 1, 2)
+    low_temp_action_count = collections.defaultdict(int)
+    high_temp_action_count = collections.defaultdict(int)
+    logits = ((2, 1, 1, 1, 2), )  # Batch of size 1.
 
     # Run
-    for agent, action_count in zip(
-        [low_temp_agent, high_temp_agent],
-        [low_temp_action_count, high_temp_action_count]
-    ):
+    for agent, action_count in [
+        (low_temp_agent, low_temp_action_count),
+        (high_temp_agent, high_temp_action_count),
+    ]:
         for _ in range(100):
-            coroutine = agent.act(np.zeros((7, 7)))
-            try:
-                next(coroutine)
-                coroutine.send(logits)
-                assert False, 'Coroutine should return immediately.'
-            except StopIteration as e:
-                action_count[e.value[0]] += 1
+            action, _ = testing.run_with_constant_network_prediction(
+                agent.act(np.zeros((7, 7))),
+                logits
+            )
+            action_count[action] += 1
 
     # Test
     assert low_temp_action_count[0] > high_temp_action_count[0]

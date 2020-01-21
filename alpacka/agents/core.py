@@ -33,7 +33,7 @@ class SoftmaxAgent(base.OnlineAgent):
 
     def act(self, observation):
         batched_logits = yield np.expand_dims(observation, axis=0)
-        logits = np.squeeze(batched_logits)  # Removes batch dim. of size 1
+        logits = np.squeeze(batched_logits, axis=0)  # Removes batch dim.
         pi = self._softmax(logits, self._temp)
         return (np.random.choice(pi.shape[0], p=pi), {})
 
