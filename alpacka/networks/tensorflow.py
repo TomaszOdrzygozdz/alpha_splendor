@@ -59,15 +59,12 @@ class TFMetaGraphNetwork(core.Network):
                     self._batch_size))
 
     def predict(self, inputs):
-        outputs = self._y
         batch_size = inputs.shape[0]
-
         if self._batch_size is not None and batch_size < self._batch_size:
             # Handle an input batch size lower than the model fixed batch size.
-            outputs = self._y[:batch_size]
-            inputs = np.resize(inputs, self._x.shape)
+            inputs = np.resize(inputs, (self._batch_size, ) + inputs.shape[1:])
 
-        return self._sess.run(outputs, feed_dict={self._x: inputs})[:batch_size]
+        return self._sess.run(self._y, feed_dict={self._x: inputs})[:batch_size]
 
     @property
     def params(self):
