@@ -5,7 +5,6 @@ import functools
 import gym
 import numpy as np
 
-from alpacka import data
 from alpacka import envs
 from alpacka import networks
 
@@ -86,9 +85,10 @@ def run_with_dummy_network(coroutine, network_signature):
 def run_with_dummy_network_request(coroutine):
     try:
         next(coroutine)
-        coroutine.send(data.NetworkRequest(
+        coroutine.send((
             functools.partial(networks.DummyNetwork, network_signature=None),
-            None))
+            None
+        ))
         assert False, 'Coroutine should return immediately.'
     except StopIteration as e:
         return e.value
