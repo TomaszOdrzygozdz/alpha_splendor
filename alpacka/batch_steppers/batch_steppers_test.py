@@ -253,7 +253,7 @@ class _TestWorker(batch_steppers.RayBatchStepper.Worker):
         return self.env, self.agent, self.network
 
 
-@mock.patch('alpacka.batch_steppers.RayBatchStepper.Worker', _TestWorker)
+@mock.patch('alpacka.batch_steppers.ray.RayBatchStepper.Worker', _TestWorker)
 @pytest.mark.skipif(platform.system() == 'Darwin',
                     reason='Ray does not work on Mac, see awarelab/alpacka#27')
 def test_ray_batch_stepper_worker_members_initialization_with_gin_config():
