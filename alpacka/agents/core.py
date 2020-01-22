@@ -34,8 +34,7 @@ class SoftmaxAgent(base.OnlineAgent):
     def act(self, observation):
         batched_logits = yield np.expand_dims(observation, axis=0)
         logits = np.squeeze(batched_logits, axis=0)  # Removes batch dim.
-        pi = self._softmax(logits, self._temp)
-        return (np.random.choice(pi.shape[0], p=pi), {})
+        return self._sample(logits), self._compute_statistics(logits)
 
     @staticmethod
     def network_signature(observation_space, action_space):
@@ -46,9 +45,23 @@ class SoftmaxAgent(base.OnlineAgent):
             ),
         )
 
-    @staticmethod
-    def _softmax(x, temp=1.):
-        """Computes a softmax function with temperature."""
-        w_x = x / temp
-        e_x = np.exp(w_x - np.max(w_x))
-        return e_x / e_x.sum()
+    def _compute_statistics(self, logits):
+        """Computes softmax, log softmax and entropy with temperature."""
+        w_logits = logits / self._temp
+        c_logits = w_logits - np.max(w_logits, axis=-1, keepdims=True)
+        e_logits = np.exp(c_logits)
+        sum_e_logits = np.sum(e_logits, axis=-1, keepdims=True)
+
+        prob = e_logits / sum_e_logits
+        logp = c_logits - np.log(sum_e_logits)
+        entropy = -np.sum(prob * logp, axis=-1)
+
+        return {'prob': prob, 'logp': logp, 'entropy': entropy}
+
+    def _sample(self, logits):
+        """Sample from categorical distribution with temperature in log-space.
+
+        See: https://stats.stackexchange.com/a/260248"""
+        w_logits = logits / self._temp
+        u = np.random.uniform(size=w_logits.shape)
+        return np.argmax(w_logits - np.log(-np.log(u)), axis=-1)

@@ -29,25 +29,38 @@ def test_softmax_agent_network_signature():
                          [np.array([[3, 2, 1]]),
                           np.array([[1, 3, 2]]),
                           np.array([[2, 1, 3]])])
-def test_softmax_agent_the_most_common_action_is_the_most_probable(logits):
+def test_softmax_agent_the_most_common_action_and_agent_info_is_correct(logits):
     # Set up
     agent = agents.SoftmaxAgent()
-    actions = []
     expected = np.argmax(logits)
+    actions = []
+    infos = []
 
     # Run
-    for _ in range(100):
-        action, _ = testing.run_with_constant_network_prediction(
+    for _ in range(5000):
+        action, info = testing.run_with_constant_network_prediction(
             agent.act(np.zeros((7, 7))),
             logits
         )
         actions.append(action)
-
+        infos.append(info)
     (_, counts) = np.unique(actions, return_counts=True)
+
     most_common = np.argmax(counts)
+    sample_prob = counts / np.sum(counts)
+    sample_logp = np.log(sample_prob)
+    sample_entropy = -np.sum(sample_prob * sample_logp)
 
     # Test
+    info = infos[0]
+    for other in infos[1:]:
+        for info_value, other_value in zip(info.values(), other.values()):
+            np.testing.assert_array_equal(info_value, other_value)
+
     assert most_common == expected
+    np.testing.assert_allclose(sample_prob, info['prob'], rtol=0.2)
+    np.testing.assert_allclose(sample_logp, info['logp'], rtol=0.2)
+    np.testing.assert_allclose(sample_entropy, info['entropy'], rtol=0.2)
 
 
 def test_softmax_agent_action_counts_for_different_temperature():
