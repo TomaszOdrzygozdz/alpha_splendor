@@ -11,6 +11,7 @@ import numpy as np
 
 from alpacka import batch_steppers
 from alpacka import data
+from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.agents import core
 
@@ -113,10 +114,33 @@ class ShootingAgent(base.OnlineAgent):
         # Aggregate episodes into scores.
         action_scores = self._aggregate_fn(self._action_space.n, episodes)
 
+        # Calculate simulation policy entropy.
+        if 'entropy' in episodes[0].transition_batch.agent_info:
+            sample_entropy = np.mean([
+                entropy
+                for episode in episodes
+                for entropy in episode.transition_batch.agent_info['entropy']
+            ])
+        else:
+            sample_entropy = None
+
         # Choose greedy action.
         action = np.argmax(action_scores)
-        return action, {}
+        return action, {'sim_pi_entropy': sample_entropy}
 
     def network_signature(self, observation_space, action_space):
         agent = self._agent_class()
         return agent.network_signature(observation_space, action_space)
+
+    @staticmethod
+    def postprocess_episode(episode):
+        # Calculate simulation policy entropy.
+        if np.all(episode.transition_batch.agent_info['sim_pi_entropy']):
+            metric_logging.log_scalar(
+                'sample_entropy', 'XYZ',
+                np.mean(episode.transition_batch.agent_info['sim_pi_entropy']))
+            metric_logging.log_scalar(
+                'sample_entropy_std', 'XYZ',
+                np.std(episode.transition_batch.agent_info['sim_pi_entropy']))
+
+        return episode

@@ -141,6 +141,23 @@ class OnlineAgent(Agent):
         """
         return transition
 
+    @staticmethod
+    def postprocess_episode(episode):
+        """Postprocesses Episode before passing them to Trainer.
+
+        Can be overridden in subclasses to customize data collection.
+
+        Called after the episode has finished, so can incorporate any
+        information known only in the hindsight to the transitions.
+
+        Args:
+            episode (Episode): Episode to postprocess.
+
+        Returns:
+            Postprocessed Episode.
+        """
+        return episode
+
     def solve(self, env, init_state=None, time_limit=None):
         """Solves a given environment using OnlineAgent.act().
 
@@ -203,8 +220,9 @@ class OnlineAgent(Agent):
         return_ = sum(transition.reward for transition in transitions)
         solved = info['solved'] if 'solved' in info else None
         transition_batch = data.nested_stack(transitions)
-        return data.Episode(
+        episode = data.Episode(
             transition_batch=transition_batch,
             return_=return_,
             solved=solved,
         )
+        return self.postprocess_episode(episode)
