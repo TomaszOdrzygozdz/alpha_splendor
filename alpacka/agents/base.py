@@ -125,7 +125,7 @@ class OnlineAgent(Agent):
         raise NotImplementedError
 
     @staticmethod
-    def postprocess_transition(transition):
+    def postprocess_transitions(transitions):
         """Postprocesses Transitions before passing them to Trainer.
 
         Can be overridden in subclasses to customize data collection.
@@ -134,29 +134,29 @@ class OnlineAgent(Agent):
         information known only in the hindsight to the transitions.
 
         Args:
-            transition (Transition): Transition to postprocess.
+            transitions (List of Transition): Transitions to postprocess.
 
         Returns:
-            Postprocessed Transition.
+            List of postprocessed Transitions.
         """
-        return transition
+        return transitions
 
     @staticmethod
-    def postprocess_episode(episode):
-        """Postprocesses Episode before passing them to Trainer.
+    def postprocess_episodes(episodes):
+        """Postprocesses Episodes before passing them to Trainer.
 
         Can be overridden in subclasses to customize data collection.
 
-        Called after the episode has finished, so can incorporate any
-        information known only in the hindsight to the transitions.
+        Called after the episodes has finished, so can incorporate any
+        information known only in the hindsight to the episodes.
 
         Args:
-            episode (Episode): Episode to postprocess.
+            episodes (List of Episode): Episodes to postprocess.
 
         Returns:
-            Postprocessed Episode.
+            List of postprocessed Episodes.
         """
-        return episode
+        return episodes
 
     def solve(self, env, init_state=None, time_limit=None):
         """Solves a given environment using OnlineAgent.act().
@@ -212,17 +212,13 @@ class OnlineAgent(Agent):
             ))
             observation = next_observation
 
-        transitions = [
-            self.postprocess_transition(transition)
-            for transition in transitions
-        ]
+        transitions = self.postprocess_transitions(transitions)
 
         return_ = sum(transition.reward for transition in transitions)
         solved = info['solved'] if 'solved' in info else None
         transition_batch = data.nested_stack(transitions)
-        episode = data.Episode(
+        return data.Episode(
             transition_batch=transition_batch,
             return_=return_,
             solved=solved,
         )
-        return self.postprocess_episode(episode)

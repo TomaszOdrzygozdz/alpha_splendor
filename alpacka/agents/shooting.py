@@ -115,12 +115,10 @@ class ShootingAgent(base.OnlineAgent):
         action_scores = self._aggregate_fn(self._action_space.n, episodes)
 
         # Calculate simulation policy entropy.
-        if 'entropy' in episodes[0].transition_batch.agent_info:
-            sample_entropy = np.mean([
-                entropy
-                for episode in episodes
-                for entropy in episode.transition_batch.agent_info['entropy']
-            ])
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+        if 'entropy' in agent_info_batch:
+            sample_entropy = np.mean(agent_info_batch['entropy'])
         else:
             sample_entropy = None
 
@@ -133,14 +131,19 @@ class ShootingAgent(base.OnlineAgent):
         return agent.network_signature(observation_space, action_space)
 
     @staticmethod
-    def postprocess_episode(episode):
+    def postprocess_episodes(episodes):
         # Calculate simulation policy entropy.
-        if np.all(episode.transition_batch.agent_info['sim_pi_entropy']):
-            metric_logging.log_scalar(
-                'sample_sim_pi_entropy',
-                np.mean(episode.transition_batch.agent_info['sim_pi_entropy']))
-            metric_logging.log_scalar(
-                'sample_sim_pi_entropy_std',
-                np.std(episode.transition_batch.agent_info['sim_pi_entropy']))
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+        if np.all(agent_info_batch['sim_pi_entropy']):
+            sample_sim_pi_entropy = np.mean(
+                agent_info_batch['sim_pi_entropy'])
+            sample_sim_pi_entropy_std = np.std(
+                agent_info_batch['sim_pi_entropy'])
 
-        return episode
+            metric_logging.log_scalar(
+                'simulation_entropy', sample_sim_pi_entropy)
+            metric_logging.log_scalar(
+                'simulation_entropy_std', sample_sim_pi_entropy_std)
+
+        return episodes

@@ -441,18 +441,22 @@ class StochasticMCTSAgent(base.OnlineAgent):
         return (action, info)
 
     @staticmethod
-    def postprocess_transition(transition):
-        node = transition.agent_info['node']
-        value = node.value
-        qualities = np.array([child.quality for child in node.children])
-        action_histogram = np.array(
-            [child.count / node.count for child in node.children]
-        )
-        return transition._replace(agent_info={
-            'value': value,
-            'qualities': qualities,
-            'action_histogram': action_histogram,
-        })
+    def postprocess_transitions(transitions):
+        postprocessed_transitions = []
+        for transition in transitions:
+            node = transition.agent_info['node']
+            value = node.value
+            qualities = np.array([child.quality for child in node.children])
+            action_histogram = np.array(
+                [child.count / node.count for child in node.children]
+            )
+            postprocessed_transitions.append(
+                transition._replace(agent_info={
+                    'value': value,
+                    'qualities': qualities,
+                    'action_histogram': action_histogram,
+                }))
+        return postprocessed_transitions
 
     def network_signature(self, observation_space, action_space):
         # Delegate defining the network signature to NewLeafRater. This is the

@@ -68,6 +68,7 @@ class Runner:
         else:
             env_fn = env_class
 
+        self._agent_class = agent_class
         self._batch_stepper = batch_stepper_class(
             env_class=env_fn,
             agent_class=agent_class,
@@ -117,6 +118,7 @@ class Runner:
         episodes = self._batch_stepper.run_episode_batch(
             self._network.params, time_limit=self._episode_time_limit
         )
+        episodes = self._agent_class.postprocess_episodes(episodes)
         self._log_episode_metrics(episodes)
         for episode in episodes:
             self._trainer.add_episode(episode)
