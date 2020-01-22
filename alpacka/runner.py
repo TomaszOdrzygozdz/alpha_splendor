@@ -79,7 +79,6 @@ class Runner:
         self._trainer = trainer_class(network_signature)
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
-        self._epoch = 0
 
     @staticmethod
     def _infer_network_signature(env_class, agent_class):
@@ -93,7 +92,7 @@ class Runner:
         return_mean = sum(
             episode.return_ for episode in episodes
         ) / len(episodes)
-        metric_logging.log_scalar('return_mean', self._epoch, return_mean)
+        metric_logging.log_scalar('return_mean', return_mean)
 
         solved_list = [
             int(episode.solved) for episode in episodes
@@ -101,11 +100,11 @@ class Runner:
         ]
         if solved_list:
             solved_rate = sum(solved_list) / len(solved_list)
-            metric_logging.log_scalar('solved_rate', self._epoch, solved_rate)
+            metric_logging.log_scalar('solved_rate', solved_rate)
 
     def _log_training_metrics(self, metrics):
         for (name, value) in metrics.items():
-            metric_logging.log_scalar('train/' + name, self._epoch, value)
+            metric_logging.log_scalar('train/' + name, value)
 
     def _save_gin(self):
         # TODO(koz4k): Send to neptune as well.
@@ -122,18 +121,18 @@ class Runner:
         for episode in episodes:
             self._trainer.add_episode(episode)
 
-        if self._epoch >= self._n_precollect_epochs:
+        if metric_logging.get_global_epoch() >= self._n_precollect_epochs:
             metrics = self._trainer.train_epoch(self._network)
             self._log_training_metrics(metrics)
 
-        if self._epoch == self._n_precollect_epochs:
+        if metric_logging.get_global_epoch() == self._n_precollect_epochs:
             # Save gin operative config into a file. "Operative" means the part
             # that is actually used in the experiment. We need to run an full
             # epoch (data collection + training) first, so gin can figure that
             # out.
             self._save_gin()
 
-        self._epoch += 1
+        metric_logging.inc_global_epoch()
 
     def run(self):
         """Runs the main loop."""

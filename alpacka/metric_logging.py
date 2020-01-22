@@ -21,7 +21,19 @@ def register_logger(logger):
     _loggers.append(logger)
 
 
-def log_scalar(name, step, value):
+def log_scalar(name, value):
     """Logs a scalar to the loggers."""
     for logger in _loggers:
-        logger.log_scalar(name, step, value)
+        logger.log_scalar(name, _epoch, value)
+
+
+_epoch = 0
+
+
+def get_global_epoch():
+    return _epoch
+
+
+def inc_global_epoch():
+    global _epoch  # pylint: disable=global-statement
+    _epoch += 1

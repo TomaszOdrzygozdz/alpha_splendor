@@ -137,10 +137,10 @@ class ShootingAgent(base.OnlineAgent):
         # Calculate simulation policy entropy.
         if np.all(episode.transition_batch.agent_info['sim_pi_entropy']):
             metric_logging.log_scalar(
-                'sample_entropy', 'XYZ',
+                'sample_sim_pi_entropy',
                 np.mean(episode.transition_batch.agent_info['sim_pi_entropy']))
             metric_logging.log_scalar(
-                'sample_entropy_std', 'XYZ',
+                'sample_sim_pi_entropy_std',
                 np.std(episode.transition_batch.agent_info['sim_pi_entropy']))
 
         return episode
