@@ -12,18 +12,6 @@ class Network:
         """
         self._network_signature = network_signature
 
-    def train(self, data_stream):
-        """Performs one epoch of training on data prepared by the Trainer.
-
-        Args:
-            data_stream: (Trainer-dependent) Python generator of batches to run
-                the updates on.
-
-        Returns:
-            dict: Collected metrics, indexed by name.
-        """
-        raise NotImplementedError
-
     def predict(self, inputs):
         """Returns the prediction for a given input.
 
@@ -51,8 +39,24 @@ class Network:
         raise NotImplementedError
 
 
-class DummyNetwork(Network):
-    """Dummy Network for testing."""
+class TrainableNetwork(Network):
+    """Base class for networks that can be trained."""
+
+    def train(self, data_stream):
+        """Performs one epoch of training on data prepared by the Trainer.
+
+        Args:
+            data_stream: (Trainer-dependent) Python generator of batches to run
+                the updates on.
+
+        Returns:
+            dict: Collected metrics, indexed by name.
+        """
+        raise NotImplementedError
+
+
+class DummyNetwork(TrainableNetwork):
+    """Dummy TrainableNetwork for testing."""
 
     def train(self, data_stream):
         del data_stream

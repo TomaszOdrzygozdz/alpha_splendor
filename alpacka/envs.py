@@ -116,7 +116,9 @@ class GoogleFootball(ModelEnv):
 
     def __init__(self,
                  env_name='academy_empty_goal_close',
+                 representation='simple115',
                  rewards='scoring,checkpoints',
+                 stacked=False,
                  dump_path=None,
                  solved_at=1,
                  **kwargs):
@@ -128,8 +130,9 @@ class GoogleFootball(ModelEnv):
         self._solved_at = solved_at
         self._env = football_env.create_environment(
             env_name=env_name,
+            representation=representation,
             rewards=rewards,
-            representation='simple115',
+            stacked=stacked,
             write_full_episode_dumps=dump_path is not None,
             logdir=dump_path or '',
             **kwargs
@@ -198,7 +201,11 @@ class GoogleFootball(ModelEnv):
         while True:
             if isinstance(env, gym.ObservationWrapper):
                 observation_wrappers.append(env)
-
+            if isinstance(env, football_env.wrappers.FrameStack):
+                # TODO(pj): Black magic! We know that FrameStack keeps already
+                # processed observations and we can return it here. Loose this
+                # assumption.
+                return env._get_observation()  # pylint: disable=protected-access
             if isinstance(env, gym.Wrapper):
                 env = env.env
             else:

@@ -20,7 +20,7 @@ The entrypoint for running experiments with Alpacka resides in `alpacka/runner.p
 
 ```
 python3 -m alpacka.runner \
-    --config_file=alpacka/configs/shooting_random_cartpole.gin \
+    --config_file=configs/shooting_random_cartpole.gin \
     --config=Runner.episode_time_limit=50 \
     --config=Runner.n_envs=8 \
     --output_dir=./out
@@ -49,7 +49,7 @@ experiments_list = create_experiments_helper(
                  'Runner.n_epochs': 1},
     params_grid={'ShootingAgent.n_rollouts': [10, 100, 1000],
                  'ShootingAgent.rollout_time_limit': [10, 100]},
-    script='python3 -m alpacka.runner --mrunner --output_dir=./out --config_file=alpacka/configs/shooting_random_cartpole.gin',
+    script='python3 -m alpacka.runner --mrunner --output_dir=./out --config_file=configs/shooting_random_cartpole.gin',
     exclude=['.pytest_cache', 'alpacka.egg-info'],
     python_path='',
     tags=[globals()['script'][:-3]],
@@ -87,7 +87,7 @@ The logic of an RL algorithm is split into two classes: [`Agent`](alpacka/agents
 
 ### Network
 
-[`Network`](alpacka/networks/core.py) abstracts out the deep learning framework used for network training and inference. For now, we only support Keras.
+[`Network/TrainableNetwork`](alpacka/networks/core.py) abstracts out the deep learning framework used for network inference and training.
 
 ### BatchStepper
 
@@ -100,6 +100,6 @@ The logic of an RL algorithm is split into two classes: [`Agent`](alpacka/agents
 
 We use [Gin](https://github.com/google/gin-config) to manage experiment configurations. The assumption is that all the "conventional" experiments supported by Alpacka can be run using the entrypoint `alpacka/runner.py` with an appropriate Gin config specified so that in most cases you won't need to write your own training pipeline, but rather override the necessary classes and provide your own Gin config. If you have a use-case that warrants customizing the entrypoint, please contact us - it might make sense to support it natively in Alpacka.
 
-Some predefined config files are in `alpacka/configs`. Some are usage examples for the implemented algorithms, and some serve as regression tests for the most important experiments.
+Some predefined config files are in `configs`. Some are usage examples for the implemented algorithms, and some serve as regression tests for the most important experiments.
 
 <!-- TODO(koz4k): How they're structured (top-down config writing process), where to get them from (operative configs). -->

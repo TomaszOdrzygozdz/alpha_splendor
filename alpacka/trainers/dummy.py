@@ -7,7 +7,7 @@ from alpacka.trainers import base
 
 @gin.configurable
 class DummyTrainer(base.Trainer):
-    """Dummy Trainer for testing."""
+    """Dummy Trainer for testing and use with plain Networks (not trainable)."""
 
     def add_episode(self, episode):
         del episode

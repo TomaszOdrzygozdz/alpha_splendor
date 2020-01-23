@@ -85,8 +85,8 @@ def convnet_mnist(
     return keras.Model(inputs=inputs, outputs=outputs)
 
 
-class KerasNetwork(core.Network):
-    """Network implementation in Keras.
+class KerasNetwork(core.TrainableNetwork):
+    """TrainableNetwork implementation in Keras.
 
     Args:
         network_signature (NetworkSignature): Network signature.

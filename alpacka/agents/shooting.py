@@ -3,7 +3,6 @@
 It does Monte Carlo simulation."""
 
 import asyncio
-import functools
 import math
 
 import gin
@@ -11,7 +10,7 @@ import gym
 import numpy as np
 
 from alpacka import batch_steppers
-from alpacka import networks
+from alpacka import data
 from alpacka.agents import base
 from alpacka.agents import core
 
@@ -88,14 +87,9 @@ class ShootingAgent(base.OnlineAgent):
         )
         del observation
 
-        # TODO(pj): Request network_fn and params here with yield.
-        network_fn = functools.partial(
-            networks.DummyNetwork, network_signature=None
-        )
-        params = None
-
         # Lazy initialize batch stepper
         if self._batch_stepper is None:
+            network_fn, _ = yield data.NetworkRequest()
             self._batch_stepper = self._batch_stepper_class(
                 env_class=type(self._model),
                 agent_class=self._agent_class,
@@ -111,7 +105,7 @@ class ShootingAgent(base.OnlineAgent):
         episodes = []
         for _ in range(global_n_rollouts):
             episodes.extend(self._batch_stepper.run_episode_batch(
-                params,
+                params=None,  # TODO(pj): Pass current params when training
                 init_state=root_state,
                 time_limit=self._rollout_time_limit,
             ))
@@ -122,3 +116,7 @@ class ShootingAgent(base.OnlineAgent):
         # Choose greedy action.
         action = np.argmax(action_scores)
         return action, {}
+
+    def network_signature(self, observation_space, action_space):
+        agent = self._agent_class()
+        return agent.network_signature(observation_space, action_space)
