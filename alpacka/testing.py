@@ -74,12 +74,24 @@ def run_with_dummy_network(coroutine, network_signature):
             batch_size = request.shape[0]
             assert network_signature is not None, 'Coroutine needs a network.'
             output_sig = network_signature.output
-            response = data.nested_map(
-                lambda sig: np.zeros(
-                    shape=(batch_size,) + sig.shape, dtype=sig.dtype
-                ),
-                output_sig,
-            )
+            response = zero_pytree(output_sig, shape_prefix=(batch_size,))
             request = coroutine.send(response)
     except StopIteration as e:
         return e.value
+
+
+def zero_pytree(signature, shape_prefix=()):
+    """Builds a zero-filled pytree of a given signature.
+
+    Args:
+        signature (pytree): Pytree of TensorSignature.
+        shape_prefix (tuple): Shape to be prepended to each constructed array's
+            shape.
+
+    Returns:
+        Pytree of a given signature with zero arrays as leaves.
+    """
+    return data.nested_map(
+        lambda sig: np.zeros(shape=shape_prefix + sig.shape, dtype=sig.dtype),
+        signature,
+    )
