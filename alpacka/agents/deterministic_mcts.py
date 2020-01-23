@@ -101,7 +101,6 @@ class ScalarValueAccumulator(ValueAccumulator):
         return self._count
 
 
-
 class GraphNode:
     """Graph node, corresponding 1-1 to an environment state.
 
@@ -350,10 +349,14 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         return (action, info)
 
     @staticmethod
-    def postprocess_transition(transition):
-        node = transition.agent_info['node']
-        value = node.value_acc.target().item()
-        return transition._replace(agent_info={'value': value})
+    def postprocess_transitions(transitions):
+        postprocessed_transitions = []
+        for transition in transitions:
+            node = transition.agent_info['node']
+            value = node.value_acc.target().item()
+            postprocessed_transitions.append(
+                transition._replace(agent_info={'value': value}))
+        return postprocessed_transitions
 
     @staticmethod
     def network_signature(observation_space, action_space):

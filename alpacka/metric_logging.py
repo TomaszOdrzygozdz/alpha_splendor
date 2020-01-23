@@ -10,7 +10,7 @@ class StdoutLogger:
         # Format:
         #      1 | accuracy:                   0.789
         #   1234 | loss:                      12.345
-        print('{:>6} | {:24}{:>9.3f}'.format(step, name + ':', value))
+        print('{:>6} | {:32}{:>9.3f}'.format(step, name + ':', value))
 
 
 _loggers = [StdoutLogger]
@@ -25,3 +25,8 @@ def log_scalar(name, step, value):
     """Logs a scalar to the loggers."""
     for logger in _loggers:
         logger.log_scalar(name, step, value)
+
+
+def log_scalar_metrics(prefix, step, metrics):
+    for (name, value) in metrics.items():
+        log_scalar(prefix + '/' + name, step, value)

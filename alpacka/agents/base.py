@@ -125,7 +125,7 @@ class OnlineAgent(Agent):
         raise NotImplementedError
 
     @staticmethod
-    def postprocess_transition(transition):
+    def postprocess_transitions(transitions):
         """Postprocesses Transitions before passing them to Trainer.
 
         Can be overridden in subclasses to customize data collection.
@@ -134,12 +134,30 @@ class OnlineAgent(Agent):
         information known only in the hindsight to the transitions.
 
         Args:
-            transition (Transition): Transition to postprocess.
+            transitions (List of Transition): Transitions to postprocess.
 
         Returns:
-            Postprocessed Transition.
+            List of postprocessed Transitions.
         """
-        return transition
+        return transitions
+
+    @staticmethod
+    def compute_metrics(episodes):
+        """Computes scalar metrics based on collected Episodes.
+
+        Can be overridden in subclasses to customize logging in Runner.
+
+        Called after the episodes has finished, so can incorporate any
+        information known only in the hindsight to the episodes.
+
+        Args:
+            episodes (List of Episode): Episodes to compute metrics base on.
+
+        Returns:
+            Dict with metrics names as keys and metrics values as... values.
+        """
+        del episodes
+        return {}
 
     def solve(self, env, init_state=None, time_limit=None):
         """Solves a given environment using OnlineAgent.act().
@@ -195,10 +213,7 @@ class OnlineAgent(Agent):
             ))
             observation = next_observation
 
-        transitions = [
-            self.postprocess_transition(transition)
-            for transition in transitions
-        ]
+        transitions = self.postprocess_transitions(transitions)
 
         return_ = sum(transition.reward for transition in transitions)
         solved = info['solved'] if 'solved' in info else None

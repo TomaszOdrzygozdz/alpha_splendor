@@ -113,10 +113,35 @@ class ShootingAgent(base.OnlineAgent):
         # Aggregate episodes into scores.
         action_scores = self._aggregate_fn(self._action_space.n, episodes)
 
+        # Calculate simulation policy entropy.
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+        if 'entropy' in agent_info_batch:
+            sample_entropy = np.mean(agent_info_batch['entropy'])
+        else:
+            sample_entropy = None
+
         # Choose greedy action.
         action = np.argmax(action_scores)
-        return action, {}
+        return action, {'sim_pi_entropy': sample_entropy}
 
     def network_signature(self, observation_space, action_space):
         agent = self._agent_class()
         return agent.network_signature(observation_space, action_space)
+
+    @staticmethod
+    def compute_metrics(episodes):
+        # Calculate simulation policy entropy.
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+        if np.all(agent_info_batch['sim_pi_entropy']):
+            sample_sim_pi_entropy = np.mean(
+                agent_info_batch['sim_pi_entropy'])
+            sample_sim_pi_entropy_std = np.std(
+                agent_info_batch['sim_pi_entropy'])
+
+            return {
+                'simulation_entropy': sample_sim_pi_entropy,
+                'simulation_entropy_std': sample_sim_pi_entropy_std
+            }
+        return {}
