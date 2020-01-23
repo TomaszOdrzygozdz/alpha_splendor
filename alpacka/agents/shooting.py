@@ -11,7 +11,6 @@ import numpy as np
 
 from alpacka import batch_steppers
 from alpacka import data
-from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.agents import core
 
@@ -131,7 +130,7 @@ class ShootingAgent(base.OnlineAgent):
         return agent.network_signature(observation_space, action_space)
 
     @staticmethod
-    def postprocess_episodes(episodes):
+    def compute_metrics(episodes):
         # Calculate simulation policy entropy.
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
@@ -141,9 +140,8 @@ class ShootingAgent(base.OnlineAgent):
             sample_sim_pi_entropy_std = np.std(
                 agent_info_batch['sim_pi_entropy'])
 
-            metric_logging.log_scalar(
-                'simulation_entropy', sample_sim_pi_entropy)
-            metric_logging.log_scalar(
-                'simulation_entropy_std', sample_sim_pi_entropy_std)
-
-        return episodes
+            return {
+                'simulation_entropy': sample_sim_pi_entropy,
+                'simulation_entropy_std': sample_sim_pi_entropy_std
+            }
+        return {}

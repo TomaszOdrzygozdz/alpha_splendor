@@ -142,21 +142,22 @@ class OnlineAgent(Agent):
         return transitions
 
     @staticmethod
-    def postprocess_episodes(episodes):
-        """Postprocesses Episodes before passing them to Trainer.
+    def compute_metrics(episodes):
+        """Computes scalar metrics based on collected Episodes.
 
-        Can be overridden in subclasses to customize data collection.
+        Can be overridden in subclasses to customize logging in Runner.
 
         Called after the episodes has finished, so can incorporate any
         information known only in the hindsight to the episodes.
 
         Args:
-            episodes (List of Episode): Episodes to postprocess.
+            episodes (List of Episode): Episodes to compute metrics base on.
 
         Returns:
-            List of postprocessed Episodes.
+            Dict with metrics names as keys and metrics values as... values.
         """
-        return episodes
+        del episodes
+        return {}
 
     def solve(self, env, init_state=None, time_limit=None):
         """Solves a given environment using OnlineAgent.act().

@@ -80,6 +80,7 @@ class Runner:
         self._trainer = trainer_class(network_signature)
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
+        self._epoch = 0
 
     @staticmethod
     def _infer_network_signature(env_class, agent_class):
@@ -89,11 +90,13 @@ class Runner:
         agent = agent_class()
         return agent.network_signature(env.observation_space, env.action_space)
 
-    def _log_episode_metrics(self, episodes):
+    def _compute_episode_metrics(self, episodes):
+        metrics = {}
+
         return_mean = sum(
             episode.return_ for episode in episodes
         ) / len(episodes)
-        metric_logging.log_scalar('return_mean', return_mean)
+        metrics['return_mean'] = return_mean
 
         solved_list = [
             int(episode.solved) for episode in episodes
@@ -101,11 +104,9 @@ class Runner:
         ]
         if solved_list:
             solved_rate = sum(solved_list) / len(solved_list)
-            metric_logging.log_scalar('solved_rate', solved_rate)
+            metrics['solved_rate'] = solved_rate
 
-    def _log_training_metrics(self, metrics):
-        for (name, value) in metrics.items():
-            metric_logging.log_scalar('train/' + name, value)
+        return metrics
 
     def _save_gin(self):
         # TODO(koz4k): Send to neptune as well.
@@ -118,23 +119,35 @@ class Runner:
         episodes = self._batch_stepper.run_episode_batch(
             self._network.params, time_limit=self._episode_time_limit
         )
-        episodes = self._agent_class.postprocess_episodes(episodes)
-        self._log_episode_metrics(episodes)
+        metric_logging.log_scalar_metrics(
+            'episode',
+            self._epoch,
+            self._compute_episode_metrics(episodes)
+        )
+        metric_logging.log_scalar_metrics(
+            'agent',
+            self._epoch,
+            self._agent_class.compute_metrics(episodes)
+        )
         for episode in episodes:
             self._trainer.add_episode(episode)
 
-        if metric_logging.get_global_epoch() >= self._n_precollect_epochs:
+        if self._epoch >= self._n_precollect_epochs:
             metrics = self._trainer.train_epoch(self._network)
-            self._log_training_metrics(metrics)
+            metric_logging.log_scalar_metrics(
+                'train',
+                self._epoch,
+                metrics
+            )
 
-        if metric_logging.get_global_epoch() == self._n_precollect_epochs:
+        if self._epoch == self._n_precollect_epochs:
             # Save gin operative config into a file. "Operative" means the part
             # that is actually used in the experiment. We need to run an full
             # epoch (data collection + training) first, so gin can figure that
             # out.
             self._save_gin()
 
-        metric_logging.inc_global_epoch()
+        self._epoch += 1
 
     def run(self):
         """Runs the main loop."""
