@@ -11,6 +11,10 @@ from alpacka.agents import core
 from alpacka.utils import space as space_utils
 
 
+def _uniform_prior(n):
+    return np.full(shape=(n,), fill_value=(1 / n))
+
+
 class NewLeafRater:
     """Base class for rating the children of an expanded leaf."""
 
@@ -33,7 +37,9 @@ class NewLeafRater:
             Network prediction requests.
 
         Returns:
-            list: List of qualities for all actions played from leaf.
+            list: List of pairs (quality, prob) for each action, where quality
+                is the estimated quality of the action and prob is its prior
+                probability (e.g. from a policy network).
         """
         raise NotImplementedError
 
@@ -83,7 +89,8 @@ class RolloutNewLeafRater(NewLeafRater):
                 time += 1
             child_qualities.append(init_reward + self._discount * value)
             model.restore_state(init_state)
-        return child_qualities
+        prior = _uniform_prior(len(child_qualities))
+        return list(zip(child_qualities, prior))
 
     def network_signature(self, observation_space, action_space):
         return self._agent.network_signature(observation_space, action_space)
@@ -112,7 +119,9 @@ class ValueNetworkNewLeafRater(NewLeafRater):
         # (batch_size, 1) -> (batch_size,)
         values = np.reshape(values, -1)
         # Compute the final qualities, masking out the "done" states.
-        return list(rewards + self._discount * values * (1 - dones))
+        child_qualities = list(rewards + self._discount * values * (1 - dones))
+        prior = _uniform_prior(len(child_qualities))
+        return list(zip(child_qualities, prior))
 
     def network_signature(self, observation_space, action_space):
         del action_space
@@ -127,17 +136,34 @@ class ValueNetworkNewLeafRater(NewLeafRater):
 class QualityNetworkNewLeafRater(NewLeafRater):
     """Rates new leaves using a value network."""
 
+    def __init__(self, discount, use_policy=False):
+        super().__init__(discount)
+        self._use_policy = use_policy
+
     def __call__(self, observation, model):
         del model
-        qualities = yield np.expand_dims(observation, axis=0)
-        return list(qualities[0])
+        result = yield np.expand_dims(observation, axis=0)
+        if self._use_policy:
+            (qualities, prior) = result
+            qualities = qualities[0]
+            prior = prior[0]
+        else:
+            qualities = result[0]
+            prior = _uniform_prior(qualities.shape[0])
+        return list(zip(qualities, prior))
 
     def network_signature(self, observation_space, action_space):
         n_actions = space_utils.max_size(action_space)
-        # Input: observation, output: scalar value.
+        action_vector_sig = data.TensorSignature(shape=(n_actions,))
+        if self._use_policy:
+            output_sig = (action_vector_sig,) * 2
+        else:
+            output_sig = action_vector_sig
+        # Input: observation, output: quality vector and optionally policy
+        # vector.
         return data.NetworkSignature(
             input=space_utils.signature(observation_space),
-            output=data.TensorSignature(shape=(n_actions,)),
+            output=output_sig,
         )
 
 
@@ -166,17 +192,20 @@ class TreeNode:
             yet.
     """
 
-    def __init__(self, init_quality=None):
+    def __init__(self, init_quality=None, prior_probability=None):
         """Initializes TreeNode.
 
         Args:
             init_quality (float or None): Quality received from
                 the NewLeafRater for this node, or None if it's the root.
+            prior_probability (float): Prior probability of picking this node
+                from its parent.
         """
         self._quality_sum = 0
         self._quality_count = 0
         if init_quality is not None:
             self.visit(init_quality)
+        self.prior_probability = prior_probability
         self.children = []
 
     def visit(self, quality):
@@ -256,9 +285,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
     def _choose_action(self, node, exploratory):
         """Chooses the action to take in a given node based on child qualities.
 
-        If avoid_loops is turned on, tries to avoid nodes visited on the path
-        from the root.
-
         Args:
             node (TreeNode): Node to choose an action from.
             exploratory (bool): Whether the choice should be exploratory (in
@@ -271,8 +297,9 @@ class StochasticMCTSAgent(base.OnlineAgent):
         def rate_child(child):
             quality = child.quality
             if exploratory:
-                quality += self._exploration_weight * self._exploration_bonus(
-                    child.count, node.count
+                quality += (
+                    self._exploration_weight * child.prior_probability *
+                    self._exploration_bonus(child.count, node.count)
                 )
             return quality
 
@@ -335,12 +362,17 @@ class StochasticMCTSAgent(base.OnlineAgent):
             # In a "done" state, cumulative future return is 0.
             return 0
 
-        child_qualities = yield from self._new_leaf_rater(
+        child_qualities_and_probs = yield from self._new_leaf_rater(
             observation, self._model
         )
         # This doesn't work with dynamic action spaces. TODO(koz4k): Fix.
-        assert len(child_qualities) == space_utils.max_size(self._action_space)
-        leaf.children = [TreeNode(quality) for quality in child_qualities]
+        assert len(child_qualities_and_probs) == space_utils.max_size(
+            self._action_space
+        )
+        leaf.children = [
+            TreeNode(quality, prob)
+            for (quality, prob) in child_qualities_and_probs
+        ]
         action = self._choose_action(leaf, exploratory=True)
         return leaf.children[action].quality
 
@@ -413,9 +445,14 @@ class StochasticMCTSAgent(base.OnlineAgent):
         node = transition.agent_info['node']
         value = node.value
         qualities = np.array([child.quality for child in node.children])
-        return transition._replace(
-            agent_info={'value': value, 'qualities': qualities}
+        action_histogram = np.array(
+            [child.count / node.count for child in node.children]
         )
+        return transition._replace(agent_info={
+            'value': value,
+            'qualities': qualities,
+            'action_histogram': action_histogram,
+        })
 
     def network_signature(self, observation_space, action_space):
         # Delegate defining the network signature to NewLeafRater. This is the

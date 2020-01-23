@@ -17,6 +17,7 @@ DeterministicMCTSAgent.value_accumulator_class = @alpacka.agents.deterministic_m
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = 'mean_squared_error'
+KerasNetwork.loss_weights = None
 KerasNetwork.metrics = ['mae', 'mse']
 KerasNetwork.model_fn = @alpacka.networks.keras.convnet_mnist
 KerasNetwork.optimizer = 'adam'
@@ -62,7 +63,7 @@ SupervisedTrainer.batch_size = 32
 SupervisedTrainer.n_steps_per_epoch = 13
 SupervisedTrainer.replay_buffer_capacity = 500000
 SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
-SupervisedTrainer.target_fn = @alpacka.trainers.supervised.target_value
+SupervisedTrainer.target = @alpacka.trainers.supervised.target_value
 
 # Parameters for target_value:
 # ==============================================================================

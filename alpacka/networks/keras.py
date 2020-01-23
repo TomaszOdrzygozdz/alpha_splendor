@@ -31,19 +31,19 @@ def _make_output_heads(hidden, output_signature, output_activation):
     Args:
         hidden (tf.Tensor): Output of the last hidden layer.
         output_signature (pytree of TensorSignatures): Output signature.
-        output_activation: Activation of every head. See
-            tf.keras.layers.Activation docstring for possible values. For now
-            we only support the same activation for all heads.
-            TODO(koz4k): Lift this restriction.
+        output_activation (pytree of activations): Activation of every head. See
+            tf.keras.layers.Activation docstring for possible values.
 
     Returns:
         Pytree of head output tensors.
     """
-    def init_head(signature):
+    def init_head(signature, activation):
         assert signature.dtype == np.float32
         (depth,) = signature.shape
-        return keras.layers.Dense(depth, activation=output_activation)(hidden)
-    return data.nested_map(init_head, output_signature)
+        return keras.layers.Dense(depth, activation=activation)(hidden)
+    return data.nested_zip_with(
+        init_head, (output_signature, output_activation)
+    )
 
 
 @gin.configurable
@@ -93,6 +93,8 @@ class KerasNetwork(core.Network):
         model_fn (callable): Function network_signature -> tf.keras.Model.
         optimizer: See tf.keras.Model.compile docstring for possible values.
         loss: See tf.keras.Model.compile docstring for possible values.
+        loss_weights (list or None): Weights assigned to losses, or None if
+            there's just one loss.
         weight_decay (float): Weight decay to apply to parameters.
         metrics: See tf.keras.Model.compile docstring for possible values
             (Default: None).
@@ -107,6 +109,7 @@ class KerasNetwork(core.Network):
         model_fn=mlp,
         optimizer='adam',
         loss='mean_squared_error',
+        loss_weights=None,
         weight_decay=0.0,
         metrics=None,
         train_callbacks=None,
@@ -115,10 +118,13 @@ class KerasNetwork(core.Network):
         super().__init__(network_signature)
         self._model = model_fn(network_signature)
         self._add_weight_decay(self._model, weight_decay)
-        self._model.compile(optimizer=optimizer,
-                            loss=loss,
-                            metrics=metrics or [],
-                            **compile_kwargs)
+        self._model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            loss_weights=loss_weights,
+            metrics=metrics or [],
+            **compile_kwargs
+        )
 
         self.train_callbacks = train_callbacks or []
 
@@ -149,10 +155,16 @@ class KerasNetwork(core.Network):
             dict: Collected metrics, indexed by name.
         """
 
+        def dtypes(tensors):
+            return data.nested_map(lambda x: x.dtype, tensors)
+
+        def shapes(tensors):
+            return data.nested_map(lambda x: x.shape, tensors)
+
         dataset = tf.data.Dataset.from_generator(
             generator=data_stream,
-            output_types=(self._model.input.dtype, self._model.output.dtype),
-            output_shapes=(self._model.input.shape, self._model.output.shape),
+            output_types=dtypes((self._model.input, self._model.output)),
+            output_shapes=shapes((self._model.input, self._model.output)),
         )
 
         # WA for bug: https://github.com/tensorflow/tensorflow/issues/32912
@@ -173,7 +185,9 @@ class KerasNetwork(core.Network):
             Agent-dependent: Network predictions.
         """
 
-        return self._model.predict_on_batch(inputs).numpy()
+        return data.nested_map(
+            lambda x: x.numpy(), self._model.predict_on_batch(inputs)
+        )
 
     @property
     def params(self):
