@@ -18,50 +18,27 @@ class RandomAgent(base.OnlineAgent):
         return (self._action_space.sample(), {})
 
 
-class SoftmaxAgent(base.OnlineAgent):
-    """Softmax agent, sampling actions from the softmax dist.
-    It evaluates a network to get logits."""
+class PolicyNetworkAgent(base.OnlineAgent):
+    """Agent that uses a policy network to infer logits."""
 
-    def __init__(self, temperature=1.):
-        """Initializes SoftmaxAgent.
+    def __init__(self, pd):
+        """Initializes PolicyNetworkAgent.
 
         Args:
-            temperature (float): Softmax temperature parameter.
+            pd (ProbabilityDistribution): Probability distribution parameterized
+                by the inferred logits to sample actions from and calculate
+                statistics put into an agent info.
         """
         super().__init__()
-        self._temp = temperature
+        self._pd = pd
 
     def act(self, observation):
         batched_logits = yield np.expand_dims(observation, axis=0)
         logits = np.squeeze(batched_logits, axis=0)  # Removes batch dim.
-        return self._sample(logits), self._compute_statistics(logits)
+        return self._pd.sample(logits), self._pd.compute_statistics(logits)
 
-    @staticmethod
-    def network_signature(observation_space, action_space):
+    def network_signature(self, observation_space, action_space):
         return data.NetworkSignature(
             input=space_utils.signature(observation_space),
-            output=data.TensorSignature(
-                shape=(space_utils.max_size(action_space),)
-            ),
+            output=self._pd.params_signature(action_space),
         )
-
-    def _compute_statistics(self, logits):
-        """Computes softmax, log softmax and entropy with temperature."""
-        w_logits = logits / self._temp
-        c_logits = w_logits - np.max(w_logits, axis=-1, keepdims=True)
-        e_logits = np.exp(c_logits)
-        sum_e_logits = np.sum(e_logits, axis=-1, keepdims=True)
-
-        prob = e_logits / sum_e_logits
-        logp = c_logits - np.log(sum_e_logits)
-        entropy = -np.sum(prob * logp, axis=-1)
-
-        return {'prob': prob, 'logp': logp, 'entropy': entropy}
-
-    def _sample(self, logits):
-        """Sample from categorical distribution with temperature in log-space.
-
-        See: https://stats.stackexchange.com/a/260248"""
-        w_logits = logits / self._temp
-        u = np.random.uniform(size=w_logits.shape)
-        return np.argmax(w_logits - np.log(-np.log(u)), axis=-1)

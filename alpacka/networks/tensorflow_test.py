@@ -24,8 +24,8 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 @pytest.fixture(scope='module')
 def network():
     return tf_networks.TFMetaGraphNetwork(
-        network_signature=agents.SoftmaxAgent.network_signature(obs_space,
-                                                                act_space),
+        network_signature=agents.SoftmaxAgent().network_signature(obs_space,
+                                                                  act_space),
         model_path='fixtures/tf_metagraph_checkpoint/'
         'baseline_ppo2_in_gfootball_academy_corner'
     )

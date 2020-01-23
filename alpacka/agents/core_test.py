@@ -16,7 +16,7 @@ def test_softmax_agent_network_signature():
     act_space = gym.spaces.Discrete(n=7)
 
     # Run
-    signature = agents.SoftmaxAgent.network_signature(obs_space, act_space)
+    signature = agents.SoftmaxAgent().network_signature(obs_space, act_space)
 
     # Test
     assert signature.input.shape == obs_space.shape
