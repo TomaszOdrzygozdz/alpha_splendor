@@ -5,6 +5,7 @@ import functools
 import gym
 import numpy as np
 
+from alpacka import data
 from alpacka import envs
 from alpacka import networks
 
