@@ -62,3 +62,8 @@ register_leaf_type(TensorSignature)
 NetworkSignature = collections.namedtuple(
     'NetworkSignature', ['input', 'output']
 )
+
+
+# Request of a network_fn: Function () -> Network and the current parameters.
+class NetworkRequest:
+    pass
