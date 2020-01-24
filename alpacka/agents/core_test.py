@@ -29,9 +29,14 @@ def test_softmax_agent_network_signature():
                          [np.array([[3, 2, 1]]),
                           np.array([[1, 3, 2]]),
                           np.array([[2, 1, 3]])])
-def test_softmax_agent_the_most_common_action_and_agent_info_is_correct(logits):
+@pytest.mark.parametrize('agent_class,rtol',
+                         [(agents.SoftmaxAgent, 0.2),
+                          (agents.EgreedyAgent, 0.3)])
+def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
+                                                                 logits,
+                                                                 rtol):
     # Set up
-    agent = agents.SoftmaxAgent()
+    agent = agent_class()
     expected = np.argmax(logits)
     actions = []
     infos = []
@@ -58,9 +63,9 @@ def test_softmax_agent_the_most_common_action_and_agent_info_is_correct(logits):
             np.testing.assert_array_equal(info_value, other_value)
 
     assert most_common == expected
-    np.testing.assert_allclose(sample_prob, info['prob'], rtol=0.2)
-    np.testing.assert_allclose(sample_logp, info['logp'], rtol=0.2)
-    np.testing.assert_allclose(sample_entropy, info['entropy'], rtol=0.2)
+    np.testing.assert_allclose(sample_prob, info['prob'], rtol=rtol)
+    np.testing.assert_allclose(sample_logp, info['logp'], rtol=rtol)
+    np.testing.assert_allclose(sample_entropy, info['entropy'], rtol=rtol)
 
 
 def test_softmax_agent_action_counts_for_different_temperature():
@@ -89,3 +94,31 @@ def test_softmax_agent_action_counts_for_different_temperature():
     assert low_temp_action_count[2] < high_temp_action_count[2]
     assert low_temp_action_count[3] < high_temp_action_count[3]
     assert low_temp_action_count[4] > high_temp_action_count[4]
+
+
+def test_egreedy_agent_action_counts_for_different_epsilon():
+    # Set up
+    low_eps_agent = agents.EgreedyAgent(epsilon=.05)
+    high_eps_agent = agents.EgreedyAgent(epsilon=.5)
+    low_eps_action_count = collections.defaultdict(int)
+    high_eps_action_count = collections.defaultdict(int)
+    logits = ((5, 4, 3, 2, 1), )  # Batch of size 1.
+
+    # Run
+    for agent, action_count in [
+        (low_eps_agent, low_eps_action_count),
+        (high_eps_agent, high_eps_action_count),
+    ]:
+        for _ in range(100):
+            action, _ = testing.run_with_constant_network_prediction(
+                agent.act(np.zeros((7, 7))),
+                logits
+            )
+            action_count[action] += 1
+
+    # Test
+    assert low_eps_action_count[0] > high_eps_action_count[0]
+    assert low_eps_action_count[1] < high_eps_action_count[1]
+    assert low_eps_action_count[2] < high_eps_action_count[2]
+    assert low_eps_action_count[3] < high_eps_action_count[3]
+    assert low_eps_action_count[4] < high_eps_action_count[4]

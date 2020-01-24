@@ -40,3 +40,17 @@ class SoftmaxAgent(core.PolicyNetworkAgent):
         """
         super().__init__(
             pd=distributions.CategoricalPd(temperature=temperature))
+
+
+@gin.configurable
+class EgreedyAgent(core.PolicyNetworkAgent):
+    """Softmax agent, sampling actions from the categorical distribution."""
+
+    def __init__(self, epsilon=.05):
+        """Initializes EgreedyAgent.
+
+        Args:
+            epsilon (float): Probability of taking random action.
+        """
+        super().__init__(
+            pd=distributions.EgreedyPd(epsilon=epsilon))
