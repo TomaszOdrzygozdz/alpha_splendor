@@ -99,21 +99,19 @@ class ShootingAgent(base.OnlineAgent):
                 n_envs=self._n_envs,
             )
 
-        root_state = self._model.clone_state()
-
         # TODO(pj): Move it to BatchStepper. You should be able to query
         # BatchStepper for a given number of episodes (by default n_envs).
-        global_n_rollouts = math.ceil(self._n_rollouts / self._n_envs)
         episodes = []
-        for _ in range(global_n_rollouts):
+        for _ in range(math.ceil(self._n_rollouts / self._n_envs)):
             episodes.extend(self._batch_stepper.run_episode_batch(
                 params=self._params,
-                init_state=root_state,
+                init_state=self._model.clone_state(),
                 time_limit=self._rollout_time_limit,
             ))
 
-        # Aggregate episodes into scores.
+        # Aggregate episodes into normalized scores.
         action_scores = self._aggregate_fn(self._action_space.n, episodes)
+        action_scores /= action_scores.sum()
 
         # Calculate simulation policy entropy.
         agent_info_batch = data.nested_concatenate(
@@ -123,9 +121,21 @@ class ShootingAgent(base.OnlineAgent):
         else:
             sample_entropy = None
 
+        # Calculate the MC estimate of state value.
+        value = sum(
+            episode.return_ for episode in episodes
+        ) / len(episodes)
+
+        agent_info = {
+            'action_histogram': action_scores,
+            'sim_pi_entropy': sample_entropy,
+            'value': value
+        }
+
         # Choose greedy action.
         action = np.argmax(action_scores)
-        return action, {'sim_pi_entropy': sample_entropy}
+
+        return action, agent_info
 
     def network_signature(self, observation_space, action_space):
         agent = self._agent_class()

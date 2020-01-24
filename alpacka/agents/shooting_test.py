@@ -173,10 +173,12 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     else:
         expected_rollout_time_limit = rollout_time_limit
 
-    def _aggregate_fn(_, episodes):
+    def _aggregate_fn(act_n, episodes):
         # Test
         actual_rollout_time_limit = len(episodes[0].transition_batch.done)
         assert actual_rollout_time_limit == expected_rollout_time_limit
+
+        return np.ones(act_n)
 
     with mock.patch('alpacka.agents.shooting.type') as mock_type:
         mock_type.return_value = lambda: mock_env
