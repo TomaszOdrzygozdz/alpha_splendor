@@ -69,15 +69,18 @@ class ShootingAgent(base.OnlineAgent):
         self._n_envs = n_envs
         self._model = None
         self._batch_stepper = None
+        self._network_fn = None
+        self._params = None
 
-    @asyncio.coroutine
     def reset(self, env, observation):
-        """Reinitializes the agentfor a new environment."""
+        """Reinitializes the agent for a new environment."""
         assert isinstance(env.action_space, gym.spaces.Discrete), (
             'ShootingAgent only works with Discrete action spaces.'
         )
         yield from super().reset(env, observation)
+
         self._model = env
+        self._network_fn, self._params = yield data.NetworkRequest()
 
     @asyncio.coroutine
     def act(self, observation):
@@ -89,11 +92,10 @@ class ShootingAgent(base.OnlineAgent):
 
         # Lazy initialize batch stepper
         if self._batch_stepper is None:
-            network_fn, _ = yield data.NetworkRequest()
             self._batch_stepper = self._batch_stepper_class(
                 env_class=type(self._model),
                 agent_class=self._agent_class,
-                network_fn=network_fn,
+                network_fn=self._network_fn,
                 n_envs=self._n_envs,
             )
 
@@ -105,7 +107,7 @@ class ShootingAgent(base.OnlineAgent):
         episodes = []
         for _ in range(global_n_rollouts):
             episodes.extend(self._batch_stepper.run_episode_batch(
-                params=None,  # TODO(pj): Pass current params when training
+                params=self._params,
                 init_state=root_state,
                 time_limit=self._rollout_time_limit,
             ))
