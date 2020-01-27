@@ -1,5 +1,6 @@
 """Tests for alpacka.agents.shooting."""
 
+import asyncio
 import math
 from unittest import mock
 
@@ -32,13 +33,15 @@ def construct_episodes(actions, rewards):
 
 def test_mean_aggregate_episodes():
     # Set up
-    actions = [[0], [1], [1], [2], [2], [2]]
-    rewards = [[-1], [0], [1], [1], [2], [-1]]
-    expected_score = np.array([-1, 1/2, 2/3])
-    episodes = construct_episodes(actions, rewards)
+    act_to_rets_map = {
+        0: [-1],
+        1: [0, 1],
+        2: [1, 2, -1]
+    }
+    expected_score = np.array([-1, 1/2, 2/3, 0])
 
     # Run
-    mean_scores = shooting.mean_aggregate(3, episodes)
+    mean_scores = shooting.mean_aggregate(4, act_to_rets_map)
 
     # Test
     np.testing.assert_array_equal(expected_score, mean_scores)
@@ -46,16 +49,18 @@ def test_mean_aggregate_episodes():
 
 def test_max_aggregate_episodes():
     # Set up
-    actions = [[0], [1], [1], [2], [2], [2]]
-    rewards = [[-1], [0], [1], [1], [2], [-1]]
-    expected_score = np.array([-1, 1, 2])
-    episodes = construct_episodes(actions, rewards)
+    act_to_rets_map = {
+        0: [-1],
+        1: [0, 1],
+        2: [1, 2, -1]
+    }
+    expected_score = np.array([-1, 1, 2, -np.inf])
 
     # Run
-    mean_scores = shooting.max_aggregate(3, episodes)
+    max_scores = shooting.max_aggregate(4, act_to_rets_map)
 
     # Test
-    np.testing.assert_array_equal(expected_score, mean_scores)
+    np.testing.assert_array_equal(expected_score, max_scores)
 
 
 def test_integration_with_cartpole():
@@ -173,19 +178,20 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     else:
         expected_rollout_time_limit = rollout_time_limit
 
-    def _aggregate_fn(act_n, episodes):
+    @asyncio.coroutine
+    def _compute_return_fn(episode):
         # Test
-        actual_rollout_time_limit = len(episodes[0].transition_batch.done)
+        actual_rollout_time_limit = len(episode.transition_batch.done)
         assert actual_rollout_time_limit == expected_rollout_time_limit
 
-        return np.ones(act_n)
+        return 1.
 
     with mock.patch('alpacka.agents.shooting.type') as mock_type:
         mock_type.return_value = lambda: mock_env
         agent = agents.ShootingAgent(
             n_rollouts=1,
             rollout_time_limit=rollout_time_limit,
-            aggregate_fn=_aggregate_fn,
+            compute_return_fn=_compute_return_fn,
             n_envs=1,
         )
 

@@ -41,9 +41,11 @@ Episode = collections.namedtuple(
         'return_',
         # Whether the episode was "solved".
         'solved',
+        # Whether the episode was truncated by the TimeLimitWrapper.
+        'truncated',
     ]
 )
-Episode.__new__.__defaults__ = (None,)  # solved
+Episode.__new__.__defaults__ = (None, None)  # solved, truncated
 
 
 # Signature of a tensor. Contains shape and datatype - the static information

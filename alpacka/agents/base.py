@@ -217,9 +217,12 @@ class OnlineAgent(Agent):
 
         return_ = sum(transition.reward for transition in transitions)
         solved = info['solved'] if 'solved' in info else None
+        truncated = (info['TimeLimit.truncated']
+                     if 'TimeLimit.truncated' in info else None)
         transition_batch = data.nested_stack(transitions)
         return data.Episode(
             transition_batch=transition_batch,
             return_=return_,
             solved=solved,
+            truncated=truncated,
         )
