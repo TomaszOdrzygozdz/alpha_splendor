@@ -72,8 +72,21 @@ class RayBatchStepper(core.BatchStepper):
         self._solve_kwargs = RayObject(None, None)
 
     def run_episode_batch(self, params, **solve_kwargs):
+        """Runs a batch of episodes using the given network parameters.
+
+        Args:
+            params (list of np.ndarray): List of network parameters as
+                numpy ndarray-s.
+            **solve_kwargs (dict): Keyword arguments passed to Agent.solve().
+
+        Returns:
+            List of completed episodes (Agent/Trainer-dependent).
+        """
         # Optimization, don't send the same parameters again.
-        if not np.all(params == self._params.value):
+        if self._params.value is None or not all(
+            [np.array_equal(p1, p2)
+             for p1, p2 in zip(params, self._params.value)]
+        ):
             self._params = RayObject.from_value(params)
 
         # Optimization, don't send the same solve kwargs again.
