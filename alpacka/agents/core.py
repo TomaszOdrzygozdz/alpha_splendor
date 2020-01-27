@@ -9,13 +9,38 @@ from alpacka.agents import base
 from alpacka.utils import space as space_utils
 
 
-class RandomAgent(base.OnlineAgent):
-    """Random agent, sampling actions from the uniform distribution."""
+class ActorCriticAgent(base.OnlineAgent):
+    """Agent that uses value and policy networks to infer values and logits."""
 
-    @asyncio.coroutine
+    def __init__(self, pd):
+        """Initializes ActorCriticAgent.
+
+        Args:
+            pd (ProbabilityDistribution): Probability distribution parameterized
+                by the inferred logits to sample actions from and calculate
+                statistics put into an agent info.
+        """
+        super().__init__()
+        self._pd = pd
+
     def act(self, observation):
-        del observation
-        return (self._action_space.sample(), {})
+        batched_values, batched_logits = yield np.expand_dims(observation,
+                                                              axis=0)
+        values = np.squeeze(batched_values, axis=0)  # Removes batch dim.
+        logits = np.squeeze(batched_logits, axis=0)  # Removes batch dim.
+
+        action = self._pd.sample(logits)
+        agent_info = {'value': values}
+        agent_info.update(self._pd.compute_statistics(logits))
+
+        return action, agent_info
+
+    def network_signature(self, observation_space, action_space):
+        return data.NetworkSignature(
+            input=space_utils.signature(observation_space),
+            output=(data.TensorSignature(shape=(1,)),
+                    self._pd.params_signature(action_space))
+        )
 
 
 class PolicyNetworkAgent(base.OnlineAgent):
@@ -42,3 +67,12 @@ class PolicyNetworkAgent(base.OnlineAgent):
             input=space_utils.signature(observation_space),
             output=self._pd.params_signature(action_space),
         )
+
+
+class RandomAgent(base.OnlineAgent):
+    """Random agent, sampling actions from the uniform distribution."""
+
+    @asyncio.coroutine
+    def act(self, observation):
+        del observation
+        return (self._action_space.sample(), {})

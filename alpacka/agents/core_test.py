@@ -10,21 +10,33 @@ from alpacka import agents
 from alpacka import testing
 
 
-def test_softmax_agent_network_signature():
+@pytest.mark.parametrize('with_critic', [True, False])
+@pytest.mark.parametrize('agent_class',
+                         [agents.SoftmaxAgent,
+                          agents.EgreedyAgent])
+def test_agents_network_signature(agent_class, with_critic):
     # Set up
     obs_space = gym.spaces.Box(low=0, high=255, shape=(7, 7), dtype=np.uint8)
     act_space = gym.spaces.Discrete(n=7)
 
     # Run
-    signature = agents.SoftmaxAgent().network_signature(obs_space, act_space)
+    agent = agent_class(with_critic=with_critic)
+    signature = agent.network_signature(obs_space, act_space)
 
     # Test
     assert signature.input.shape == obs_space.shape
     assert signature.input.dtype == obs_space.dtype
-    assert signature.output.shape == (act_space.n,)
-    assert signature.output.dtype == np.float32
+    if with_critic:
+        assert signature.output[0].shape == (1, )
+        assert signature.output[0].dtype == np.float32
+        assert signature.output[1].shape == (act_space.n, )
+        assert signature.output[1].dtype == np.float32
+    else:
+        assert signature.output.shape == (act_space.n, )
+        assert signature.output.dtype == np.float32
 
 
+@pytest.mark.parametrize('with_critic', [True, False])
 @pytest.mark.parametrize('logits',
                          [np.array([[3, 2, 1]]),
                           np.array([[1, 3, 2]]),
@@ -34,10 +46,12 @@ def test_softmax_agent_network_signature():
                           (agents.EgreedyAgent, 0.3)])
 def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
                                                                  logits,
-                                                                 rtol):
+                                                                 rtol,
+                                                                 with_critic):
     # Set up
-    agent = agent_class()
+    agent = agent_class(with_critic=with_critic)
     expected = np.argmax(logits)
+    value = 7
     actions = []
     infos = []
 
@@ -45,7 +59,7 @@ def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
     for _ in range(5000):
         action, info = testing.run_with_constant_network_prediction(
             agent.act(np.zeros((7, 7))),
-            logits
+            (value, logits) if with_critic else logits
         )
         actions.append(action)
         infos.append(info)
@@ -61,6 +75,11 @@ def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
     for other in infos[1:]:
         for info_value, other_value in zip(info.values(), other.values()):
             np.testing.assert_array_equal(info_value, other_value)
+
+    if with_critic:
+        assert info['value'] == value
+    else:
+        assert 'value' not in info
 
     assert most_common == expected
     np.testing.assert_allclose(sample_prob, info['prob'], rtol=rtol)
