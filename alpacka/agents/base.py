@@ -182,6 +182,8 @@ class OnlineAgent(Agent):
         """
         self._epoch = epoch
 
+        model_env = env
+
         if time_limit is not None:
             # Add the TimeLimitWrapper _after_ passing the model env to the
             # agent, so the states cloned/restored by the agent do not contain
@@ -196,7 +198,7 @@ class OnlineAgent(Agent):
             # Model-based case...
             observation = env.restore_state(init_state)
 
-        yield from self.reset(env, observation)
+        yield from self.reset(model_env, observation)
 
         transitions = []
         done = False
