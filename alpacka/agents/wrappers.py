@@ -1,10 +1,9 @@
 """Agent wrappers."""
 
 from alpacka import utils
-from alpacka.agents import base
 
 
-class ParamSchedulerWrapper(base.Agent):
+class ParamSchedulerWrapper:
     """Base class for all the parameter scheduling Agent wrappers."""
 
     def __init__(self, agent, attr_name):
