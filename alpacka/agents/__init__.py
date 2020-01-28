@@ -7,6 +7,7 @@ from alpacka.agents import deterministic_mcts
 from alpacka.agents import distributions
 from alpacka.agents import shooting
 from alpacka.agents import stochastic_mcts
+from alpacka.agents import wrappers
 from alpacka.agents.base import *
 
 
@@ -30,10 +31,10 @@ StochasticMCTSAgent = configure_agent(stochastic_mcts.StochasticMCTSAgent)  # py
 # Helper agents (Agent + Distribution).
 
 
-class _DistributionAgent(OnlineAgent):
+class _DistributionAgent:
     """Base class for agents that use prob. dist. to sample action."""
 
-    def __init__(self, distribution, with_critic):
+    def __init__(self, distribution, with_critic, linear_annealing_kwargs):
         super().__init__()
 
         if with_critic:
@@ -41,28 +42,40 @@ class _DistributionAgent(OnlineAgent):
         else:
             self._agent = PolicyNetworkAgent(distribution)
 
-    def act(self, observation):
-        return self._agent.act(observation)
+        if linear_annealing_kwargs is not None:
+            self._agent = wrappers.LinearAnnealingWrapper(
+                self._agent,
+                **linear_annealing_kwargs
+            )
 
-    def network_signature(self, observation_space, action_space):
-        return self._agent.network_signature(observation_space, action_space)
+    def __getattr__(self, attr_name):
+        return getattr(self._agent, attr_name)
 
 
 @gin.configurable
 class SoftmaxAgent(_DistributionAgent):
     """Softmax agent, sampling actions from the categorical distribution."""
 
-    def __init__(self, temperature=1., with_critic=False):
+    def __init__(self, temperature=1., with_critic=False,
+                 linear_annealing_kwargs=None):
         """Initializes SoftmaxAgent.
 
         Args:
             temperature (float): Softmax temperature parameter.
             with_critic (bool): Run the Actor-Critic agent with a value network.
+            linear_annealing_kwargs (dict): Temperature linear annealing
+                schedule with keys: 'max_value', 'min_value', 'n_epochs',
+                overrides temperature. See LinearAnnealingWrapper docstring.
+                If None, then uses constant temperature value.
         """
+        if linear_annealing_kwargs is not None:
+            linear_annealing_kwargs['attr_name'] = 'distribution.temperature'
+
         super().__init__(
             distribution=distributions.CategoricalDistribution(
                 temperature=temperature),
-            with_critic=with_critic
+            with_critic=with_critic,
+            linear_annealing_kwargs=linear_annealing_kwargs
         )
 
 
@@ -70,15 +83,24 @@ class SoftmaxAgent(_DistributionAgent):
 class EpsilonGreedyAgent(_DistributionAgent):
     """Softmax agent, sampling actions from the categorical distribution."""
 
-    def __init__(self, epsilon=.05, with_critic=False):
+    def __init__(self, epsilon=.05, with_critic=False,
+                 linear_annealing_kwargs=None):
         """Initializes EpsilonGreedyAgent.
 
         Args:
             epsilon (float): Probability of taking random action.
             with_critic (bool): Run the Actor-Critic agent with a value network.
+            linear_annealing_kwargs (dict): Epsilon linear annealing
+                schedule with keys: 'max_value', 'min_value', 'n_epochs',
+                overrides epsilon. See LinearAnnealingWrapper docstring.
+                If None, then uses constant epsilon value.
         """
+        if linear_annealing_kwargs is not None:
+            linear_annealing_kwargs['attr_name'] = 'distribution.epsilon'
+
         super().__init__(
             distribution=distributions.EpsilonGreedyDistribution(
                 epsilon=epsilon),
-            with_critic=with_critic
+            with_critic=with_critic,
+            linear_annealing_kwargs=linear_annealing_kwargs
         )

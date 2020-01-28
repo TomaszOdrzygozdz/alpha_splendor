@@ -1,5 +1,6 @@
 """Agent wrappers."""
 
+from alpacka import utils
 from alpacka.agents import base
 
 
@@ -12,12 +13,15 @@ class ParamSchedulerWrapper(base.Agent):
         Args:
             agent (Agent): Agent which parameter should be annealed.
             attr_name (str): Attribute name under which parameter is stored.
+                Can be recursive e.g. 'distribution.temperature'.
         """
         self._agent = agent
         self._attr_name = attr_name
 
-    def solve(self, env, epoch=0, init_state=None, time_limit=None):
-        setattr(self._agent, self._attr_name, self._get_current_value(epoch))
+    def solve(self, env, epoch=None, init_state=None, time_limit=None):
+        utils.rsetattr(
+            self._agent, self._attr_name, self._get_current_value(epoch))
+
         return_ = yield from self._agent.solve(env,
                                                epoch=epoch,
                                                init_state=init_state,
@@ -45,6 +49,7 @@ class LinearAnnealingWrapper(ParamSchedulerWrapper):
         Args:
             agent (Agent): Agent which parameter should be annealed.
             attr_name (str): Attribute name under which parameter is stored.
+                Can be recursive e.g. 'distribution.temperature'.
             max_value (float): Maximal (starting) parameter value.
             min_value (float): Minimal (final) parameter value.
             n_epochs (int): Across how many epochs parameter should reach from

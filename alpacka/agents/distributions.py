@@ -59,11 +59,11 @@ class CategoricalDistribution(ProbabilityDistribution):
             temperature (float): Softmax temperature parameter.
         """
         super().__init__()
-        self._temp = temperature
+        self.temperature = temperature
 
     def compute_statistics(self, logits):
         """Computes softmax, log softmax and entropy with temperature."""
-        w_logits = logits / self._temp
+        w_logits = logits / self.temperature
         c_logits = w_logits - np.max(w_logits, axis=-1, keepdims=True)
         e_logits = np.exp(c_logits)
         sum_e_logits = np.sum(e_logits, axis=-1, keepdims=True)
@@ -78,7 +78,7 @@ class CategoricalDistribution(ProbabilityDistribution):
         """Sample from categorical distribution with temperature in log-space.
 
         See: https://stats.stackexchange.com/a/260248"""
-        w_logits = logits / self._temp
+        w_logits = logits / self.temperature
         u = np.random.uniform(size=w_logits.shape)
         return np.argmax(w_logits - np.log(-np.log(u)), axis=-1)
 
@@ -99,12 +99,12 @@ class EpsilonGreedyDistribution(ProbabilityDistribution):
             epsilon (float): Probability of taking random action.
         """
         super().__init__()
-        self._eps = epsilon
+        self.epsilon = epsilon
 
     def compute_statistics(self, logits):
         prob = np.full(shape=logits.shape,
-                       fill_value=self._eps/len(logits))
-        prob[np.argmax(logits)] += 1 - self._eps
+                       fill_value=self.epsilon/len(logits))
+        prob[np.argmax(logits)] += 1 - self.epsilon
 
         logp = np.log(prob)
 
@@ -113,7 +113,7 @@ class EpsilonGreedyDistribution(ProbabilityDistribution):
         return {'prob': prob, 'logp': logp, 'entropy': entropy}
 
     def sample(self, logits):
-        if np.random.random_sample() < self._eps:
+        if np.random.random_sample() < self.epsilon:
             return np.random.choice(len(logits))
         else:
             return np.argmax(logits)

@@ -21,7 +21,7 @@ class Agent:
         request. This enables a very convenient interface for requesting
         predictions by the Agent:
 
-            def solve(self, env, epoch=0, init_state=None, time_limit=None):
+            def solve(self, env, epoch=None, init_state=None, time_limit=None):
                 # Planning...
                 predictions = yield inputs
                 # Planning...
