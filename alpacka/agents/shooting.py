@@ -63,7 +63,7 @@ class ShootingAgent(base.OnlineAgent):
         n_rollouts=1000,
         rollout_time_limit=None,
         aggregate_fn=mean_aggregate,
-        compute_return_fn=truncated_return,
+        estimate_fn=truncated_return,
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         agent_class=core.RandomAgent,
         n_envs=10
@@ -75,7 +75,7 @@ class ShootingAgent(base.OnlineAgent):
             rollout_time_limit (int): Maximum number of timesteps for rollouts.
             aggregate_fn (callable): Aggregates simulated episodes. Signature:
                 (n_act, act_to_rets_map) -> np.ndarray: action_scores.
-            compute_return_fn (bool): Computes simulated episode return.
+            estimate_fn (bool): Simulated episode return estimator.
                 Signature: episode -> return. It must be a coroutine.
             batch_stepper_class (type): BatchStepper class.
             agent_class (type): Rollout agent class.
@@ -85,7 +85,7 @@ class ShootingAgent(base.OnlineAgent):
         self._n_rollouts = n_rollouts
         self._rollout_time_limit = rollout_time_limit
         self._aggregate_fn = aggregate_fn
-        self._compute_return_fn = compute_return_fn
+        self._estimate_fn = estimate_fn
         self._batch_stepper_class = batch_stepper_class
         self._agent_class = agent_class
         self._n_envs = n_envs
@@ -134,7 +134,7 @@ class ShootingAgent(base.OnlineAgent):
         # Computer episode returns and put them in a map.
         act_to_rets_map = collections.defaultdict(list)
         for episode in episodes:
-            return_ = yield from self._compute_return_fn(episode)
+            return_ = yield from self._estimate_fn(episode)
             act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
         # Aggregate episodes into normalized scores.

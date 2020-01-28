@@ -22,13 +22,13 @@ def test_mean_aggregate_episodes():
         1: [0, 1],
         2: [1, 2, -1]
     }
-    expected_score = np.array([-1, 1/2, 2/3, 0])
+    x_score = np.array([-1, 1/2, 2/3, 0])
 
     # Run
     mean_scores = shooting.mean_aggregate(4, act_to_rets_map)
 
     # Test
-    np.testing.assert_array_equal(expected_score, mean_scores)
+    np.testing.assert_array_equal(x_score, mean_scores)
 
 
 def test_max_aggregate_episodes():
@@ -38,13 +38,39 @@ def test_max_aggregate_episodes():
         1: [0, 1],
         2: [1, 2, -1]
     }
-    expected_score = np.array([-1, 1, 2, -np.inf])
+    x_score = np.array([-1, 1, 2, -np.inf])
 
     # Run
     max_scores = shooting.max_aggregate(4, act_to_rets_map)
 
     # Test
-    np.testing.assert_array_equal(expected_score, max_scores)
+    np.testing.assert_array_equal(x_score, max_scores)
+
+
+@pytest.mark.parametrize('truncated,x_return',
+                         [(False, 2 - 1),
+                          (True, 2 - 1 + 7)])
+def test_bootstrap_return_estimator(truncated, x_return):
+    # Set up
+    episode = testing.construct_episodes(
+        actions=[
+            [0, 1, 2, 3],
+        ],
+        rewards=[
+            [0, 2, 0, -1]
+        ],
+        truncated=truncated
+    )[0]
+    logits = (np.array([[7]]), None)
+
+    # Run
+    bootstrap_return = testing.run_with_constant_network_prediction(
+        shooting.bootstrap_return(episode),
+        logits=logits
+    )
+
+    # Test
+    assert bootstrap_return == x_return
 
 
 def test_integration_with_cartpole():
@@ -148,6 +174,40 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
     assert actual_action == x_action
 
 
+@pytest.mark.parametrize('estimate_fn,x_action',
+                         [(shooting.truncated_return, 0),
+                          (shooting.bootstrap_return, 1)])
+def test_greedy_decision_for_all_return_estimators(mock_env, mock_bstep,
+                                                   estimate_fn, x_action):
+    # Set up
+    agent = agents.ShootingAgent(
+        estimate_fn=estimate_fn,
+        batch_stepper_class=mock_bstep,
+        n_rollouts=1,
+    )
+    logits = [
+        (np.array([[0]]), None),  # The first three predictions
+        (np.array([[0]]), None),  # are for the first action.
+        (np.array([[0]]), None),  # No extra "bonus".
+        (np.array([[1]]), None),  # The last three predictions
+        (np.array([[1]]), None),  # are for the second action.
+        (np.array([[1]]), None),  # Extra bonus of 1 for mean aggregator.
+    ]
+
+    # Run
+    observation = mock_env.reset()
+    testing.run_with_dummy_network_response(
+        agent.reset(mock_env, observation)
+    )
+    (actual_action, _) = testing.run_with_network_prediction_list(
+        agent.act(None),
+        logits=logits
+    )
+
+    # Test
+    assert actual_action == x_action
+
+
 @pytest.mark.parametrize('rollout_time_limit', [None, 7])
 def test_rollout_time_limit(mock_env, rollout_time_limit):
     # Set up
@@ -159,15 +219,15 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     mock_env.restore_state.return_value = 'o'
 
     if rollout_time_limit is None:
-        expected_rollout_time_limit = rollout_max_len
+        x_rollout_time_limit = rollout_max_len
     else:
-        expected_rollout_time_limit = rollout_time_limit
+        x_rollout_time_limit = rollout_time_limit
 
     @asyncio.coroutine
-    def _compute_return_fn(episode):
+    def _estimate_fn(episode):
         # Test
         actual_rollout_time_limit = len(episode.transition_batch.done)
-        assert actual_rollout_time_limit == expected_rollout_time_limit
+        assert actual_rollout_time_limit == x_rollout_time_limit
 
         return 1.
 
@@ -176,7 +236,7 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
         agent = agents.ShootingAgent(
             n_rollouts=1,
             rollout_time_limit=rollout_time_limit,
-            compute_return_fn=_compute_return_fn,
+            estimate_fn=_estimate_fn,
             n_envs=1,
         )
 

@@ -69,6 +69,16 @@ def run_with_constant_network_prediction(coroutine, logits):
         return e.value
 
 
+def run_with_network_prediction_list(coroutine, logits):
+    try:
+        next(coroutine)
+        for pred in logits:
+            coroutine.send(pred)
+        assert False, 'No more predictions, coroutine should return.'
+    except StopIteration as e:
+        return e.value
+
+
 def run_with_dummy_network_prediction(coroutine, network_signature):
     """Runs a coroutine with a dummy network.
 
@@ -108,22 +118,25 @@ def construct_episodes(actions, rewards, **kwargs):
     """Constructs episodes from actions and rewards nested lists.
 
     Args:
-        actions = [
+        actions (list): Each episode actions, example:
+        [
             [a00, a01, a02, ...], # Actions in the first episode.
             [a10, a11, a12, ...], # Actions in the second episode.
             ...
         ]
-        rewards = [
+        rewards (list): Each episode rewards, example:
+        [
             [r00, r01, r02, ...], # Rewards in the first episode.
             [r10, r11, r12, ...], # Rewards in the second episode.
             ...
         ]
         **kwargs (dict): Keyword arguments passed to Episode.
 
-    Note:
-        Transition observations and next observations are set to None.
-        Done flag is True only for the last transition in the episode.
-        Episode.return_ is calculated as an undiscounted sum of rewards.
+    Return:
+        list of Episodes where:
+         - Transition observations and next observations are set to None.
+         - Done flag is True only for the last transition in the episode.
+         - Episode.return_ is calculated as an undiscounted sum of rewards.
     """
     episodes = []
     for acts, rews in zip(actions, rewards):
