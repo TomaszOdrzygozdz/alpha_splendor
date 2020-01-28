@@ -10,25 +10,9 @@ import pytest
 
 from alpacka import agents
 from alpacka import batch_steppers
-from alpacka import data
 from alpacka import envs
 from alpacka import testing
 from alpacka.agents import shooting
-
-
-def construct_episodes(actions, rewards):
-    """Constructs episodes from actions and rewards nested lists."""
-    episodes = []
-    for acts, rews in zip(actions, rewards):
-        transitions = [
-            # TODO(koz4k): Initialize using kwargs.
-            data.Transition(None, act, rew, False, None, {})
-            for act, rew in zip(acts[:-1], rews[:-1])]
-        transitions.append(
-            data.Transition(None, acts[-1], rews[-1], True, None, {}))
-        transition_batch = data.nested_stack(transitions)
-        episodes.append(data.Episode(transition_batch, sum(rews)))
-    return episodes
 
 
 def test_mean_aggregate_episodes():
@@ -101,27 +85,28 @@ def mock_env():
 
 
 @pytest.fixture
-def mock_bstep_class():
+def mock_bstep():
     """Mock batch stepper class with fixed run_episode_batch return."""
     bstep_cls = mock.create_autospec(batch_steppers.LocalBatchStepper)
-    bstep_cls.return_value.run_episode_batch.return_value = construct_episodes(
-        actions=[
-            [0], [0], [0],  # Three first episodes action 0
-            [1], [1], [1],  # Three last episodes action 1
-        ],
-        rewards=[
-            [1], [1], [1],  # Higher mean, action 0
-            [0], [0], [2],  # Higher max, action 1
-        ])
+    bstep_cls.return_value.run_episode_batch.return_value = (
+        testing.construct_episodes(
+            actions=[
+                [0, 2], [0, 2], [0, 2],  # Three first episodes action 0
+                [1, 2], [1, 2], [1, 2],  # Three last episodes action 1
+            ],
+            rewards=[
+                [0, 1], [0, 1], [0, 1],  # Higher mean return, action 0
+                [0, 0], [0, 0], [0, 2],  # Higher max return, action 1
+            ], truncated=True))
     return bstep_cls
 
 
-def test_number_of_simulations(mock_env, mock_bstep_class):
+def test_number_of_simulations(mock_env, mock_bstep):
     # Set up
     n_rollouts = 7
     n_envs = 2
     agent = agents.ShootingAgent(
-        batch_stepper_class=mock_bstep_class,
+        batch_stepper_class=mock_bstep,
         n_rollouts=n_rollouts,
         n_envs=n_envs
     )
@@ -134,19 +119,19 @@ def test_number_of_simulations(mock_env, mock_bstep_class):
     testing.run_without_suspensions(agent.act(None))
 
     # Test
-    assert mock_bstep_class.return_value.run_episode_batch.call_count == \
+    assert mock_bstep.return_value.run_episode_batch.call_count == \
         math.ceil(n_rollouts / n_envs)
 
 
-@pytest.mark.parametrize('aggregate_fn,expected_action',
+@pytest.mark.parametrize('aggregate_fn,x_action',
                          [(shooting.mean_aggregate, 0),
                           (shooting.max_aggregate, 1)])
-def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
-                                             aggregate_fn, expected_action):
+def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
+                                             aggregate_fn, x_action):
     # Set up
     agent = agents.ShootingAgent(
         aggregate_fn=aggregate_fn,
-        batch_stepper_class=mock_bstep_class,
+        batch_stepper_class=mock_bstep,
         n_rollouts=1,
     )
 
@@ -160,7 +145,7 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
     )
 
     # Test
-    assert actual_action == expected_action
+    assert actual_action == x_action
 
 
 @pytest.mark.parametrize('rollout_time_limit', [None, 7])

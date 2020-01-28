@@ -51,7 +51,7 @@ def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
     # Set up
     agent = agent_class(with_critic=with_critic)
     expected = np.argmax(logits)
-    value = 7
+    value = np.array([[7]])  # Batch of size 1.
     actions = []
     infos = []
 
