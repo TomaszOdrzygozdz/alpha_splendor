@@ -117,7 +117,9 @@ class Runner:
     def run_epoch(self):
         """Runs a single epoch."""
         episodes = self._batch_stepper.run_episode_batch(
-            self._network.params, time_limit=self._episode_time_limit
+            self._network.params,
+            epoch=self._epoch,
+            time_limit=self._episode_time_limit
         )
         metric_logging.log_scalar_metrics(
             'episode',

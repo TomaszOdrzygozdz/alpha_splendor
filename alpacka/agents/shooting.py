@@ -112,6 +112,7 @@ class ShootingAgent(base.OnlineAgent):
         for _ in range(math.ceil(self._n_rollouts / self._n_envs)):
             episodes.extend(self._batch_stepper.run_episode_batch(
                 params=self._params,
+                epoch=self._epoch,
                 init_state=self._model.clone_state(),
                 time_limit=self._rollout_time_limit,
             ))

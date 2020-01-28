@@ -14,14 +14,14 @@ class Agent:
     This is done using a coroutine API, explained in solve().
     """
 
-    def solve(self, env, init_state=None, time_limit=None):
+    def solve(self, env, epoch=None, init_state=None, time_limit=None):
         """Solves a given environment.
 
         Coroutine, suspends execution for every neural network prediction
         request. This enables a very convenient interface for requesting
         predictions by the Agent:
 
-            def solve(self, env, init_state=None):
+            def solve(self, env, epoch=0, init_state=None, time_limit=None):
                 # Planning...
                 predictions = yield inputs
                 # Planning...
@@ -46,6 +46,7 @@ class Agent:
 
         Args:
             env (gym.Env): Environment to solve.
+            epoch (int): Current training epoch or None if no training.
             init_state (object): Reset the environment to this state.
                 If None, then do normal gym.Env.reset().
             time_limit (int or None): Maximum number of steps to make on the
@@ -87,6 +88,7 @@ class OnlineAgent(Agent):
 
     def __init__(self):
         self._action_space = None
+        self._epoch = None
 
     @asyncio.coroutine
     def reset(self, env, observation):  # pylint: disable=missing-param-doc
@@ -159,11 +161,12 @@ class OnlineAgent(Agent):
         del episodes
         return {}
 
-    def solve(self, env, init_state=None, time_limit=None):
+    def solve(self, env, epoch=None, init_state=None, time_limit=None):
         """Solves a given environment using OnlineAgent.act().
 
         Args:
             env (gym.Env): Environment to solve.
+            epoch (int): Current training epoch or None if no training.
             init_state (object): Reset the environment to this state.
                 If None, then do normal gym.Env.reset().
             time_limit (int or None): Maximum number of steps to make on the
@@ -177,7 +180,7 @@ class OnlineAgent(Agent):
             data.Episode: Episode object containing a batch of collected
             transitions and the return for the episode.
         """
-        model_env = env
+        self._epoch = epoch
 
         if time_limit is not None:
             # Add the TimeLimitWrapper _after_ passing the model env to the
@@ -193,7 +196,7 @@ class OnlineAgent(Agent):
             # Model-based case...
             observation = env.restore_state(init_state)
 
-        yield from self.reset(model_env, observation)
+        yield from self.reset(env, observation)
 
         transitions = []
         done = False
