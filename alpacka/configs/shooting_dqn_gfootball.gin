@@ -1,6 +1,6 @@
-# Parameters for CartPole:
+# Parameters for GoogleFootball:
 # ==============================================================================
-CartPole.solved_at = 200
+# None.
 
 # Parameters for KerasNetwork:
 # ==============================================================================
@@ -28,16 +28,17 @@ ShootingAgent.n_envs = 4
 # Parameters for mlp:
 # ==============================================================================
 mlp.activation = 'relu'
-mlp.hidden_sizes = (16,)
+mlp.hidden_sizes = (100,100,)
 mlp.output_activation = None
 
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.ShootingAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
-Runner.env_class = @alpacka.envs.CartPole
+Runner.env_class = @alpacka.envs.GoogleFootball
+Runner.env_kwargs = {'dump_path': './out'}
 Runner.n_envs = 1
-Runner.episode_time_limit = 500
+Runner.episode_time_limit = None
 Runner.n_epochs = None
 Runner.n_precollect_epochs = 0
 Runner.network_class = @alpacka.networks.KerasNetwork
