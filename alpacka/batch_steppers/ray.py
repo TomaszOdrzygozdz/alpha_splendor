@@ -98,9 +98,10 @@ class RayBatchStepper(core.BatchStepper):
         ):
             self._params = RayObject.from_value(params)
 
-        # Optimization, don't send the same solve kwargs again.
-        if not solve_kwargs == self._solve_kwargs.value:
-            self._solve_kwargs = RayObject.from_value(solve_kwargs)
+        # TODO(pj): Don't send the same solve kwargs again. This is more
+        #           problematic than with params, as values may have very
+        #           different types e.g. basic data types or np.ndarray or ???.
+        self._solve_kwargs = RayObject.from_value(solve_kwargs)
 
         episodes = ray.get([w.run.remote(self._params.id, self._solve_kwargs.id)
                             for w in self.workers])
