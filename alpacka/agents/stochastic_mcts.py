@@ -337,7 +337,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
             path.append((reward, node))
         return (path, observation, done)
 
-    def _expand_leaf(self, leaf, observation, done):
+    def _expand_leaf(self, leaf, observation):
         """Expands a leaf and returns its quality.
 
         The leaf's new children are assigned initial quality. The quality of the
@@ -348,7 +348,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
         Args:
             leaf (TreeNode): Leaf to expand.
             observation (np.ndarray): Observation received at leaf.
-            done (bool): "Done" flag received at leaf.
 
         Yields:
             Network prediction requests.
@@ -357,10 +356,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
             float: Quality of a chosen child of the expanded leaf.
         """
         assert leaf.is_leaf
-
-        if done:
-            # In a "done" state, cumulative future return is 0.
-            return 0
 
         child_qualities_and_probs = yield from self._new_leaf_rater(
             observation, self._model
@@ -415,7 +410,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
         """
         (path, observation, done) = self._traverse(root, observation)
         (_, leaf) = path[-1]
-        quality = yield from self._expand_leaf(leaf, observation, done)
+        if done:
+            quality = 0.
+        else:
+            quality = yield from self._expand_leaf(leaf, observation)
         self._backpropagate(quality, path)
         # Go back to the root state.
         self._model.restore_state(self._root_state)
