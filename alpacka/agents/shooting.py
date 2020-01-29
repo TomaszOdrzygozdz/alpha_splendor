@@ -132,9 +132,10 @@ class ShootingAgent(base.OnlineAgent):
             action_scores[action] = (self._aggregate_fn(returns)
                                      if returns else np.nan)
 
-        # Computes action histograms as normalized action scores.
-        action_scores = np.nan_to_num(action_scores)
-        action_histograms = action_scores / action_scores.sum()
+        # Choose greedy action (ignore NaN scores).
+        action = np.nanargmax(action_scores)
+        onehot_action = np.zeros_like(action_scores)
+        onehot_action[action] = 1
 
         # Calculate simulation policy entropy.
         agent_info_batch = data.nested_concatenate(
@@ -144,19 +145,17 @@ class ShootingAgent(base.OnlineAgent):
         else:
             sample_entropy = None
 
-        # Calculate the MC estimate of state value.
+        # Calculate the MC estimate of a state value.
         value = sum(
             episode.return_ for episode in episodes
         ) / len(episodes)
 
         agent_info = {
-            'action_histogram': action_histograms,
+            'action_histogram': onehot_action,
             'sim_pi_entropy': sample_entropy,
-            'value': value
+            'value': value,
+            'qualities': np.nan_to_num(action_scores),
         }
-
-        # Choose greedy action.
-        action = np.nanargmax(action_scores)
 
         return action, agent_info
 

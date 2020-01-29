@@ -59,7 +59,7 @@ def mock_env_fixture():
     env = mock.create_autospec(
         spec=envs.CartPole,
         instance=True,
-        action_space=mock.Mock(spec=gym.spaces.Discrete, n=2)
+        action_space=mock.Mock(spec=gym.spaces.Discrete, n=3)
     )
     env.step.return_value = (None, 0., True, {})
     return env

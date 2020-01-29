@@ -121,18 +121,22 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
         batch_stepper_class=mock_bstep,
         n_rollouts=1,
     )
+    x_onehot_action = np.zeros(3)
+    x_onehot_action[x_action] = 1
 
     # Run
     observation = mock_env.reset()
     testing.run_with_dummy_network_response(
         agent.reset(mock_env, observation)
     )
-    (actual_action, _) = testing.run_without_suspensions(
+    (actual_action, agent_info) = testing.run_without_suspensions(
         agent.act(None)
     )
 
     # Test
     assert actual_action == x_action
+    np.testing.assert_array_equal(agent_info['action_histogram'],
+                                  x_onehot_action)
 
 
 @pytest.mark.parametrize('estimate_fn,x_action',
@@ -154,19 +158,23 @@ def test_greedy_decision_for_all_return_estimators(mock_env, mock_bstep,
         (np.array([[1]]), None),  # are for the second action.
         (np.array([[1]]), None),  # Extra bonus of 1 for mean aggregator.
     ]
+    x_onehot_action = np.zeros(3)
+    x_onehot_action[x_action] = 1
 
     # Run
     observation = mock_env.reset()
     testing.run_with_dummy_network_response(
         agent.reset(mock_env, observation)
     )
-    (actual_action, _) = testing.run_with_network_prediction_list(
+    (actual_action, agent_info) = testing.run_with_network_prediction_list(
         agent.act(None),
         logits=logits
     )
 
     # Test
     assert actual_action == x_action
+    np.testing.assert_array_equal(agent_info['action_histogram'],
+                                  x_onehot_action)
 
 
 @pytest.mark.parametrize('rollout_time_limit', [None, 7])
