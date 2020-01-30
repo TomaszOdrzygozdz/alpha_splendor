@@ -18,7 +18,7 @@ class ParamSchedulerWrapper:
         self._attr_name = attr_name
 
     def solve(self, env, epoch=None, init_state=None, time_limit=None):
-        utils.rsetattr(
+        utils.recursive_setattr(
             self._agent, self._attr_name, self._get_current_value(epoch))
 
         return_ = yield from self._agent.solve(env,

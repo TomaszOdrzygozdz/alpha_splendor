@@ -118,7 +118,7 @@ def test_agents_linear_annealing_exploration_parameter(agent_class, attr_name):
             agent.solve(env, epoch=epoch),
             logits=np.array([[3, 2, 1]])
         )
-        assert utils.rgetattr(agent, attr_name) == x_value
+        assert utils.recursive_getattr(agent, attr_name) == x_value
 
 
 def test_softmax_agent_action_counts_for_different_temperature():

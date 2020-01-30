@@ -2,5 +2,5 @@
 
 from alpacka.utils import attribute
 
-rgetattr = attribute.rgetattr
-rsetattr = attribute.rsetattr
+recursive_getattr = attribute.recursive_getattr
+recursive_setattr = attribute.recursive_setattr

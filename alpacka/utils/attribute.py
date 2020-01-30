@@ -3,7 +3,7 @@
 import functools
 
 
-def rgetattr(obj, path, *default):
+def recursive_getattr(obj, path, *default):
     """Recursive getattr."""
     attrs = path.split('.')
     try:
@@ -14,9 +14,9 @@ def rgetattr(obj, path, *default):
         raise
 
 
-def rsetattr(obj, path, value):
+def recursive_setattr(obj, path, value):
     """Recursive setattr."""
     pre, _, post = path.rpartition('.')
-    return setattr(rgetattr(obj, pre) if pre else obj,
+    return setattr(recursive_getattr(obj, pre) if pre else obj,
                    post,
                    value)
