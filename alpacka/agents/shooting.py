@@ -69,15 +69,18 @@ class ShootingAgent(base.OnlineAgent):
         self._n_envs = n_envs
         self._model = None
         self._batch_stepper = None
+        self._network_fn = None
+        self._params = None
 
-    @asyncio.coroutine
     def reset(self, env, observation):
-        """Reinitializes the agentfor a new environment."""
+        """Reinitializes the agent for a new environment."""
         assert isinstance(env.action_space, gym.spaces.Discrete), (
             'ShootingAgent only works with Discrete action spaces.'
         )
         yield from super().reset(env, observation)
+
         self._model = env
+        self._network_fn, self._params = yield data.NetworkRequest()
 
     @asyncio.coroutine
     def act(self, observation):
@@ -89,29 +92,26 @@ class ShootingAgent(base.OnlineAgent):
 
         # Lazy initialize batch stepper
         if self._batch_stepper is None:
-            network_fn, _ = yield data.NetworkRequest()
             self._batch_stepper = self._batch_stepper_class(
                 env_class=type(self._model),
                 agent_class=self._agent_class,
-                network_fn=network_fn,
+                network_fn=self._network_fn,
                 n_envs=self._n_envs,
             )
 
-        root_state = self._model.clone_state()
-
         # TODO(pj): Move it to BatchStepper. You should be able to query
         # BatchStepper for a given number of episodes (by default n_envs).
-        global_n_rollouts = math.ceil(self._n_rollouts / self._n_envs)
         episodes = []
-        for _ in range(global_n_rollouts):
+        for _ in range(math.ceil(self._n_rollouts / self._n_envs)):
             episodes.extend(self._batch_stepper.run_episode_batch(
-                params=None,  # TODO(pj): Pass current params when training
-                init_state=root_state,
+                params=self._params,
+                init_state=self._model.clone_state(),
                 time_limit=self._rollout_time_limit,
             ))
 
-        # Aggregate episodes into scores.
+        # Aggregate episodes into normalized scores.
         action_scores = self._aggregate_fn(self._action_space.n, episodes)
+        action_scores /= action_scores.sum()
 
         # Calculate simulation policy entropy.
         agent_info_batch = data.nested_concatenate(
@@ -121,9 +121,21 @@ class ShootingAgent(base.OnlineAgent):
         else:
             sample_entropy = None
 
+        # Calculate the MC estimate of state value.
+        value = sum(
+            episode.return_ for episode in episodes
+        ) / len(episodes)
+
+        agent_info = {
+            'action_histogram': action_scores,
+            'sim_pi_entropy': sample_entropy,
+            'value': value
+        }
+
         # Choose greedy action.
         action = np.argmax(action_scores)
-        return action, {'sim_pi_entropy': sample_entropy}
+
+        return action, agent_info
 
     def network_signature(self, observation_space, action_space):
         agent = self._agent_class()

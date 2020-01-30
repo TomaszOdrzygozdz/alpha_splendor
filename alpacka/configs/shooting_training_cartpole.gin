@@ -1,0 +1,60 @@
+# Parameters for CartPole:
+# ==============================================================================
+CartPole.solved_at = 100
+
+# Parameters for KerasNetwork:
+# ==============================================================================
+KerasNetwork.loss = ('mean_squared_error', 'categorical_crossentropy')
+KerasNetwork.loss_weights = [0.1, 1.0]
+KerasNetwork.metrics = [['mae', 'mse'], ['categorical_crossentropy']]
+KerasNetwork.model_fn = @alpacka.networks.keras.mlp
+KerasNetwork.optimizer = 'adam'
+KerasNetwork.weight_decay = 0.0
+KerasNetwork.train_callbacks = None
+
+# Parameters for LocalBatchStepper:
+# ==============================================================================
+# None.
+
+# Parameters for EpsilonGreedyAgent:
+# ==============================================================================
+EpsilonGreedyAgent.epsilon = 0.5
+EpsilonGreedyAgent.with_critic = True
+
+# Parameters for ShootingAgent:
+# ==============================================================================
+ShootingAgent.n_rollouts = 20
+ShootingAgent.rollout_time_limit = 10
+ShootingAgent.aggregate_fn = @alpacka.agents.shooting.mean_aggregate
+ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
+ShootingAgent.agent_class = @alpacka.agents.EpsilonGreedyAgent
+ShootingAgent.n_envs = 4
+
+# Parameters for mlp:
+# ==============================================================================
+mlp.activation = 'relu'
+mlp.hidden_sizes = (16,)
+mlp.output_activation = (None, 'softmax')
+
+# Parameters for Runner:
+# ==============================================================================
+Runner.agent_class = @alpacka.agents.ShootingAgent
+Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
+Runner.env_class = @alpacka.envs.CartPole
+Runner.n_envs = 1
+Runner.episode_time_limit = 500
+Runner.n_epochs = None
+Runner.n_precollect_epochs = 0
+Runner.network_class = @alpacka.networks.KerasNetwork
+Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
+
+# Parameters for SupervisedTrainer:
+# ==============================================================================
+SupervisedTrainer.target = (
+    @alpacka.trainers.supervised.target_value,
+    @alpacka.trainers.supervised.target_action_histogram,
+)
+SupervisedTrainer.batch_size = 64
+SupervisedTrainer.n_steps_per_epoch = 10
+SupervisedTrainer.replay_buffer_capacity = 1000000
+SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']

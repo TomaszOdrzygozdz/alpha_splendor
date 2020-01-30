@@ -27,7 +27,7 @@ class ProbabilityDistribution:
             logits (np.ndarray): Distribution parameters.
 
         Returns:
-            Pd-dependent: sample from the distribution.
+            Distribution-dependent: sample from the distribution.
         """
         raise NotImplementedError()
 
@@ -47,13 +47,13 @@ class ProbabilityDistribution:
         return None
 
 
-class CategoricalPd(ProbabilityDistribution):
+class CategoricalDistribution(ProbabilityDistribution):
     """Categorical probabilistic distribution.
 
     Softmax with temperature."""
 
     def __init__(self, temperature):
-        """Initializes CategoricalPd..
+        """Initializes CategoricalDistribution.
 
         Args:
             temperature (float): Softmax temperature parameter.
@@ -82,7 +82,44 @@ class CategoricalPd(ProbabilityDistribution):
         u = np.random.uniform(size=w_logits.shape)
         return np.argmax(w_logits - np.log(-np.log(u)), axis=-1)
 
-    def params_signature(self, action_space):
+    @staticmethod
+    def params_signature(action_space):
+        return data.TensorSignature(
+            shape=(space_utils.max_size(action_space),)
+        )
+
+
+class EpsilonGreedyDistribution(ProbabilityDistribution):
+    """Epsilon-greedy probability distribution."""
+
+    def __init__(self, epsilon):
+        """Initializes EpsilonGreedyDistribution.
+
+        Args:
+            epsilon (float): Probability of taking random action.
+        """
+        super().__init__()
+        self._eps = epsilon
+
+    def compute_statistics(self, logits):
+        prob = np.full(shape=logits.shape,
+                       fill_value=self._eps/len(logits))
+        prob[np.argmax(logits)] += 1 - self._eps
+
+        logp = np.log(prob)
+
+        entropy = -np.sum(prob * logp, axis=-1)
+
+        return {'prob': prob, 'logp': logp, 'entropy': entropy}
+
+    def sample(self, logits):
+        if np.random.random_sample() < self._eps:
+            return np.random.choice(len(logits))
+        else:
+            return np.argmax(logits)
+
+    @staticmethod
+    def params_signature(action_space):
         return data.TensorSignature(
             shape=(space_utils.max_size(action_space),)
         )

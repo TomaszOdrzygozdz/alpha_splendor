@@ -75,11 +75,11 @@ def test_act_doesnt_change_env_state():
     env = envs.CartPole()
     agent = agents.ShootingAgent(n_rollouts=10)
     observation = env.reset()
-    testing.run_without_suspensions(agent.reset(env, observation))
+    testing.run_with_dummy_network_response(agent.reset(env, observation))
 
     # Run
     state_before = env.clone_state()
-    testing.run_with_dummy_network_response(agent.act(observation))
+    testing.run_without_suspensions(agent.act(observation))
     state_after = env.clone_state()
 
     # Test
@@ -123,10 +123,10 @@ def test_number_of_simulations(mock_env, mock_bstep_class):
 
     # Run
     observation = mock_env.reset()
-    testing.run_without_suspensions(
+    testing.run_with_dummy_network_response(
         agent.reset(mock_env, observation)
     )
-    testing.run_with_dummy_network_response(agent.act(None))
+    testing.run_without_suspensions(agent.act(None))
 
     # Test
     assert mock_bstep_class.return_value.run_episode_batch.call_count == \
@@ -147,10 +147,10 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
 
     # Run
     observation = mock_env.reset()
-    testing.run_without_suspensions(
+    testing.run_with_dummy_network_response(
         agent.reset(mock_env, observation)
     )
-    (actual_action, _) = testing.run_with_dummy_network_response(
+    (actual_action, _) = testing.run_without_suspensions(
         agent.act(None)
     )
 
@@ -173,10 +173,12 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     else:
         expected_rollout_time_limit = rollout_time_limit
 
-    def _aggregate_fn(_, episodes):
+    def _aggregate_fn(act_n, episodes):
         # Test
         actual_rollout_time_limit = len(episodes[0].transition_batch.done)
         assert actual_rollout_time_limit == expected_rollout_time_limit
+
+        return np.ones(act_n)
 
     with mock.patch('alpacka.agents.shooting.type') as mock_type:
         mock_type.return_value = lambda: mock_env
@@ -189,7 +191,7 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
 
         # Run
         observation = mock_env.reset()
-        testing.run_without_suspensions(
+        testing.run_with_dummy_network_response(
             agent.reset(mock_env, observation)
         )
-        testing.run_with_dummy_network_response(agent.act(None))
+        testing.run_without_suspensions(agent.act(None))

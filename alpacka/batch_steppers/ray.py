@@ -1,6 +1,9 @@
 """Environment steppers."""
 
+import typing
+
 import gin
+import numpy as np
 
 from alpacka.batch_steppers import core
 
@@ -11,6 +14,16 @@ from alpacka.batch_steppers import core
 import numba  # pylint: disable=wrong-import-order
 import ray  # pylint: disable=wrong-import-order
 del numba
+
+
+class RayObject(typing.NamedTuple):
+    """Keeps value and id of an object in the Ray Object Store."""
+    id: typing.Any
+    value: typing.Any
+
+    @classmethod
+    def from_value(cls, value, weakref=False):
+        return cls(ray.put(value, weakref=weakref), value)
 
 
 class RayBatchStepper(core.BatchStepper):
@@ -55,10 +68,32 @@ class RayBatchStepper(core.BatchStepper):
         self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
             env_class, agent_class, network_fn, config) for _ in range(n_envs)]
 
+        self._params = RayObject(None, None)
+        self._solve_kwargs = RayObject(None, None)
+
     def run_episode_batch(self, params, **solve_kwargs):
-        params_id = ray.put(params, weakref=True)
-        solve_kwargs_id = ray.put(solve_kwargs, weakref=True)
-        episodes = ray.get([w.run.remote(params_id, solve_kwargs_id)
+        """Runs a batch of episodes using the given network parameters.
+
+        Args:
+            params (list of np.ndarray): List of network parameters as
+                numpy ndarray-s.
+            **solve_kwargs (dict): Keyword arguments passed to Agent.solve().
+
+        Returns:
+            List of completed episodes (Agent/Trainer-dependent).
+        """
+        # Optimization, don't send the same parameters again.
+        if self._params.value is None or not all(
+            [np.array_equal(p1, p2)
+             for p1, p2 in zip(params, self._params.value)]
+        ):
+            self._params = RayObject.from_value(params)
+
+        # Optimization, don't send the same solve kwargs again.
+        if not solve_kwargs == self._solve_kwargs.value:
+            self._solve_kwargs = RayObject.from_value(solve_kwargs)
+
+        episodes = ray.get([w.run.remote(self._params.id, self._solve_kwargs.id)
                             for w in self.workers])
         return episodes
 
