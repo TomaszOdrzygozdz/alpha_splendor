@@ -1,16 +1,16 @@
 """Tests for alpacka.agents.core."""
 
 import collections
-from unittest import mock
 
 import gym
 import numpy as np
 import pytest
 
 from alpacka import agents
-from alpacka import envs
 from alpacka import testing
 from alpacka import utils
+
+mock_env = testing.mock_env_fixture
 
 
 @pytest.mark.parametrize('with_critic', [True, False])
@@ -93,7 +93,8 @@ def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
 @pytest.mark.parametrize('agent_class,attr_name',
                          [(agents.SoftmaxAgent, 'distribution.temperature'),
                           (agents.EpsilonGreedyAgent, 'distribution.epsilon')])
-def test_agents_linear_annealing_exploration_parameter(agent_class, attr_name):
+def test_agents_linear_annealing_exploration_parameter(
+        agent_class, attr_name, mock_env):
     # Set up
     param_values = list(range(10, 0, -1))
     max_value = max(param_values)
@@ -105,17 +106,11 @@ def test_agents_linear_annealing_exploration_parameter(agent_class, attr_name):
         'min_value': min_value,
         'n_epochs': n_epochs
     })
-    env = mock.create_autospec(
-        spec=envs.CartPole,
-        instance=True,
-        action_space=mock.Mock(spec=gym.spaces.Discrete, n=2)
-    )
-    env.step.return_value = (None, 0., True, {})
 
     # Run & Test
     for epoch, x_value in enumerate(param_values):
         testing.run_with_constant_network_prediction(
-            agent.solve(env, epoch=epoch),
+            agent.solve(mock_env, epoch=epoch),
             logits=np.array([[3, 2, 1]])
         )
         assert utils.recursive_getattr(agent, attr_name) == x_value

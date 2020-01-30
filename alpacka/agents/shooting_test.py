@@ -4,7 +4,6 @@ import asyncio
 import math
 from unittest import mock
 
-import gym
 import numpy as np
 import pytest
 
@@ -69,13 +68,7 @@ def test_act_doesnt_change_env_state():
     np.testing.assert_equal(state_before, state_after)
 
 
-@pytest.fixture
-def mock_env():
-    return mock.create_autospec(
-        spec=envs.CartPole,
-        instance=True,
-        action_space=mock.Mock(spec=gym.spaces.Discrete, n=3)
-    )
+mock_env = testing.mock_env_fixture
 
 
 @pytest.fixture

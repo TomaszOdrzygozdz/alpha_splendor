@@ -12,15 +12,16 @@ from alpacka.utils import space as space_utils
 class ActorCriticAgent(base.OnlineAgent):
     """Agent that uses value and policy networks to infer values and logits."""
 
-    def __init__(self, distribution):
+    def __init__(self, distribution, **kwargs):
         """Initializes ActorCriticAgent.
 
         Args:
             distribution (ProbabilityDistribution): Probability distribution
                 parameterized by the inferred logits to sample actions from and
                 calculate statistics put into an agent info.
+            kwargs: OnlineAgent init keyword arguments.
         """
-        super().__init__()
+        super().__init__(**kwargs)
         self.distribution = distribution
 
     def act(self, observation):
@@ -46,15 +47,16 @@ class ActorCriticAgent(base.OnlineAgent):
 class PolicyNetworkAgent(base.OnlineAgent):
     """Agent that uses a policy network to infer logits."""
 
-    def __init__(self, distribution):
+    def __init__(self, distribution, **kwargs):
         """Initializes PolicyNetworkAgent.
 
         Args:
             distribution (ProbabilityDistribution): Probability distribution
                 parameterized by the inferred logits to sample actions from and
                 calculate statistics put into an agent info.
+            kwargs: OnlineAgent init keyword arguments.
         """
-        super().__init__()
+        super().__init__(**kwargs)
         self.distribution = distribution
 
     def act(self, observation):

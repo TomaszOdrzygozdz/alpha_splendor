@@ -4,6 +4,7 @@ import asyncio
 
 from alpacka import data
 from alpacka import envs
+from alpacka import utils
 
 
 class Agent:
@@ -14,7 +15,18 @@ class Agent:
     This is done using a coroutine API, explained in solve().
     """
 
-    def solve(self, env, epoch=None, init_state=None, time_limit=None):
+    def __init__(self, parameter_schedules=None):
+        """Initializes Agent.
+
+        Args:
+            parameter_schedules (dict): Dictionary from recursive attribute name
+                e.g. 'distribution.temperature' to a function (function object)
+                with a signature: int: epoch -> float: value.
+        """
+        self._parameter_schedules = parameter_schedules or {}
+
+    @asyncio.coroutine
+    def solve(self, env, epoch=None, init_state=None, time_limit=None):  # pylint: disable=redundant-returns-doc,redundant-yields-doc
         """Solves a given environment.
 
         Coroutine, suspends execution for every neural network prediction
@@ -59,7 +71,11 @@ class Agent:
             (Agent/Trainer-specific) Episode object summarizing the collected
             data for training the TrainableNetwork.
         """
-        raise NotImplementedError
+        del env
+        del init_state
+        del time_limit
+        for attr_name, schedule in self._parameter_schedules.items():
+            utils.recursive_setattr(self, attr_name, schedule(epoch))
 
     def network_signature(self, observation_space, action_space):  # pylint: disable=redundant-returns-doc,useless-return
         """Defines the signature of networks used by this Agent.
@@ -86,7 +102,9 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
-    def __init__(self):
+    def __init__(self, parameter_schedules=None):
+        super().__init__(parameter_schedules)
+
         self._action_space = None
         self._epoch = None
 
@@ -180,6 +198,8 @@ class OnlineAgent(Agent):
             data.Episode: Episode object containing a batch of collected
             transitions and the return for the episode.
         """
+        yield from super().solve(env, epoch, init_state, time_limit)
+
         self._epoch = epoch
 
         model_env = env

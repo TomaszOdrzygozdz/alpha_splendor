@@ -51,7 +51,8 @@ class ShootingAgent(base.OnlineAgent):
         estimate_fn=truncated_return,
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         agent_class=core.RandomAgent,
-        n_envs=10
+        n_envs=10,
+        **kwargs
     ):
         """Initializes ShootingAgent.
 
@@ -65,8 +66,9 @@ class ShootingAgent(base.OnlineAgent):
             batch_stepper_class (type): BatchStepper class.
             agent_class (type): Rollout agent class.
             n_envs (int): Number of parallel environments to run.
+            kwargs: OnlineAgent init keyword arguments.
         """
-        super().__init__()
+        super().__init__(**kwargs)
         self._n_rollouts = n_rollouts
         self._rollout_time_limit = rollout_time_limit
         self._aggregate_fn = aggregate_fn

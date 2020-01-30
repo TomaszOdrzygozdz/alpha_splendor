@@ -7,8 +7,8 @@ from alpacka.agents import deterministic_mcts
 from alpacka.agents import distributions
 from alpacka.agents import shooting
 from alpacka.agents import stochastic_mcts
-from alpacka.agents import wrappers
 from alpacka.agents.base import *
+from alpacka.utils import schedules
 
 
 # Configure agents in this module to ensure they're accessible via the
@@ -34,19 +34,15 @@ StochasticMCTSAgent = configure_agent(stochastic_mcts.StochasticMCTSAgent)  # py
 class _DistributionAgent:
     """Base class for agents that use prob. dist. to sample action."""
 
-    def __init__(self, distribution, with_critic, linear_annealing_kwargs):
+    def __init__(self, distribution, with_critic, parameter_schedules):
         super().__init__()
 
         if with_critic:
-            self._agent = ActorCriticAgent(distribution)
+            self._agent = ActorCriticAgent(
+                distribution, parameter_schedules=parameter_schedules)
         else:
-            self._agent = PolicyNetworkAgent(distribution)
-
-        if linear_annealing_kwargs is not None:
-            self._agent = wrappers.LinearAnnealingWrapper(
-                self._agent,
-                **linear_annealing_kwargs
-            )
+            self._agent = PolicyNetworkAgent(
+                distribution, parameter_schedules=parameter_schedules)
 
     def __getattr__(self, attr_name):
         return getattr(self._agent, attr_name)
@@ -65,17 +61,21 @@ class SoftmaxAgent(_DistributionAgent):
             with_critic (bool): Run the Actor-Critic agent with a value network.
             linear_annealing_kwargs (dict): Temperature linear annealing
                 schedule with keys: 'max_value', 'min_value', 'n_epochs',
-                overrides temperature. See LinearAnnealingWrapper docstring.
-                If None, then uses constant temperature value.
+                overrides temperature. If None, then uses constant temperature
+                value.
         """
         if linear_annealing_kwargs is not None:
-            linear_annealing_kwargs['attr_name'] = 'distribution.temperature'
+            parameter_schedules = {
+                'distribution.temperature': schedules.LinearAnnealing(
+                    **linear_annealing_kwargs)}
+        else:
+            parameter_schedules = {}
 
         super().__init__(
             distribution=distributions.CategoricalDistribution(
                 temperature=temperature),
             with_critic=with_critic,
-            linear_annealing_kwargs=linear_annealing_kwargs
+            parameter_schedules=parameter_schedules
         )
 
 
@@ -92,15 +92,18 @@ class EpsilonGreedyAgent(_DistributionAgent):
             with_critic (bool): Run the Actor-Critic agent with a value network.
             linear_annealing_kwargs (dict): Epsilon linear annealing
                 schedule with keys: 'max_value', 'min_value', 'n_epochs',
-                overrides epsilon. See LinearAnnealingWrapper docstring.
-                If None, then uses constant epsilon value.
+                overrides epsilon. If None, then uses constant epsilon value.
         """
         if linear_annealing_kwargs is not None:
-            linear_annealing_kwargs['attr_name'] = 'distribution.epsilon'
+            parameter_schedules = {
+                'distribution.epsilon': schedules.LinearAnnealing(
+                    **linear_annealing_kwargs)}
+        else:
+            parameter_schedules = {}
 
         super().__init__(
             distribution=distributions.EpsilonGreedyDistribution(
                 epsilon=epsilon),
             with_critic=with_critic,
-            linear_annealing_kwargs=linear_annealing_kwargs
+            parameter_schedules=parameter_schedules
         )

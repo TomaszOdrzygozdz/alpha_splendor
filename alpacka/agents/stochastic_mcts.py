@@ -258,6 +258,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         new_leaf_rater_class=RolloutNewLeafRater,
         exploration_bonus_fn=puct_exploration_bonus,
         exploration_weight=1.0,
+        **kwargs
     ):
         """Initializes StochasticMCTSAgent.
 
@@ -271,8 +272,9 @@ class StochasticMCTSAgent(base.OnlineAgent):
                 quality when choosing a node to explore in an MCTS pass.
                 Signature: (child_count, parent_count) -> bonus.
             exploration_weight (float): Weight of the exploration bonus.
+            kwargs: OnlineAgent init keyword arguments.
         """
-        super().__init__()
+        super().__init__(**kwargs)
         self.n_passes = n_passes
         self._discount = discount
         self._new_leaf_rater = new_leaf_rater_class(self._discount)
