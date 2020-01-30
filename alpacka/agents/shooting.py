@@ -15,15 +15,21 @@ from alpacka import data
 from alpacka.agents import base
 from alpacka.agents import core
 
+# Basic returns aggregators.
+gin.external_configurable(np.max, module='np')
+gin.external_configurable(np.mean, module='np')
+
 
 @gin.configurable
 @asyncio.coroutine
 def truncated_return(episode):
+    """Returns sum of rewards up to the truncation of the episode."""
     return episode.return_
 
 
 @gin.configurable
 def bootstrap_return(episode):
+    """Bootstraps a state value at the end of the episode if truncated."""
     # TODO(pj): Move this inference to concurrent workers where the agent solves
     # the environment. E.g. "last_value" in data.Episode for ActorCritic?
     return_ = episode.return_
@@ -34,27 +40,6 @@ def bootstrap_return(episode):
     return return_
 
 
-@gin.configurable
-def mean_aggregate(n_act, act_to_rets_map):
-    scores = np.zeros(n_act)
-    counts = np.zeros(n_act)
-    for action, returns in act_to_rets_map.items():
-        scores[action] = sum(returns)
-        counts[action] = len(returns)
-    counts[counts == 0] = 1
-    return scores / counts
-
-
-@gin.configurable
-def max_aggregate(n_act, act_to_rets_map):
-    scores = np.empty(n_act)
-    for i in range(n_act):
-        scores[i] = -np.inf
-    for action, returns in act_to_rets_map.items():
-        scores[action] = max(returns)
-    return scores
-
-
 class ShootingAgent(base.OnlineAgent):
     """Monte Carlo simulation agent."""
 
@@ -62,7 +47,7 @@ class ShootingAgent(base.OnlineAgent):
         self,
         n_rollouts=1000,
         rollout_time_limit=None,
-        aggregate_fn=mean_aggregate,
+        aggregate_fn=np.mean,
         estimate_fn=truncated_return,
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         agent_class=core.RandomAgent,
@@ -73,10 +58,10 @@ class ShootingAgent(base.OnlineAgent):
         Args:
             n_rollouts (int): Do at least this number of MC rollouts per act().
             rollout_time_limit (int): Maximum number of timesteps for rollouts.
-            aggregate_fn (callable): Aggregates simulated episodes. Signature:
-                (n_act, act_to_rets_map) -> np.ndarray: action_scores.
+            aggregate_fn (callable): Aggregates simulated episodes returns.
+                Signature: list: returns -> float: action score.
             estimate_fn (bool): Simulated episode return estimator.
-                Signature: episode -> return. It must be a coroutine.
+                Signature: Episode -> float: return. It must be a coroutine.
             batch_stepper_class (type): BatchStepper class.
             agent_class (type): Rollout agent class.
             n_envs (int): Number of parallel environments to run.
@@ -137,10 +122,15 @@ class ShootingAgent(base.OnlineAgent):
             return_ = yield from self._estimate_fn(episode)
             act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
-        # Aggregate episodes into normalized scores.
-        action_scores = self._aggregate_fn(
-            self._action_space.n, act_to_rets_map)
-        action_scores /= action_scores.sum()
+        # Aggregate episodes into action scores.
+        action_scores = np.empty(self._action_space.n)
+        for action, returns in act_to_rets_map.items():
+            action_scores[action] = (self._aggregate_fn(returns)
+                                     if returns else np.nan)
+
+        # Computes action histograms as normalized action scores.
+        action_scores = np.nan_to_num(action_scores)
+        action_histograms = action_scores / action_scores.sum()
 
         # Calculate simulation policy entropy.
         agent_info_batch = data.nested_concatenate(
@@ -156,13 +146,13 @@ class ShootingAgent(base.OnlineAgent):
         ) / len(episodes)
 
         agent_info = {
-            'action_histogram': action_scores,
+            'action_histogram': action_histograms,
             'sim_pi_entropy': sample_entropy,
             'value': value
         }
 
         # Choose greedy action.
-        action = np.argmax(action_scores)
+        action = np.nanargmax(action_scores)
 
         return action, agent_info
 

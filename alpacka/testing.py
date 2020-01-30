@@ -53,6 +53,7 @@ class TabularEnv(envs.ModelEnv):
 
 
 def run_without_suspensions(coroutine):
+    """Runs a coroutine, not expecting any requests."""
     try:
         next(coroutine)
         assert False, 'Coroutine should return immediately.'
@@ -61,6 +62,15 @@ def run_without_suspensions(coroutine):
 
 
 def run_with_constant_network_prediction(coroutine, logits):
+    """Runs a coroutine with a constant response.
+
+    Args:
+        coroutine: Coroutine yielding network requests.
+        logits: Response to send to every request.
+
+    Returns:
+        Return value of the coroutine.
+    """
     try:
         next(coroutine)
         coroutine.send(logits)
@@ -70,6 +80,15 @@ def run_with_constant_network_prediction(coroutine, logits):
 
 
 def run_with_network_prediction_list(coroutine, logits):
+    """Runs a coroutine with a list of responses.
+
+    Args:
+        coroutine: Coroutine yielding network requests.
+        logits (list): List of responses to send in sequence to the coroutine.
+
+    Returns:
+        Return value of the coroutine.
+    """
     try:
         next(coroutine)
         for pred in logits:
@@ -103,6 +122,14 @@ def run_with_dummy_network_prediction(coroutine, network_signature):
 
 
 def run_with_dummy_network_response(coroutine):
+    """Runs a coroutine with a dummy network fn. and None params as a response.
+
+    Args:
+        coroutine: Coroutine yielding network requests.
+
+    Returns:
+        Return value of the coroutine.
+    """
     try:
         next(coroutine)
         coroutine.send((

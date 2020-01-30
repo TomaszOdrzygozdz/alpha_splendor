@@ -24,7 +24,7 @@ TFMetaGraphNetwork.model_path = 'fixtures/tf_metagraph_checkpoint/baseline_ppo2_
 # ==============================================================================
 ShootingAgent.n_rollouts = 20
 ShootingAgent.rollout_time_limit = 10
-ShootingAgent.aggregate_fn = @alpacka.agents.shooting.mean_aggregate
+ShootingAgent.aggregate_fn = @np.mean
 ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
 ShootingAgent.agent_class = @alpacka.agents.SoftmaxAgent
 ShootingAgent.n_envs = 4

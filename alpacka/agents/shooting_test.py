@@ -15,38 +15,6 @@ from alpacka import testing
 from alpacka.agents import shooting
 
 
-def test_mean_aggregate_episodes():
-    # Set up
-    act_to_rets_map = {
-        0: [-1],
-        1: [0, 1],
-        2: [1, 2, -1]
-    }
-    x_score = np.array([-1, 1/2, 2/3, 0])
-
-    # Run
-    mean_scores = shooting.mean_aggregate(4, act_to_rets_map)
-
-    # Test
-    np.testing.assert_array_equal(x_score, mean_scores)
-
-
-def test_max_aggregate_episodes():
-    # Set up
-    act_to_rets_map = {
-        0: [-1],
-        1: [0, 1],
-        2: [1, 2, -1]
-    }
-    x_score = np.array([-1, 1, 2, -np.inf])
-
-    # Run
-    max_scores = shooting.max_aggregate(4, act_to_rets_map)
-
-    # Test
-    np.testing.assert_array_equal(x_score, max_scores)
-
-
 @pytest.mark.parametrize('truncated,x_return',
                          [(False, 2 - 1),
                           (True, 2 - 1 + 7)])
@@ -106,7 +74,7 @@ def mock_env():
     return mock.create_autospec(
         spec=envs.CartPole,
         instance=True,
-        action_space=mock.Mock(spec=gym.spaces.Discrete, n=2)
+        action_space=mock.Mock(spec=gym.spaces.Discrete, n=3)
     )
 
 
@@ -150,8 +118,8 @@ def test_number_of_simulations(mock_env, mock_bstep):
 
 
 @pytest.mark.parametrize('aggregate_fn,x_action',
-                         [(shooting.mean_aggregate, 0),
-                          (shooting.max_aggregate, 1)])
+                         [(np.mean, 0),
+                          (np.max, 1)])
 def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
                                              aggregate_fn, x_action):
     # Set up
