@@ -27,7 +27,7 @@ class ProbabilityDistribution:
             logits (np.ndarray): Distribution parameters.
 
         Returns:
-            Pd-dependent: sample from the distribution.
+            Distribution-dependent: sample from the distribution.
         """
         raise NotImplementedError()
 
@@ -47,13 +47,13 @@ class ProbabilityDistribution:
         return None
 
 
-class CategoricalPd(ProbabilityDistribution):
+class CategoricalDistribution(ProbabilityDistribution):
     """Categorical probabilistic distribution.
 
     Softmax with temperature."""
 
     def __init__(self, temperature):
-        """Initializes CategoricalPd.
+        """Initializes CategoricalDistribution.
 
         Args:
             temperature (float): Softmax temperature parameter.
@@ -89,11 +89,11 @@ class CategoricalPd(ProbabilityDistribution):
         )
 
 
-class EgreedyPd(ProbabilityDistribution):
-    """E-greedy probability distribution."""
+class EpsilonGreedyDistribution(ProbabilityDistribution):
+    """Epsilon-greedy probability distribution."""
 
     def __init__(self, epsilon):
-        """Initializes EgreedyPd.
+        """Initializes EpsilonGreedyDistribution.
 
         Args:
             epsilon (float): Probability of taking random action.

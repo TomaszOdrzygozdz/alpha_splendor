@@ -16,10 +16,10 @@ KerasNetwork.train_callbacks = None
 # ==============================================================================
 # None.
 
-# Parameters for EgreedyAgent:
+# Parameters for EpsilonGreedyAgent:
 # ==============================================================================
-EgreedyAgent.epsilon = 0.5
-EgreedyAgent.with_critic = True
+EpsilonGreedyAgent.epsilon = 0.5
+EpsilonGreedyAgent.with_critic = True
 
 # Parameters for ShootingAgent:
 # ==============================================================================
@@ -27,7 +27,7 @@ ShootingAgent.n_rollouts = 20
 ShootingAgent.rollout_time_limit = 10
 ShootingAgent.aggregate_fn = @alpacka.agents.shooting.mean_aggregate
 ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
-ShootingAgent.agent_class = @alpacka.agents.EgreedyAgent
+ShootingAgent.agent_class = @alpacka.agents.EpsilonGreedyAgent
 ShootingAgent.n_envs = 4
 
 # Parameters for mlp:

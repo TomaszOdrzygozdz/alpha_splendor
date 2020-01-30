@@ -30,16 +30,16 @@ StochasticMCTSAgent = configure_agent(stochastic_mcts.StochasticMCTSAgent)  # py
 # Helper agents (Agent + Distribution).
 
 
-class _PdAgent(OnlineAgent):
+class _DistributionAgent(OnlineAgent):
     """Base class for agents that use prob. dist. to sample action."""
 
-    def __init__(self, pd, with_critic):
+    def __init__(self, distribution, with_critic):
         super().__init__()
 
         if with_critic:
-            self._agent = ActorCriticAgent(pd)
+            self._agent = ActorCriticAgent(distribution)
         else:
-            self._agent = PolicyNetworkAgent(pd)
+            self._agent = PolicyNetworkAgent(distribution)
 
     def act(self, observation):
         return self._agent.act(observation)
@@ -49,7 +49,7 @@ class _PdAgent(OnlineAgent):
 
 
 @gin.configurable
-class SoftmaxAgent(_PdAgent):
+class SoftmaxAgent(_DistributionAgent):
     """Softmax agent, sampling actions from the categorical distribution."""
 
     def __init__(self, temperature=1., with_critic=False):
@@ -60,23 +60,25 @@ class SoftmaxAgent(_PdAgent):
             with_critic (bool): Run the Actor-Critic agent with a value network.
         """
         super().__init__(
-            pd=distributions.CategoricalPd(temperature=temperature),
+            distribution=distributions.CategoricalDistribution(
+                temperature=temperature),
             with_critic=with_critic
         )
 
 
 @gin.configurable
-class EgreedyAgent(_PdAgent):
+class EpsilonGreedyAgent(_DistributionAgent):
     """Softmax agent, sampling actions from the categorical distribution."""
 
     def __init__(self, epsilon=.05, with_critic=False):
-        """Initializes EgreedyAgent.
+        """Initializes EpsilonGreedyAgent.
 
         Args:
             epsilon (float): Probability of taking random action.
             with_critic (bool): Run the Actor-Critic agent with a value network.
         """
         super().__init__(
-            pd=distributions.EgreedyPd(epsilon=epsilon),
+            distribution=distributions.EpsilonGreedyDistribution(
+                epsilon=epsilon),
             with_critic=with_critic
         )

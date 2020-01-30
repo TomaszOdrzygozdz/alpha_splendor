@@ -13,7 +13,7 @@ from alpacka import testing
 @pytest.mark.parametrize('with_critic', [True, False])
 @pytest.mark.parametrize('agent_class',
                          [agents.SoftmaxAgent,
-                          agents.EgreedyAgent])
+                          agents.EpsilonGreedyAgent])
 def test_agents_network_signature(agent_class, with_critic):
     # Set up
     obs_space = gym.spaces.Box(low=0, high=255, shape=(7, 7), dtype=np.uint8)
@@ -43,7 +43,7 @@ def test_agents_network_signature(agent_class, with_critic):
                           np.array([[2, 1, 3]])])
 @pytest.mark.parametrize('agent_class,rtol',
                          [(agents.SoftmaxAgent, 0.2),
-                          (agents.EgreedyAgent, 0.3)])
+                          (agents.EpsilonGreedyAgent, 0.3)])
 def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
                                                                  logits,
                                                                  rtol,
@@ -117,8 +117,8 @@ def test_softmax_agent_action_counts_for_different_temperature():
 
 def test_egreedy_agent_action_counts_for_different_epsilon():
     # Set up
-    low_eps_agent = agents.EgreedyAgent(epsilon=.05)
-    high_eps_agent = agents.EgreedyAgent(epsilon=.5)
+    low_eps_agent = agents.EpsilonGreedyAgent(epsilon=.05)
+    high_eps_agent = agents.EpsilonGreedyAgent(epsilon=.5)
     low_eps_action_count = collections.defaultdict(int)
     high_eps_action_count = collections.defaultdict(int)
     logits = ((5, 4, 3, 2, 1), )  # Batch of size 1.
