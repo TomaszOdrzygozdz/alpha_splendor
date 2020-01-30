@@ -53,6 +53,7 @@ class TabularEnv(envs.ModelEnv):
 
 
 def run_without_suspensions(coroutine):
+    """Runs a coroutine, not expecting any requests."""
     try:
         next(coroutine)
         assert False, 'Coroutine should return immediately.'
@@ -61,10 +62,38 @@ def run_without_suspensions(coroutine):
 
 
 def run_with_constant_network_prediction(coroutine, logits):
+    """Runs a coroutine with a constant response.
+
+    Args:
+        coroutine: Coroutine yielding network requests.
+        logits: Response to send to every request.
+
+    Returns:
+        Return value of the coroutine.
+    """
     try:
         next(coroutine)
         coroutine.send(logits)
         assert False, 'Coroutine should return after the first prediction.'
+    except StopIteration as e:
+        return e.value
+
+
+def run_with_network_prediction_list(coroutine, logits):
+    """Runs a coroutine with a list of responses.
+
+    Args:
+        coroutine: Coroutine yielding network requests.
+        logits (list): List of responses to send in sequence to the coroutine.
+
+    Returns:
+        Return value of the coroutine.
+    """
+    try:
+        next(coroutine)
+        for pred in logits:
+            coroutine.send(pred)
+        assert False, 'No more predictions, coroutine should return.'
     except StopIteration as e:
         return e.value
 
@@ -93,6 +122,14 @@ def run_with_dummy_network_prediction(coroutine, network_signature):
 
 
 def run_with_dummy_network_response(coroutine):
+    """Runs a coroutine with a dummy network fn. and None params as a response.
+
+    Args:
+        coroutine: Coroutine yielding network requests.
+
+    Returns:
+        Return value of the coroutine.
+    """
     try:
         next(coroutine)
         coroutine.send((
@@ -102,6 +139,43 @@ def run_with_dummy_network_response(coroutine):
         assert False, 'Coroutine should return after one request.'
     except StopIteration as e:
         return e.value
+
+
+def construct_episodes(actions, rewards, **kwargs):
+    """Constructs episodes from actions and rewards nested lists.
+
+    Args:
+        actions (list): Each episode actions, example:
+        [
+            [a00, a01, a02, ...], # Actions in the first episode.
+            [a10, a11, a12, ...], # Actions in the second episode.
+            ...
+        ]
+        rewards (list): Each episode rewards, example:
+        [
+            [r00, r01, r02, ...], # Rewards in the first episode.
+            [r10, r11, r12, ...], # Rewards in the second episode.
+            ...
+        ]
+        **kwargs (dict): Keyword arguments passed to Episode.
+
+    Return:
+        list of Episodes where:
+         - Transition observations and next observations are set to None.
+         - Done flag is True only for the last transition in the episode.
+         - Episode.return_ is calculated as an undiscounted sum of rewards.
+    """
+    episodes = []
+    for acts, rews in zip(actions, rewards):
+        transitions = [
+            # TODO(koz4k): Initialize using kwargs.
+            data.Transition(None, act, rew, False, None, {})
+            for act, rew in zip(acts[:-1], rews[:-1])]
+        transitions.append(
+            data.Transition(None, acts[-1], rews[-1], True, None, {}))
+        transition_batch = data.nested_stack(transitions)
+        episodes.append(data.Episode(transition_batch, sum(rews), **kwargs))
+    return episodes
 
 
 def zero_pytree(signature, shape_prefix=()):

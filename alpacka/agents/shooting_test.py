@@ -1,5 +1,6 @@
 """Tests for alpacka.agents.shooting."""
 
+import asyncio
 import math
 from unittest import mock
 
@@ -9,53 +10,35 @@ import pytest
 
 from alpacka import agents
 from alpacka import batch_steppers
-from alpacka import data
 from alpacka import envs
 from alpacka import testing
 from alpacka.agents import shooting
 
 
-def construct_episodes(actions, rewards):
-    """Constructs episodes from actions and rewards nested lists."""
-    episodes = []
-    for acts, rews in zip(actions, rewards):
-        transitions = [
-            # TODO(koz4k): Initialize using kwargs.
-            data.Transition(None, act, rew, False, None, {})
-            for act, rew in zip(acts[:-1], rews[:-1])]
-        transitions.append(
-            data.Transition(None, acts[-1], rews[-1], True, None, {}))
-        transition_batch = data.nested_stack(transitions)
-        episodes.append(data.Episode(transition_batch, sum(rews)))
-    return episodes
-
-
-def test_mean_aggregate_episodes():
+@pytest.mark.parametrize('truncated,x_return',
+                         [(False, 2 - 1),
+                          (True, 2 - 1 + 7)])
+def test_bootstrap_return_estimator(truncated, x_return):
     # Set up
-    actions = [[0], [1], [1], [2], [2], [2]]
-    rewards = [[-1], [0], [1], [1], [2], [-1]]
-    expected_score = np.array([-1, 1/2, 2/3])
-    episodes = construct_episodes(actions, rewards)
+    episode = testing.construct_episodes(
+        actions=[
+            [0, 1, 2, 3],
+        ],
+        rewards=[
+            [0, 2, 0, -1]
+        ],
+        truncated=truncated
+    )[0]
+    logits = (np.array([[7]]), None)
 
     # Run
-    mean_scores = shooting.mean_aggregate(3, episodes)
+    bootstrap_return = testing.run_with_constant_network_prediction(
+        shooting.bootstrap_return(episode),
+        logits=logits
+    )
 
     # Test
-    np.testing.assert_array_equal(expected_score, mean_scores)
-
-
-def test_max_aggregate_episodes():
-    # Set up
-    actions = [[0], [1], [1], [2], [2], [2]]
-    rewards = [[-1], [0], [1], [1], [2], [-1]]
-    expected_score = np.array([-1, 1, 2])
-    episodes = construct_episodes(actions, rewards)
-
-    # Run
-    mean_scores = shooting.max_aggregate(3, episodes)
-
-    # Test
-    np.testing.assert_array_equal(expected_score, mean_scores)
+    assert bootstrap_return == x_return
 
 
 def test_integration_with_cartpole():
@@ -91,32 +74,33 @@ def mock_env():
     return mock.create_autospec(
         spec=envs.CartPole,
         instance=True,
-        action_space=mock.Mock(spec=gym.spaces.Discrete, n=2)
+        action_space=mock.Mock(spec=gym.spaces.Discrete, n=3)
     )
 
 
 @pytest.fixture
-def mock_bstep_class():
+def mock_bstep():
     """Mock batch stepper class with fixed run_episode_batch return."""
     bstep_cls = mock.create_autospec(batch_steppers.LocalBatchStepper)
-    bstep_cls.return_value.run_episode_batch.return_value = construct_episodes(
-        actions=[
-            [0], [0], [0],  # Three first episodes action 0
-            [1], [1], [1],  # Three last episodes action 1
-        ],
-        rewards=[
-            [1], [1], [1],  # Higher mean, action 0
-            [0], [0], [2],  # Higher max, action 1
-        ])
+    bstep_cls.return_value.run_episode_batch.return_value = (
+        testing.construct_episodes(
+            actions=[
+                [0, 2], [0, 2], [0, 2],  # Three first episodes action 0
+                [1, 2], [1, 2], [1, 2],  # Three last episodes action 1
+            ],
+            rewards=[
+                [0, 1], [0, 1], [0, 1],  # Higher mean return, action 0
+                [0, 0], [0, 0], [0, 2],  # Higher max return, action 1
+            ], truncated=True))
     return bstep_cls
 
 
-def test_number_of_simulations(mock_env, mock_bstep_class):
+def test_number_of_simulations(mock_env, mock_bstep):
     # Set up
     n_rollouts = 7
     n_envs = 2
     agent = agents.ShootingAgent(
-        batch_stepper_class=mock_bstep_class,
+        batch_stepper_class=mock_bstep,
         n_rollouts=n_rollouts,
         n_envs=n_envs
     )
@@ -129,19 +113,19 @@ def test_number_of_simulations(mock_env, mock_bstep_class):
     testing.run_without_suspensions(agent.act(None))
 
     # Test
-    assert mock_bstep_class.return_value.run_episode_batch.call_count == \
+    assert mock_bstep.return_value.run_episode_batch.call_count == \
         math.ceil(n_rollouts / n_envs)
 
 
-@pytest.mark.parametrize('aggregate_fn,expected_action',
-                         [(shooting.mean_aggregate, 0),
-                          (shooting.max_aggregate, 1)])
-def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
-                                             aggregate_fn, expected_action):
+@pytest.mark.parametrize('aggregate_fn,x_action',
+                         [(np.mean, 0),
+                          (np.max, 1)])
+def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
+                                             aggregate_fn, x_action):
     # Set up
     agent = agents.ShootingAgent(
         aggregate_fn=aggregate_fn,
-        batch_stepper_class=mock_bstep_class,
+        batch_stepper_class=mock_bstep,
         n_rollouts=1,
     )
 
@@ -155,7 +139,41 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep_class,
     )
 
     # Test
-    assert actual_action == expected_action
+    assert actual_action == x_action
+
+
+@pytest.mark.parametrize('estimate_fn,x_action',
+                         [(shooting.truncated_return, 0),
+                          (shooting.bootstrap_return, 1)])
+def test_greedy_decision_for_all_return_estimators(mock_env, mock_bstep,
+                                                   estimate_fn, x_action):
+    # Set up
+    agent = agents.ShootingAgent(
+        estimate_fn=estimate_fn,
+        batch_stepper_class=mock_bstep,
+        n_rollouts=1,
+    )
+    logits = [
+        (np.array([[0]]), None),  # The first three predictions
+        (np.array([[0]]), None),  # are for the first action.
+        (np.array([[0]]), None),  # No extra "bonus".
+        (np.array([[1]]), None),  # The last three predictions
+        (np.array([[1]]), None),  # are for the second action.
+        (np.array([[1]]), None),  # Extra bonus of 1 for mean aggregator.
+    ]
+
+    # Run
+    observation = mock_env.reset()
+    testing.run_with_dummy_network_response(
+        agent.reset(mock_env, observation)
+    )
+    (actual_action, _) = testing.run_with_network_prediction_list(
+        agent.act(None),
+        logits=logits
+    )
+
+    # Test
+    assert actual_action == x_action
 
 
 @pytest.mark.parametrize('rollout_time_limit', [None, 7])
@@ -169,23 +187,24 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
     mock_env.restore_state.return_value = 'o'
 
     if rollout_time_limit is None:
-        expected_rollout_time_limit = rollout_max_len
+        x_rollout_time_limit = rollout_max_len
     else:
-        expected_rollout_time_limit = rollout_time_limit
+        x_rollout_time_limit = rollout_time_limit
 
-    def _aggregate_fn(act_n, episodes):
+    @asyncio.coroutine
+    def _estimate_fn(episode):
         # Test
-        actual_rollout_time_limit = len(episodes[0].transition_batch.done)
-        assert actual_rollout_time_limit == expected_rollout_time_limit
+        actual_rollout_time_limit = len(episode.transition_batch.done)
+        assert actual_rollout_time_limit == x_rollout_time_limit
 
-        return np.ones(act_n)
+        return 1.
 
     with mock.patch('alpacka.agents.shooting.type') as mock_type:
         mock_type.return_value = lambda: mock_env
         agent = agents.ShootingAgent(
             n_rollouts=1,
             rollout_time_limit=rollout_time_limit,
-            aggregate_fn=_aggregate_fn,
+            estimate_fn=_estimate_fn,
             n_envs=1,
         )
 
