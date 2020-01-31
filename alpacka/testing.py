@@ -1,9 +1,11 @@
 """Testing utilities."""
 
 import functools
+from unittest import mock
 
 import gym
 import numpy as np
+import pytest
 
 from alpacka import data
 from alpacka import envs
@@ -50,6 +52,17 @@ class TabularEnv(envs.ModelEnv):
 
     def restore_state(self, state):
         self._state = state
+
+
+@pytest.fixture
+def mock_env_fixture():
+    env = mock.create_autospec(
+        spec=envs.CartPole,
+        instance=True,
+        action_space=mock.Mock(spec=gym.spaces.Discrete, n=2)
+    )
+    env.step.return_value = (None, 0., True, {})
+    return env
 
 
 def run_without_suspensions(coroutine):

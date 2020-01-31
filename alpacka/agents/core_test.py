@@ -8,6 +8,9 @@ import pytest
 
 from alpacka import agents
 from alpacka import testing
+from alpacka import utils
+
+mock_env = testing.mock_env_fixture
 
 
 @pytest.mark.parametrize('with_critic', [True, False])
@@ -85,6 +88,32 @@ def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
     np.testing.assert_allclose(sample_prob, info['prob'], rtol=rtol)
     np.testing.assert_allclose(sample_logp, info['logp'], rtol=rtol)
     np.testing.assert_allclose(sample_entropy, info['entropy'], rtol=rtol)
+
+
+@pytest.mark.parametrize('agent_class,attr_name',
+                         [(agents.SoftmaxAgent, 'distribution.temperature'),
+                          (agents.EpsilonGreedyAgent, 'distribution.epsilon')])
+def test_agents_linear_annealing_exploration_parameter(
+        agent_class, attr_name, mock_env):
+    # Set up
+    param_values = list(range(10, 0, -1))
+    max_value = max(param_values)
+    min_value = min(param_values)
+    n_epochs = len(param_values)
+
+    agent = agent_class(linear_annealing_kwargs={
+        'max_value': max_value,
+        'min_value': min_value,
+        'n_epochs': n_epochs
+    })
+
+    # Run & Test
+    for epoch, x_value in enumerate(param_values):
+        testing.run_with_constant_network_prediction(
+            agent.solve(mock_env, epoch=epoch),
+            logits=np.array([[3, 2, 1]])
+        )
+        assert utils.recursive_getattr(agent, attr_name) == x_value
 
 
 def test_softmax_agent_action_counts_for_different_temperature():

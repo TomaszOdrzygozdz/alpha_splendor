@@ -179,8 +179,9 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         avoid_loops=True,
         value_traits_class=ScalarValueTraits,
         value_accumulator_class=ScalarValueAccumulator,
+        **kwargs
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self._gamma = gamma
         self._n_passes = n_passes
         self._avoid_loops = avoid_loops
