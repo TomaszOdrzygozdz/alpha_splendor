@@ -106,6 +106,7 @@ class ShootingAgent(base.OnlineAgent):
                 agent_class=self._agent_class,
                 network_fn=self._network_fn,
                 n_envs=self._n_envs,
+                output_dir=None,
             )
 
         # TODO(pj): Move it to BatchStepper. You should be able to query

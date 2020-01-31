@@ -1,5 +1,6 @@
 """Environment steppers."""
 
+import os
 import typing
 
 import gin
@@ -57,14 +58,22 @@ class RayBatchStepper(core.BatchStepper):
         def network(self):
             return self._request_handler.network
 
-    def __init__(self, env_class, agent_class, network_fn, n_envs):
-        super().__init__(env_class, agent_class, network_fn, n_envs)
+    def __init__(self, env_class, agent_class, network_fn, n_envs, output_dir):
+        super().__init__(env_class, agent_class, network_fn, n_envs, output_dir)
 
         config = RayBatchStepper._get_config(env_class, agent_class, network_fn)
         ray_worker_cls = ray.remote(RayBatchStepper.Worker)
 
         if not ray.is_initialized():
-            ray.init()
+            kwargs = {
+                # Size of the Plasma object store, hardcoded to 1GB for now.
+                # TODO(koz4k): Gin-configure if we ever need to change it.
+                'object_store_memory': int(1e9),
+            }
+            if output_dir is not None:
+                # Logs are saved there.
+                kwargs['temp_dir'] = os.path.join(output_dir, 'ray')
+            ray.init(**kwargs)
         self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
             env_class, agent_class, network_fn, config) for _ in range(n_envs)]
 
