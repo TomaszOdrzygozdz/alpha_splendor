@@ -10,7 +10,7 @@ from alpacka.utils import space as space_utils
 
 
 class ActorCriticAgent(base.OnlineAgent):
-    """Agent that uses value and policy networks to infer values and logits."""
+    """Agent that uses value and policy networks to infer value and logits."""
 
     def __init__(self, distribution, **kwargs):
         """Initializes ActorCriticAgent.
@@ -25,13 +25,15 @@ class ActorCriticAgent(base.OnlineAgent):
         self.distribution = distribution
 
     def act(self, observation):
-        batched_values, batched_logits = yield np.expand_dims(observation,
-                                                              axis=0)
-        values = np.squeeze(batched_values, axis=0)  # Removes batch dim.
+        batched_value, batched_logits = yield np.expand_dims(observation,
+                                                             axis=0)
+        value = np.squeeze(batched_value, axis=0)  # Removes batch dim.
         logits = np.squeeze(batched_logits, axis=0)  # Removes batch dim.
 
         action = self.distribution.sample(logits)
-        agent_info = {'value': values}
+
+        agent_info = {'value': value,
+                      'logits': logits}
         agent_info.update(self.distribution.compute_statistics(logits))
 
         return action, agent_info
@@ -42,6 +44,20 @@ class ActorCriticAgent(base.OnlineAgent):
             output=(data.TensorSignature(shape=(1,)),
                     self.distribution.params_signature(action_space))
         )
+
+    @staticmethod
+    def compute_metrics(episodes):
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+
+        return {
+            'max_value': np.max(agent_info_batch['value']),
+            'max_logits': np.max(agent_info_batch['logits']),
+            'mean_value': np.mean(agent_info_batch['value']),
+            'mean_logits': np.mean(agent_info_batch['logits']),
+            'min_value': np.min(agent_info_batch['value']),
+            'min_logits': np.min(agent_info_batch['logits']),
+        }
 
 
 class PolicyNetworkAgent(base.OnlineAgent):
@@ -62,14 +78,30 @@ class PolicyNetworkAgent(base.OnlineAgent):
     def act(self, observation):
         batched_logits = yield np.expand_dims(observation, axis=0)
         logits = np.squeeze(batched_logits, axis=0)  # Removes batch dim.
-        return (self.distribution.sample(logits),
-                self.distribution.compute_statistics(logits))
+
+        action = self.distribution.sample(logits)
+
+        agent_info = {'logits': logits}
+        agent_info.update(self.distribution.compute_statistics(logits))
+
+        return action, agent_info
 
     def network_signature(self, observation_space, action_space):
         return data.NetworkSignature(
             input=space_utils.signature(observation_space),
             output=self.distribution.params_signature(action_space),
         )
+
+    @staticmethod
+    def compute_metrics(episodes):
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+
+        return {
+            'max_logits': np.max(agent_info_batch['logits']),
+            'mean_logits': np.mean(agent_info_batch['logits']),
+            'min_logits': np.min(agent_info_batch['logits']),
+        }
 
 
 class RandomAgent(base.OnlineAgent):

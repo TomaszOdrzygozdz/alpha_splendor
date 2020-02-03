@@ -94,6 +94,8 @@ class ShootingAgent(base.OnlineAgent):
         self._network_fn = None
         self._params = None
 
+        self._agent = agent_class()
+
     def reset(self, env, observation):
         """Reinitializes the agent for a new environment."""
         assert isinstance(env.action_space, gym.spaces.Discrete), (
@@ -169,26 +171,45 @@ class ShootingAgent(base.OnlineAgent):
             'value': value,
             'qualities': np.nan_to_num(action_scores),
         }
+        agent_info.update(self._agent.compute_metrics(episodes))
 
         return action, agent_info
 
     def network_signature(self, observation_space, action_space):
-        agent = self._agent_class()
-        return agent.network_signature(observation_space, action_space)
+        return self._agent.network_signature(observation_space, action_space)
 
     @staticmethod
     def compute_metrics(episodes):
         # Calculate simulation policy entropy.
+        metrics = {}
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
+
         if np.all(agent_info_batch['sim_pi_entropy']):
             sample_sim_pi_entropy = np.mean(
                 agent_info_batch['sim_pi_entropy'])
             sample_sim_pi_entropy_std = np.std(
                 agent_info_batch['sim_pi_entropy'])
 
-            return {
+            metrics.update({
                 'simulation_entropy': sample_sim_pi_entropy,
                 'simulation_entropy_std': sample_sim_pi_entropy_std
-            }
-        return {}
+            })
+
+        if 'mean_value' in agent_info_batch:
+            metrics['network_max_value'] = np.max(
+                agent_info_batch['max_value'])
+            metrics['network_mean_value'] = np.mean(
+                agent_info_batch['mean_value'])
+            metrics['network_min_value'] = np.min(
+                agent_info_batch['min_value'])
+
+        if 'mean_logits' in agent_info_batch:
+            metrics['network_max_logits'] = np.max(
+                agent_info_batch['max_logits'])
+            metrics['network_mean_logits'] = np.mean(
+                agent_info_batch['mean_logits'])
+            metrics['network_min_logits'] = np.min(
+                agent_info_batch['min_logits'])
+
+        return metrics
