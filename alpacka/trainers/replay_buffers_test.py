@@ -16,6 +16,12 @@ _test_datapoint_sig = _TestTransition(
     test_field=data.TensorSignature(shape=()),
 )
 
+_TestPairTransition = collections.namedtuple('_TestPairTransition', ['a', 'b'])
+
+_test_pair_datapoint_sig = _TestPairTransition(
+    a=data.TensorSignature(shape=()), b=data.TensorSignature(shape=()),
+)
+
 
 def test_uniform_samples_added_transition():
     buf = replay_buffers.UniformReplayBuffer(_test_datapoint_sig, capacity=10)
@@ -66,8 +72,30 @@ def test_uniform_overwrites_old_transitions():
     buf = replay_buffers.UniformReplayBuffer(_test_datapoint_sig, capacity=4)
     buf.add(_TestTransition(np.arange(3)))
     buf.add(_TestTransition(np.arange(3, 6)))
-    # 0, 1 should get overriden.
+    # 0, 1 should get overwritten.
     assert set(buf.sample(batch_size=100).test_field) == {2, 3, 4, 5}
+
+
+def test_uniform_overwrites_old_transitions_multiple_times():
+    buf = replay_buffers.UniformReplayBuffer(_test_datapoint_sig, capacity=10)
+    for i in range(0, 99, 3):
+        buf.add(_TestTransition(np.arange(i, i + 3)))
+    # Only [89, 99] should remain.
+    x = buf.sample(batch_size=100).test_field
+    print(list(sorted(list(set(x)))))
+    assert set(buf.sample(batch_size=100).test_field) == set(range(89, 99))
+
+
+def test_uniform_samples_consistent_transitions():
+    buf = replay_buffers.UniformReplayBuffer(
+        _test_pair_datapoint_sig, capacity=10
+    )
+    for i in range(0, 30, 2):
+        buf.add(_TestPairTransition(np.array([i]), np.array([i + 1])))
+    # Only [290, 299] should remain.
+    batch = buf.sample(batch_size=10)
+    # Assert that the two fields are not mixed up between transitions.
+    np.testing.assert_array_equal(batch.a + 1, batch.b)
 
 
 @pytest.mark.parametrize('hierarchy_depth', [0, 1, 2])

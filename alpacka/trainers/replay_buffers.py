@@ -56,7 +56,8 @@ class UniformReplayBuffer:
         data.nested_zip_with(
             insert_to_array, (self._data_buffer, stacked_datapoints)
         )
-        self._size = min(self._insert_index + n_elems, self._capacity)
+        if self._size < self._capacity:
+            self._size = min(self._insert_index + n_elems, self._capacity)
         self._insert_index = (self._insert_index + n_elems) % self._capacity
 
     def sample(self, batch_size):
