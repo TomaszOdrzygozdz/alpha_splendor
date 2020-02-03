@@ -83,8 +83,8 @@ class LocalBatchStepper(core.BatchStepper):
     Runs batched prediction for all Agents at the same time.
     """
 
-    def __init__(self, env_class, agent_class, network_fn, n_envs):
-        super().__init__(env_class, agent_class, network_fn, n_envs)
+    def __init__(self, env_class, agent_class, network_fn, n_envs, output_dir):
+        super().__init__(env_class, agent_class, network_fn, n_envs, output_dir)
 
         def make_env_and_agent():
             env = env_class()

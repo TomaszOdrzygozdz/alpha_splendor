@@ -74,6 +74,7 @@ class Runner:
             agent_class=agent_class,
             network_fn=network_fn,
             n_envs=n_envs,
+            output_dir=self._output_dir,
         )
         self._episode_time_limit = episode_time_limit
         self._network = network_fn()

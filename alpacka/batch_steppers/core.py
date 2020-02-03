@@ -10,7 +10,7 @@ class BatchStepper:
     """
 
     def __init__(
-        self, env_class, agent_class, network_fn, n_envs
+        self, env_class, agent_class, network_fn, n_envs, output_dir
     ):
         """No-op constructor just for documentation purposes.
 
@@ -22,11 +22,14 @@ class BatchStepper:
                 BatchSteppers will send it to remote workers and it makes no
                 sense to force Networks to be picklable just for this purpose.
             n_envs (int): Number of parallel environments to run.
+            output_dir (str or None): Experiment output dir if the BatchStepper
+                is initialized from Runner, None otherwise.
         """
         del env_class
         del agent_class
         del network_fn
         del n_envs
+        del output_dir
 
     def run_episode_batch(self, params, **solve_kwargs):  # pylint: disable=missing-param-doc
         """Runs a batch of episodes using the given network parameters.

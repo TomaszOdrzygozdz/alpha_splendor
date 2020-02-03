@@ -189,6 +189,7 @@ def test_batch_steppers_run_episode_batch(max_n_requests,
             outputs=res_to_return,
         ),
         n_envs=n_envs,
+        output_dir=None,
     )
     episodes = stepper.run_episode_batch(params=None)
     transition_batch = data.nested_concatenate(
@@ -240,7 +241,8 @@ def test_batch_steppers_network_request_handling(batch_stepper_cls):
         env_class=envs.CartPole,
         agent_class=TestAgent,
         network_fn=network_fn,
-        n_envs=n_envs
+        n_envs=n_envs,
+        output_dir=None,
     )
 
     # Test
@@ -275,7 +277,8 @@ def test_ray_batch_stepper_worker_members_initialization_with_gin_config():
         env_class=env_class,
         agent_class=agent_class,
         network_fn=functools.partial(network_class, network_signature=None),
-        n_envs=n_envs
+        n_envs=n_envs,
+        output_dir=None,
     )
     bs.run_episode_batch(None,
                          init_state=root_state,
