@@ -2,27 +2,28 @@
 # ==============================================================================
 CartPole.solved_at = 200
 
-# Parameters for Adam
+# Parameters for RMSprop
 # ==============================================================================
-Adam.learning_rate = 2.5E-4
+RMSprop.learning_rate = 1E-3
 
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = 'mean_squared_error'
 KerasNetwork.metrics = ['mae']
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
-KerasNetwork.optimizer = @tf.keras.optimizers.Adam()
-KerasNetwork.weight_decay = 0.001
+KerasNetwork.optimizer = @tf.keras.optimizers.RMSprop()
 KerasNetwork.train_callbacks = None
 
 # Parameters for EgreedyAgent:
 # ==============================================================================
-EpsilonGreedyAgent.epsilon = 0.5
+EpsilonGreedyAgent.linear_annealing_kwargs = {'max_value': 0.95,
+                                              'min_value': 0.05,
+                                              'n_epochs': 300}
 
 # Parameters for ShootingAgent:
 # ==============================================================================
-ShootingAgent.n_rollouts = 20
-ShootingAgent.rollout_time_limit = 10
+ShootingAgent.n_rollouts = 12
+ShootingAgent.rollout_time_limit = 20
 ShootingAgent.aggregate_fn = @np.mean
 ShootingAgent.estimate_fn = @alpacka.agents.shooting.bootstrap_return_with_qvalue
 ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
@@ -43,7 +44,7 @@ Runner.env_class = @alpacka.envs.CartPole
 Runner.n_envs = 1
 Runner.episode_time_limit = 500
 Runner.n_epochs = None
-Runner.n_precollect_epochs = 0
+Runner.n_precollect_epochs = 20
 Runner.network_class = @alpacka.networks.KerasNetwork
 Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
