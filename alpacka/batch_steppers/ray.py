@@ -70,9 +70,6 @@ class RayBatchStepper(core.BatchStepper):
                 # TODO(koz4k): Gin-configure if we ever need to change it.
                 'object_store_memory': int(1e9),
             }
-            if output_dir is not None:
-                # Logs are saved there.
-                kwargs['temp_dir'] = os.path.join(output_dir, 'ray')
             ray.init(**kwargs)
         self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
             env_class, agent_class, network_fn, config) for _ in range(n_envs)]
