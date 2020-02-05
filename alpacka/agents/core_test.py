@@ -45,8 +45,8 @@ def test_agents_network_signature(agent_class, with_critic):
                           np.array([[1, 3, 2]]),
                           np.array([[2, 1, 3]])])
 @pytest.mark.parametrize('agent_class,rtol',
-                         [(agents.SoftmaxAgent, 0.2),
-                          (agents.EpsilonGreedyAgent, 0.3)])
+                         [(agents.SoftmaxAgent, 0.25),
+                          (agents.EpsilonGreedyAgent, 0.35)])
 def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
                                                                  logits,
                                                                  rtol,
@@ -59,7 +59,7 @@ def test_agents_the_most_common_action_and_agent_info_is_correct(agent_class,
     infos = []
 
     # Run
-    for _ in range(5000):
+    for _ in range(6000):
         action, info = testing.run_with_constant_network_prediction(
             agent.act(np.zeros((7, 7))),
             (value, logits) if with_critic else logits
@@ -129,7 +129,7 @@ def test_softmax_agent_action_counts_for_different_temperature():
         (low_temp_agent, low_temp_action_count),
         (high_temp_agent, high_temp_action_count),
     ]:
-        for _ in range(100):
+        for _ in range(200):
             action, _ = testing.run_with_constant_network_prediction(
                 agent.act(np.zeros((7, 7))),
                 logits
@@ -157,7 +157,7 @@ def test_egreedy_agent_action_counts_for_different_epsilon():
         (low_eps_agent, low_eps_action_count),
         (high_eps_agent, high_eps_action_count),
     ]:
-        for _ in range(100):
+        for _ in range(200):
             action, _ = testing.run_with_constant_network_prediction(
                 agent.act(np.zeros((7, 7))),
                 logits
