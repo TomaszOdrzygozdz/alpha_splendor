@@ -1,6 +1,5 @@
 """Environment steppers."""
 
-import os
 import typing
 
 import gin
