@@ -1,52 +1,53 @@
-# Parameters for GoogleFootball:
+# Parameters for CartPole:
 # ==============================================================================
-# None.
+CartPole.solved_at = 200
+
+# Parameters for RMSprop
+# ==============================================================================
+RMSprop.learning_rate = 1E-3
 
 # Parameters for KerasNetwork:
 # ==============================================================================
-KerasNetwork.loss = 'mean_squared_error'
-KerasNetwork.metrics = ['mae', 'mse']
+KerasNetwork.loss = @tf.nn.softmax_cross_entropy_with_logits
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
-KerasNetwork.optimizer = 'adam'
-KerasNetwork.weight_decay = 0.003
+KerasNetwork.optimizer = @tf.keras.optimizers.RMSprop()
 KerasNetwork.train_callbacks = None
 
 # Parameters for EgreedyAgent:
 # ==============================================================================
-EpsilonGreedyAgent.epsilon = 0.5
+EpsilonGreedyAgent.epsilon = 0.4
 
 # Parameters for ShootingAgent:
 # ==============================================================================
-ShootingAgent.n_rollouts = 20
-ShootingAgent.rollout_time_limit = 10
+ShootingAgent.n_rollouts = 5
+ShootingAgent.rollout_time_limit = 50
 ShootingAgent.aggregate_fn = @np.mean
-ShootingAgent.estimate_fn = @alpacka.agents.shooting.bootstrap_return_with_qvalue
-ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
+ShootingAgent.estimate_fn = @alpacka.agents.shooting.truncated_return
+ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 ShootingAgent.agent_class = @alpacka.agents.EpsilonGreedyAgent
-ShootingAgent.n_envs = 4
+ShootingAgent.n_envs = 1
 
 # Parameters for mlp:
 # ==============================================================================
 mlp.activation = 'relu'
-mlp.hidden_sizes = (100,100,)
+mlp.hidden_sizes = (16,)
 mlp.output_activation = None
 
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.ShootingAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
-Runner.env_class = @alpacka.envs.GoogleFootball
-Runner.env_kwargs = {'dump_path': './out'}
-Runner.n_envs = 1
-Runner.episode_time_limit = None
+Runner.env_class = @alpacka.envs.CartPole
+Runner.n_envs = 4
+Runner.episode_time_limit = 200
 Runner.n_epochs = None
-Runner.n_precollect_epochs = 0
+Runner.n_precollect_epochs = 5
 Runner.network_class = @alpacka.networks.KerasNetwork
 Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
 # Parameters for SupervisedTrainer:
 # ==============================================================================
-SupervisedTrainer.target = @alpacka.trainers.supervised.target_qualities
+SupervisedTrainer.target = @alpacka.trainers.supervised.target_action_histogram
 SupervisedTrainer.batch_size = 64
 SupervisedTrainer.n_steps_per_epoch = 10
-SupervisedTrainer.replay_buffer_capacity = 1000000
+SupervisedTrainer.replay_buffer_capacity = 5000
