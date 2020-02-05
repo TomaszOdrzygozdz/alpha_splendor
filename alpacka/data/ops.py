@@ -78,13 +78,6 @@ def nested_zip(xs):
     if _is_leaf(xs[0]):
         return xs
 
-    # Assert that the first levels of the zipped trees are the same.
-    for x in xs:
-        assert type(x) is type(xs[0]), (
-            'Cannot zip pytrees of different types: '
-            '{} and {}.'.format(type(x), type(xs[0]))
-        )
-
     if _is_namedtuple_instance(xs[0]):
         return type(xs[0])(*nested_zip([tuple(x) for x in xs]))
     elif isinstance(xs[0], (list, tuple)):
