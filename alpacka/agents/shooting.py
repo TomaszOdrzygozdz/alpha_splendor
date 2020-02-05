@@ -196,6 +196,22 @@ class ShootingAgent(base.OnlineAgent):
                 'simulation_entropy_std': sample_sim_pi_entropy_std
             })
 
+        if 'value' in agent_info_batch:
+            metrics['simulation_max_value'] = np.max(
+                agent_info_batch['value'])
+            metrics['simulation_mean_value'] = np.mean(
+                agent_info_batch['value'])
+            metrics['simulation_min_value'] = np.min(
+                agent_info_batch['value'])
+
+        if 'qualities' in agent_info_batch:
+            metrics['simulation_max_qualities'] = np.max(
+                agent_info_batch['qualities'])
+            metrics['simulation_mean_qualities'] = np.mean(
+                agent_info_batch['qualities'])
+            metrics['simulation_min_qualities'] = np.min(
+                agent_info_batch['qualities'])
+
         if 'mean_value' in agent_info_batch:
             metrics['network_max_value'] = np.max(
                 agent_info_batch['max_value'])
