@@ -183,6 +183,10 @@ def _parse_args():
         'is a path to a pickled experiment config created by the mrunner CLI or'
         'a mrunner specification file.'
     )
+    parser.add_argument(
+        '--tensorboard', action='store_true',
+        help='Enable TensorBoard logging: logdir=<output_dir>/tb_%m-%dT%H%M%S.'
+    )
     return parser.parse_args()
 
 
@@ -204,6 +208,12 @@ if __name__ == '__main__':
         except KeyError:
             print('HINT: To run with Neptune logging please set your '
                   'NEPTUNE_API_TOKEN environment variable')
+
+    if args.tensorboard:
+        from alpacka.utils import tensorboard  # Lazy import
+
+        tensorboard_logger = tensorboard.TensorBoardLogger(args.output_dir)
+        metric_logging.register_logger(tensorboard_logger)
 
     gin.parse_config_files_and_bindings(args.config_file, gin_bindings)
     runner = Runner(args.output_dir)
