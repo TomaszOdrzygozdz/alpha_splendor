@@ -5,6 +5,7 @@ import asyncio
 import numpy as np
 
 from alpacka import data
+from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.utils import space as space_utils
 
@@ -49,15 +50,20 @@ class ActorCriticAgent(base.OnlineAgent):
     def compute_metrics(episodes):
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
+        metrics = {}
 
-        return {
-            'max_value': np.max(agent_info_batch['value']),
-            'max_logits': np.max(agent_info_batch['logits']),
-            'mean_value': np.mean(agent_info_batch['value']),
-            'mean_logits': np.mean(agent_info_batch['logits']),
-            'min_value': np.min(agent_info_batch['value']),
-            'min_logits': np.min(agent_info_batch['logits']),
-        }
+        metrics.update(metric_logging.compute_scalar_statistics(
+            agent_info_batch['value'],
+            prefix='value',
+            with_min_and_max=True
+        ))
+        metrics.update(metric_logging.compute_scalar_statistics(
+            agent_info_batch['logits'],
+            prefix='logits',
+            with_min_and_max=True
+        ))
+
+        return metrics
 
 
 class PolicyNetworkAgent(base.OnlineAgent):
@@ -97,11 +103,11 @@ class PolicyNetworkAgent(base.OnlineAgent):
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
 
-        return {
-            'max_logits': np.max(agent_info_batch['logits']),
-            'mean_logits': np.mean(agent_info_batch['logits']),
-            'min_logits': np.min(agent_info_batch['logits']),
-        }
+        return metric_logging.compute_scalar_statistics(
+            agent_info_batch['logits'],
+            prefix='logits',
+            with_min_and_max=True
+        )
 
 
 class RandomAgent(base.OnlineAgent):

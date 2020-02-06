@@ -12,6 +12,7 @@ import numpy as np
 
 from alpacka import batch_steppers
 from alpacka import data
+from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.agents import core
 
@@ -94,8 +95,6 @@ class ShootingAgent(base.OnlineAgent):
         self._network_fn = None
         self._params = None
 
-        self._agent = agent_class()
-
     def reset(self, env, observation):
         """Reinitializes the agent for a new environment."""
         assert isinstance(env.action_space, gym.spaces.Discrete), (
@@ -141,6 +140,11 @@ class ShootingAgent(base.OnlineAgent):
             return_ = yield from self._estimate_fn(episode)
             act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
+        # Calculate the MC estimate of a state value.
+        value = sum(
+            episode.return_ for episode in episodes
+        ) / len(episodes)
+
         # Aggregate episodes into action scores.
         action_scores = np.empty(self._action_space.n)
         for action, returns in act_to_rets_map.items():
@@ -152,80 +156,69 @@ class ShootingAgent(base.OnlineAgent):
         onehot_action = np.zeros_like(action_scores)
         onehot_action[action] = 1
 
-        # Calculate simulation policy entropy.
-        agent_info_batch = data.nested_concatenate(
-            [episode.transition_batch.agent_info for episode in episodes])
-        if 'entropy' in agent_info_batch:
-            sample_entropy = np.mean(agent_info_batch['entropy'])
-        else:
-            sample_entropy = None
-
-        # Calculate the MC estimate of a state value.
-        value = sum(
-            episode.return_ for episode in episodes
-        ) / len(episodes)
-
+        # Pack statistics into agent info.
         agent_info = {
             'action_histogram': onehot_action,
-            'sim_pi_entropy': sample_entropy,
             'value': value,
             'qualities': np.nan_to_num(action_scores),
         }
-        agent_info.update(self._agent.compute_metrics(episodes))
+
+        # Calculate simulation policy entropy, average value and logits.
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+        if 'entropy' in agent_info_batch:
+            agent_info['sim_pi_entropy'] = np.mean(agent_info_batch['entropy'])
+        if 'value' in agent_info_batch:
+            agent_info['sim_pi_value'] = np.mean(agent_info_batch['value'])
+        if 'logits' in agent_info_batch:
+            agent_info['sim_pi_logits'] = np.mean(agent_info_batch['logits'])
 
         return action, agent_info
 
     def network_signature(self, observation_space, action_space):
-        return self._agent.network_signature(observation_space, action_space)
+        agent = self._agent_class()
+        return agent.network_signature(observation_space, action_space)
 
     @staticmethod
     def compute_metrics(episodes):
         # Calculate simulation policy entropy.
-        metrics = {}
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
+        metrics = {}
 
-        if np.all(agent_info_batch['sim_pi_entropy']):
-            sample_sim_pi_entropy = np.mean(
-                agent_info_batch['sim_pi_entropy'])
-            sample_sim_pi_entropy_std = np.std(
-                agent_info_batch['sim_pi_entropy'])
+        if 'sim_pi_entropy' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_entropy'],
+                prefix='simulation_entropy',
+                with_min_and_max=True
+            ))
 
-            metrics.update({
-                'simulation_entropy': sample_sim_pi_entropy,
-                'simulation_entropy_std': sample_sim_pi_entropy_std
-            })
+        if 'sim_pi_value' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_value'],
+                prefix='network_value',
+                with_min_and_max=True
+            ))
+
+        if 'sim_pi_logits' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_logits'],
+                prefix='network_logits',
+                with_min_and_max=True
+            ))
 
         if 'value' in agent_info_batch:
-            metrics['simulation_max_value'] = np.max(
-                agent_info_batch['value'])
-            metrics['simulation_mean_value'] = np.mean(
-                agent_info_batch['value'])
-            metrics['simulation_min_value'] = np.min(
-                agent_info_batch['value'])
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['value'],
+                prefix='simulation_value',
+                with_min_and_max=True
+            ))
 
         if 'qualities' in agent_info_batch:
-            metrics['simulation_max_qualities'] = np.max(
-                agent_info_batch['qualities'])
-            metrics['simulation_mean_qualities'] = np.mean(
-                agent_info_batch['qualities'])
-            metrics['simulation_min_qualities'] = np.min(
-                agent_info_batch['qualities'])
-
-        if 'mean_value' in agent_info_batch:
-            metrics['network_max_value'] = np.max(
-                agent_info_batch['max_value'])
-            metrics['network_mean_value'] = np.mean(
-                agent_info_batch['mean_value'])
-            metrics['network_min_value'] = np.min(
-                agent_info_batch['min_value'])
-
-        if 'mean_logits' in agent_info_batch:
-            metrics['network_max_logits'] = np.max(
-                agent_info_batch['max_logits'])
-            metrics['network_mean_logits'] = np.mean(
-                agent_info_batch['mean_logits'])
-            metrics['network_min_logits'] = np.min(
-                agent_info_batch['min_logits'])
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['qualities'],
+                prefix='simulation_qualities',
+                with_min_and_max=True
+            ))
 
         return metrics
