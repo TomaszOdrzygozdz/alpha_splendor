@@ -357,8 +357,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
         Returns:
             float: Quality of a chosen child of the expanded leaf.
         """
-        assert leaf.is_leaf
-
         child_qualities_and_probs = yield from self._new_leaf_rater(
             observation, self._model
         )
