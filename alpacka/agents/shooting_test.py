@@ -43,7 +43,7 @@ def test_bootstrap_return_with_value_estimator(truncated, x_return):
 @pytest.mark.parametrize('truncated,x_return',
                          [(False, 2 - 1),
                           (True, 2 - 1 + 7)])
-def test_bootstrap_return_with_qvalue_estimator(truncated, x_return):
+def test_bootstrap_return_with_quality_estimator(truncated, x_return):
     # Set up
     episode = testing.construct_episodes(
         actions=[
@@ -58,7 +58,7 @@ def test_bootstrap_return_with_qvalue_estimator(truncated, x_return):
 
     # Run
     bootstrap_return = testing.run_with_constant_network_prediction(
-        shooting.bootstrap_return_with_qvalue(episode),
+        shooting.bootstrap_return_with_quality(episode),
         logits=logits
     )
 
@@ -175,7 +175,7 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
                            # The last three predictions are for the second
                            # action. Extra bonus of 1 for mean aggregator.
                            [(np.array([[1]]), None)] * 3),
-                          (shooting.bootstrap_return_with_qvalue, 1,
+                          (shooting.bootstrap_return_with_quality, 1,
                            # The first three predictions are for the first
                            # action. No extra "bonus".
                            [np.array([[0, 0, 0]])] * 3 +

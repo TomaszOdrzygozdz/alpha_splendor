@@ -42,15 +42,15 @@ def bootstrap_return_with_value(episode):
 
 
 @gin.configurable
-def bootstrap_return_with_qvalue(episode):
+def bootstrap_return_with_quality(episode):
     """Bootstraps a max q-value at the end of the episode if truncated."""
     # TODO(pj): Move this inference to concurrent workers where the agent solves
     # the environment. E.g. "last_value" in data.Episode for ActorCritic?
     return_ = episode.return_
     if episode.truncated:
-        batched_qvalue = yield np.expand_dims(
+        batched_qualities = yield np.expand_dims(
             episode.transition_batch.next_observation[-1], axis=0)
-        return_ += np.max(batched_qvalue[0])
+        return_ += np.max(batched_qualities[0])
     return return_
 
 

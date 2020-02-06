@@ -14,9 +14,10 @@ KerasNetwork.loss_weights = [0.5, 1.0]
 KerasNetwork.metrics = [['mae'], []]
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
 KerasNetwork.optimizer = @tf.keras.optimizers.RMSprop()
+KerasNetwork.weight_decay = 0.0
 KerasNetwork.train_callbacks = None
 
-# Parameters for EgreedyAgent:
+# Parameters for EpsilonGreedyAgent:
 # ==============================================================================
 EpsilonGreedyAgent.linear_annealing_kwargs = {'max_value': 0.4,
                                               'min_value': 0.05,
@@ -59,4 +60,5 @@ SupervisedTrainer.target = (
 )
 SupervisedTrainer.batch_size = 64
 SupervisedTrainer.n_steps_per_epoch = 10
+SupervisedTrainer.replay_buffer_sampling_hierarchy = []
 SupervisedTrainer.replay_buffer_capacity = 100000
