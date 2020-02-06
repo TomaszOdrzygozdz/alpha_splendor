@@ -1,6 +1,5 @@
 """Environment steppers."""
 
-import os
 import typing
 
 import gin
@@ -70,9 +69,6 @@ class RayBatchStepper(core.BatchStepper):
                 # TODO(koz4k): Gin-configure if we ever need to change it.
                 'object_store_memory': int(1e9),
             }
-            if output_dir is not None:
-                # Logs are saved there.
-                kwargs['temp_dir'] = os.path.join(output_dir, 'ray')
             ray.init(**kwargs)
         self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
             env_class, agent_class, network_fn, config) for _ in range(n_envs)]
@@ -98,9 +94,10 @@ class RayBatchStepper(core.BatchStepper):
         ):
             self._params = RayObject.from_value(params)
 
-        # Optimization, don't send the same solve kwargs again.
-        if not solve_kwargs == self._solve_kwargs.value:
-            self._solve_kwargs = RayObject.from_value(solve_kwargs)
+        # TODO(pj): Don't send the same solve kwargs again. This is more
+        #           problematic than with params, as values may have very
+        #           different types e.g. basic data types or np.ndarray or ???.
+        self._solve_kwargs = RayObject.from_value(solve_kwargs)
 
         episodes = ray.get([w.run.remote(self._params.id, self._solve_kwargs.id)
                             for w in self.workers])

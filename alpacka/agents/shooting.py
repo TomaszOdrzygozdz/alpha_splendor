@@ -12,6 +12,7 @@ import numpy as np
 
 from alpacka import batch_steppers
 from alpacka import data
+from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.agents import core
 
@@ -28,7 +29,7 @@ def truncated_return(episode):
 
 
 @gin.configurable
-def bootstrap_return(episode):
+def bootstrap_return_with_value(episode):
     """Bootstraps a state value at the end of the episode if truncated."""
     # TODO(pj): Move this inference to concurrent workers where the agent solves
     # the environment. E.g. "last_value" in data.Episode for ActorCritic?
@@ -37,6 +38,19 @@ def bootstrap_return(episode):
         batched_value, _ = yield np.expand_dims(
             episode.transition_batch.next_observation[-1], axis=0)
         return_ += batched_value[0, 0]
+    return return_
+
+
+@gin.configurable
+def bootstrap_return_with_quality(episode):
+    """Bootstraps a max q-value at the end of the episode if truncated."""
+    # TODO(pj): Move this inference to concurrent workers where the agent solves
+    # the environment. E.g. "last_value" in data.Episode for ActorCritic?
+    return_ = episode.return_
+    if episode.truncated:
+        batched_qualities = yield np.expand_dims(
+            episode.transition_batch.next_observation[-1], axis=0)
+        return_ += np.max(batched_qualities[0])
     return return_
 
 
@@ -126,37 +140,38 @@ class ShootingAgent(base.OnlineAgent):
             return_ = yield from self._estimate_fn(episode)
             act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
+        # Calculate the MC estimate of a state value.
+        value = sum(
+            episode.return_ for episode in episodes
+        ) / len(episodes)
+
         # Aggregate episodes into action scores.
         action_scores = np.empty(self._action_space.n)
         for action, returns in act_to_rets_map.items():
             action_scores[action] = (self._aggregate_fn(returns)
                                      if returns else np.nan)
 
-        # Computes action histograms as normalized action scores.
-        action_scores = np.nan_to_num(action_scores)
-        action_histograms = action_scores / action_scores.sum()
+        # Choose greedy action (ignore NaN scores).
+        action = np.nanargmax(action_scores)
+        onehot_action = np.zeros_like(action_scores)
+        onehot_action[action] = 1
 
-        # Calculate simulation policy entropy.
+        # Pack statistics into agent info.
+        agent_info = {
+            'action_histogram': onehot_action,
+            'value': value,
+            'qualities': np.nan_to_num(action_scores),
+        }
+
+        # Calculate simulation policy entropy, average value and logits.
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
         if 'entropy' in agent_info_batch:
-            sample_entropy = np.mean(agent_info_batch['entropy'])
-        else:
-            sample_entropy = None
-
-        # Calculate the MC estimate of state value.
-        value = sum(
-            episode.return_ for episode in episodes
-        ) / len(episodes)
-
-        agent_info = {
-            'action_histogram': action_histograms,
-            'sim_pi_entropy': sample_entropy,
-            'value': value
-        }
-
-        # Choose greedy action.
-        action = np.nanargmax(action_scores)
+            agent_info['sim_pi_entropy'] = np.mean(agent_info_batch['entropy'])
+        if 'value' in agent_info_batch:
+            agent_info['sim_pi_value'] = np.mean(agent_info_batch['value'])
+        if 'logits' in agent_info_batch:
+            agent_info['sim_pi_logits'] = np.mean(agent_info_batch['logits'])
 
         return action, agent_info
 
@@ -169,14 +184,41 @@ class ShootingAgent(base.OnlineAgent):
         # Calculate simulation policy entropy.
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
-        if np.all(agent_info_batch['sim_pi_entropy']):
-            sample_sim_pi_entropy = np.mean(
-                agent_info_batch['sim_pi_entropy'])
-            sample_sim_pi_entropy_std = np.std(
-                agent_info_batch['sim_pi_entropy'])
+        metrics = {}
 
-            return {
-                'simulation_entropy': sample_sim_pi_entropy,
-                'simulation_entropy_std': sample_sim_pi_entropy_std
-            }
-        return {}
+        if 'sim_pi_entropy' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_entropy'],
+                prefix='simulation_entropy',
+                with_min_and_max=True
+            ))
+
+        if 'sim_pi_value' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_value'],
+                prefix='network_value',
+                with_min_and_max=True
+            ))
+
+        if 'sim_pi_logits' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_logits'],
+                prefix='network_logits',
+                with_min_and_max=True
+            ))
+
+        if 'value' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['value'],
+                prefix='simulation_value',
+                with_min_and_max=True
+            ))
+
+        if 'qualities' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['qualities'],
+                prefix='simulation_qualities',
+                with_min_and_max=True
+            ))
+
+        return metrics

@@ -17,6 +17,12 @@ def target_solved(episode):
 
 
 @gin.configurable
+def target_return(episode):
+    return np.cumsum(episode.transition_batch.reward[::-1],
+                     dtype=np.float)[::-1, np.newaxis]
+
+
+@gin.configurable
 def target_value(episode):
     return np.expand_dims(
         episode.transition_batch.agent_info['value'], axis=1

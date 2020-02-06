@@ -17,7 +17,7 @@ from alpacka.agents import shooting
 @pytest.mark.parametrize('truncated,x_return',
                          [(False, 2 - 1),
                           (True, 2 - 1 + 7)])
-def test_bootstrap_return_estimator(truncated, x_return):
+def test_bootstrap_return_with_value_estimator(truncated, x_return):
     # Set up
     episode = testing.construct_episodes(
         actions=[
@@ -32,7 +32,33 @@ def test_bootstrap_return_estimator(truncated, x_return):
 
     # Run
     bootstrap_return = testing.run_with_constant_network_prediction(
-        shooting.bootstrap_return(episode),
+        shooting.bootstrap_return_with_value(episode),
+        logits=logits
+    )
+
+    # Test
+    assert bootstrap_return == x_return
+
+
+@pytest.mark.parametrize('truncated,x_return',
+                         [(False, 2 - 1),
+                          (True, 2 - 1 + 7)])
+def test_bootstrap_return_with_quality_estimator(truncated, x_return):
+    # Set up
+    episode = testing.construct_episodes(
+        actions=[
+            [0, 1, 2, 3],
+        ],
+        rewards=[
+            [0, 2, 0, -1]
+        ],
+        truncated=truncated
+    )[0]
+    logits = (np.array([[7, 3, 4]]), None)
+
+    # Run
+    bootstrap_return = testing.run_with_constant_network_prediction(
+        shooting.bootstrap_return_with_quality(episode),
         logits=logits
     )
 
@@ -121,52 +147,67 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
         batch_stepper_class=mock_bstep,
         n_rollouts=1,
     )
+    x_onehot_action = np.zeros(3)
+    x_onehot_action[x_action] = 1
 
     # Run
     observation = mock_env.reset()
     testing.run_with_dummy_network_response(
         agent.reset(mock_env, observation)
     )
-    (actual_action, _) = testing.run_without_suspensions(
+    (actual_action, agent_info) = testing.run_without_suspensions(
         agent.act(None)
     )
 
     # Test
     assert actual_action == x_action
+    np.testing.assert_array_equal(agent_info['action_histogram'],
+                                  x_onehot_action)
 
 
-@pytest.mark.parametrize('estimate_fn,x_action',
-                         [(shooting.truncated_return, 0),
-                          (shooting.bootstrap_return, 1)])
+@pytest.mark.parametrize('estimate_fn,x_action,logits',
+                         [(shooting.truncated_return, 0,
+                           [None] * 6),  # No predictions.
+                          (shooting.bootstrap_return_with_value, 1,
+                           # The first three predictions are for the first
+                           # action. No extra "bonus".
+                           [(np.array([[0]]), None)] * 3 +
+                           # The last three predictions are for the second
+                           # action. Extra bonus of 1 for mean aggregator.
+                           [(np.array([[1]]), None)] * 3),
+                          (shooting.bootstrap_return_with_quality, 1,
+                           # The first three predictions are for the first
+                           # action. No extra "bonus".
+                           [np.array([[0, 0, 0]])] * 3 +
+                           # The last three predictions are for the second
+                           # action. Extra bonus of 1 for mean aggregator.
+                           [np.array([[1, -1, 0]])] * 3)])
 def test_greedy_decision_for_all_return_estimators(mock_env, mock_bstep,
-                                                   estimate_fn, x_action):
+                                                   estimate_fn, x_action,
+                                                   logits):
     # Set up
     agent = agents.ShootingAgent(
         estimate_fn=estimate_fn,
         batch_stepper_class=mock_bstep,
         n_rollouts=1,
     )
-    logits = [
-        (np.array([[0]]), None),  # The first three predictions
-        (np.array([[0]]), None),  # are for the first action.
-        (np.array([[0]]), None),  # No extra "bonus".
-        (np.array([[1]]), None),  # The last three predictions
-        (np.array([[1]]), None),  # are for the second action.
-        (np.array([[1]]), None),  # Extra bonus of 1 for mean aggregator.
-    ]
+    x_onehot_action = np.zeros(3)
+    x_onehot_action[x_action] = 1
 
     # Run
     observation = mock_env.reset()
     testing.run_with_dummy_network_response(
         agent.reset(mock_env, observation)
     )
-    (actual_action, _) = testing.run_with_network_prediction_list(
+    (actual_action, agent_info) = testing.run_with_network_prediction_list(
         agent.act(None),
         logits=logits
     )
 
     # Test
     assert actual_action == x_action
+    np.testing.assert_array_equal(agent_info['action_histogram'],
+                                  x_onehot_action)
 
 
 @pytest.mark.parametrize('rollout_time_limit', [None, 7])
