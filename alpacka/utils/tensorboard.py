@@ -20,3 +20,7 @@ class TensorBoardLogger:
         """Logs a scalar to TensorBoard."""
         with self._writer.as_default():
             tf.summary.scalar(name, value, step=step)
+
+    def log_property(self, name, value):
+        # Not supported in this logger.
+        pass

@@ -21,6 +21,10 @@ class NeptuneLogger:
         del step
         self._experiment.send_metric(name, value)
 
+    def log_property(self, name, value):
+        """Logs a property to Neptune."""
+        self._experiment.set_property(name, value)
+
 
 def get_configuration(spec_path):
     """Get mrunner experiment specification and gin-config overrides."""
