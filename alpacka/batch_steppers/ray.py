@@ -41,6 +41,10 @@ class RayBatchStepper(core.BatchStepper):
         """Ray actor used to step agent-environment-network in own process."""
 
         def __init__(self, env_class, agent_class, network_fn, config):
+            # Limit number of threads used between independent tf.op-s to 1.
+            import tensorflow as tf  # pylint: disable=import-outside-toplevel
+            tf.config.threading.set_inter_op_parallelism_threads(1)
+
             # TODO(pj): Test that skip_unknown is required!
             gin.parse_config(config, skip_unknown=True)
 
