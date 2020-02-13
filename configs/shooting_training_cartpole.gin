@@ -10,7 +10,7 @@ RMSprop.learning_rate = 1E-3
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = ('mean_squared_error', @tf.nn.softmax_cross_entropy_with_logits)
-KerasNetwork.loss_weights = [0.5, 1.0]
+KerasNetwork.loss_weights = None
 KerasNetwork.metrics = [['mae'], []]
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
 KerasNetwork.optimizer = @tf.keras.optimizers.RMSprop()
@@ -19,9 +19,7 @@ KerasNetwork.train_callbacks = None
 
 # Parameters for EpsilonGreedyAgent:
 # ==============================================================================
-EpsilonGreedyAgent.linear_annealing_kwargs = {'max_value': 0.4,
-                                              'min_value': 0.05,
-                                              'n_epochs': 70}
+EpsilonGreedyAgent.epsilon = 0.4
 EpsilonGreedyAgent.with_critic = True
 
 # Parameters for ShootingAgent:

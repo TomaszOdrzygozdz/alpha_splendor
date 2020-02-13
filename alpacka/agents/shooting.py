@@ -3,7 +3,6 @@
 It does Monte Carlo simulation."""
 
 import asyncio
-import collections
 import math
 
 import gin
@@ -134,16 +133,16 @@ class ShootingAgent(base.OnlineAgent):
                 time_limit=self._rollout_time_limit,
             ))
 
-        # Computer episode returns and put them in a map.
-        act_to_rets_map = collections.defaultdict(list)
-        for episode in episodes:
-            return_ = yield from self._estimate_fn(episode)
-            act_to_rets_map[episode.transition_batch.action[0]].append(return_)
-
         # Calculate the MC estimate of a state value.
         value = sum(
             episode.return_ for episode in episodes
         ) / len(episodes)
+
+        # Computer episode returns and put them in a map.
+        act_to_rets_map = {key: [] for key in range(self._action_space.n)}
+        for episode in episodes:
+            return_ = yield from self._estimate_fn(episode)
+            act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
         # Aggregate episodes into action scores.
         action_scores = np.empty(self._action_space.n)
