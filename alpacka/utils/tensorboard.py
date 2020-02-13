@@ -22,5 +22,6 @@ class TensorBoardLogger:
             tf.summary.scalar(name, value, step=step)
 
     def log_property(self, name, value):
-        # Not supported in this logger.
-        pass
+        """Logs a property to TensorBoard."""
+        with self._writer.as_default():
+            tf.summary.text(name, value, step=0)
