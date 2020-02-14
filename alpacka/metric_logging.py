@@ -14,6 +14,11 @@ class StdoutLogger:
         #   1234 | loss:                      12.345
         print('{:>6} | {:32}{:>9.3f}'.format(step, name + ':', value))
 
+    @staticmethod
+    def log_property(name, value):
+        # Not supported in this logger.
+        pass
+
 
 _loggers = [StdoutLogger]
 
@@ -27,6 +32,12 @@ def log_scalar(name, step, value):
     """Logs a scalar to the loggers."""
     for logger in _loggers:
         logger.log_scalar(name, step, value)
+
+
+def log_property(name, value):
+    """Logs a property to the loggers."""
+    for logger in _loggers:
+        logger.log_property(name, value)
 
 
 def log_scalar_metrics(prefix, step, metrics):

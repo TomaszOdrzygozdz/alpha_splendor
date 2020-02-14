@@ -13,6 +13,7 @@ from alpacka import envs
 from alpacka import metric_logging
 from alpacka import networks
 from alpacka import trainers
+from alpacka.utils import gin as gin_utils
 
 
 @gin.configurable
@@ -110,10 +111,13 @@ class Runner:
         return metrics
 
     def _save_gin(self):
-        # TODO(koz4k): Send to neptune as well.
         config_path = os.path.join(self._output_dir, 'config.gin')
+        config_str = gin.operative_config_str()
         with open(config_path, 'w') as f:
-            f.write(gin.operative_config_str())
+            f.write(config_str)
+
+        for (name, value) in gin_utils.extract_bindings(config_str):
+            metric_logging.log_property(name, value)
 
     def run_epoch(self):
         """Runs a single epoch."""
