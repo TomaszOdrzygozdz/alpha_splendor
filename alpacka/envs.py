@@ -1,6 +1,7 @@
 """Environments."""
 
 import collections
+import copy
 
 import gin
 import gym
@@ -161,6 +162,7 @@ class GoogleFootball(ModelEnv):
         raise NotImplementedError
 
     def clone_state(self):
+        # pylint: disable=protected-access
         raw_state = self._env.get_state()
         size_encoded = len(raw_state).to_bytes(3, byteorder='big')
         # Byte suffix to enforce self.state_size of state.
@@ -168,9 +170,48 @@ class GoogleFootball(ModelEnv):
         resized_state = size_encoded + raw_state + suffix
         state = np.frombuffer(resized_state, dtype=np.uint8)
 
-        return state
+        env = self._env.unwrapped
+
+        # Temporary fix for a reward bug in Google Football: put everything in
+        # state. Long-term fix on the way:
+        # https://github.com/google-research/football/pull/115
+        trace = env._env._trace
+        cfg = trace._config
+        trace._config = None
+        trace_copy = copy.deepcopy(trace)
+        trace_copy._config = cfg
+        trace._config = cfg
+        return (
+            state,
+            copy.deepcopy(env._env._steps_time),
+            copy.deepcopy(env._env._step),
+            copy.deepcopy(env._env._step_count),
+            copy.deepcopy(env._env._cumulative_reward),
+            copy.deepcopy(env._env._observation),
+            env._env._info,
+            trace_copy,
+        )
 
     def restore_state(self, state):
+        # pylint: disable=protected-access
+        env = self._env.unwrapped
+        (
+            state,
+            env._env._steps_time,
+            env._env._step,
+            env._env._step_count,
+            env._env._cumulative_reward,
+            env._env._observation,
+            env._env._info,
+            trace,
+        ) = state
+        cfg = trace._config
+        trace._config = None
+        trace_copy = copy.deepcopy(trace)
+        trace_copy._config = cfg
+        trace._config = cfg
+        env._env._trace = trace_copy
+
         assert state.size == self.state_size, (
             f'State size does not match: {state.size} != {self.state_size}')
 
