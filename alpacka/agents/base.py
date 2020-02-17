@@ -144,8 +144,7 @@ class OnlineAgent(Agent):
         """
         raise NotImplementedError
 
-    @staticmethod
-    def postprocess_transitions(transitions):
+    def postprocess_transitions(self, transitions):
         """Postprocesses Transitions before passing them to Trainer.
 
         Can be overridden in subclasses to customize data collection.

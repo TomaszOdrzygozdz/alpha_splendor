@@ -100,6 +100,10 @@ class Runner:
         ) / len(episodes)
         metrics['return_mean'] = return_mean
 
+        metrics['length'] = sum(
+            episode.transition_batch.reward.shape[0] for episode in episodes
+        ) / len(episodes)
+
         solved_list = [
             int(episode.solved) for episode in episodes
             if episode.solved is not None
