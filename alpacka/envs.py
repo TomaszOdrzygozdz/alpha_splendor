@@ -110,6 +110,27 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, ModelEnv):
         return self.render(mode=self.mode)
 
 
+def deep_copy_without_fields(obj, fields_to_be_omitted):
+    values_to_save = [getattr(obj, field_name) for field_name in fields_to_be_omitted]
+    for field_name in fields_to_be_omitted:
+        setattr(obj, field_name, None)
+
+    new_obj = copy.deepcopy(obj)
+
+    for field_name, val in zip(fields_to_be_omitted, values_to_save):
+        setattr(obj, field_name, val)
+
+    return new_obj
+
+
+def deep_copy_with_fields(obj, fields_from_template, obj_template):
+    values_to_plug = [getattr(obj_template, field_name) for field_name in fields_from_template]
+    new_obj = copy.deepcopy(obj)
+    for field_name, val in zip(fields_from_template, values_to_plug):
+        setattr(new_obj, field_name, val)
+
+    return new_obj
+
 @gin.configurable
 class GoogleFootball(ModelEnv):
     """Google Research Football with state clone/restore and
@@ -176,11 +197,8 @@ class GoogleFootball(ModelEnv):
         # state. Long-term fix on the way:
         # https://github.com/google-research/football/pull/115
         trace = env._env._trace
-        cfg = trace._config
-        trace._config = None
-        trace_copy = copy.deepcopy(trace)
-        trace_copy._config = cfg
-        trace._config = cfg
+        trace_copy = deep_copy_without_fields(trace, ["_config", "_dump_config"])
+        trace_copy._dump_config = []  # Placeholder to prevent exceptions when gc this object
         return (
             state,
             copy.deepcopy(env._env._steps_time),
@@ -188,7 +206,6 @@ class GoogleFootball(ModelEnv):
             copy.deepcopy(env._env._step_count),
             copy.deepcopy(env._env._cumulative_reward),
             copy.deepcopy(env._env._observation),
-            env._env._info,
             trace_copy,
         )
 
@@ -202,14 +219,13 @@ class GoogleFootball(ModelEnv):
             env._env._step_count,
             env._env._cumulative_reward,
             env._env._observation,
-            env._env._info,
             trace,
         ) = state
-        cfg = trace._config
-        trace._config = None
-        trace_copy = copy.deepcopy(trace)
-        trace_copy._config = cfg
-        trace._config = cfg
+
+        env = self._env.unwrapped
+        trace_old = env._env._trace
+        trace_copy = deep_copy_with_fields(trace, ["_config", "_dump_config"], trace_old)
+
         env._env._trace = trace_copy
 
         assert state.size == self.state_size, (
