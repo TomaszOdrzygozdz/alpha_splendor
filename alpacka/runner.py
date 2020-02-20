@@ -14,7 +14,7 @@ from alpacka import metric_logging
 from alpacka import networks
 from alpacka import trainers
 from alpacka.utils import gin as gin_utils
-
+import time
 
 @gin.configurable
 class Runner:
@@ -83,6 +83,7 @@ class Runner:
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
         self._epoch = 0
+        self.time_stamp = time.time()
 
     @staticmethod
     def _infer_network_signature(env_class, agent_class):
@@ -135,6 +136,16 @@ class Runner:
             'agent',
             self._epoch,
             self._agent_class.compute_metrics(episodes)
+        )
+
+        new_time_stamp = time.time()
+        time_diff = new_time_stamp - self.time_stamp
+        self.time_stamp = new_time_stamp
+
+        metric_logging.log_scalar_metrics(
+            'agent',
+            self._epoch,
+            {"time": time_diff}
         )
         for episode in episodes:
             self._trainer.add_episode(episode)

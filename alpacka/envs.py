@@ -144,6 +144,7 @@ class GoogleFootball(ModelEnv):
                  stacked=False,
                  dump_path=None,
                  solved_at=1,
+                 timelimit=None,
                  **kwargs):
         if football_env is None:
             raise ImportError('Could not import gfootball! '
@@ -157,20 +158,32 @@ class GoogleFootball(ModelEnv):
             rewards=rewards,
             stacked=stacked,
             write_full_episode_dumps=dump_path is not None,
+            write_goal_dumps=False,
             logdir=dump_path or '',
             **kwargs
         )
 
         self.action_space = self._env.action_space
         self.observation_space = self._env.observation_space
+        self.timelimit = timelimit
+        self.step_count = 0
 
     def reset(self):
-        return self._env.reset()
+        self.step_count = 0
+
+        obs = self._env.reset()
+        env = self._env.unwrapped
+        env._env._trace._trace = collections.deque([], 4)
+
+        return obs
 
     def step(self, action):
+        self.step_count += 1
         obs, reward, done, info = self._env.step(action)
         if done:
             info['solved'] = info['score_reward'] >= self._solved_at
+        if self.timelimit is not None and self.step_count > self.timelimit:
+            done = True
         return obs, reward, done, info
 
     def render(self, mode='human'):
