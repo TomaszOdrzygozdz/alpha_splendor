@@ -10,6 +10,8 @@ from gym import wrappers
 from gym.envs import classic_control
 from gym_sokoban.envs import sokoban_env_fast
 
+from alpacka.utils import attribute
+
 try:
     import gfootball.env as football_env
 except ImportError:
@@ -136,6 +138,7 @@ class GoogleFootball(ModelEnv):
             rewards=rewards,
             stacked=stacked,
             write_full_episode_dumps=dump_path is not None,
+            write_goal_dumps=False,
             logdir=dump_path or '',
             **kwargs
         )
@@ -144,7 +147,12 @@ class GoogleFootball(ModelEnv):
         self.observation_space = self._env.observation_space
 
     def reset(self):
-        return self._env.reset()
+        # pylint: disable=protected-access
+        obs = self._env.reset()
+        env = self._env.unwrapped
+        env._env._trace._trace = collections.deque([], 4)
+
+        return obs
 
     def step(self, action):
         obs, reward, done, info = self._env.step(action)
@@ -176,19 +184,16 @@ class GoogleFootball(ModelEnv):
         # state. Long-term fix on the way:
         # https://github.com/google-research/football/pull/115
         trace = env._env._trace
-        cfg = trace._config
-        trace._config = None
-        trace_copy = copy.deepcopy(trace)
-        trace_copy._config = cfg
-        trace._config = cfg
+        trace_copy = attribute.deep_copy_without_fields(trace, ['_config',
+                                                      '_dump_config'])
+        # Placeholder to prevent exceptions when gc this object
+        trace_copy._dump_config = []
         return (
             state,
             copy.deepcopy(env._env._steps_time),
             copy.deepcopy(env._env._step),
-            copy.deepcopy(env._env._step_count),
             copy.deepcopy(env._env._cumulative_reward),
             copy.deepcopy(env._env._observation),
-            env._env._info,
             trace_copy,
         )
 
@@ -199,17 +204,15 @@ class GoogleFootball(ModelEnv):
             state,
             env._env._steps_time,
             env._env._step,
-            env._env._step_count,
             env._env._cumulative_reward,
             env._env._observation,
-            env._env._info,
             trace,
         ) = state
-        cfg = trace._config
-        trace._config = None
-        trace_copy = copy.deepcopy(trace)
-        trace_copy._config = cfg
-        trace._config = cfg
+
+        env = self._env.unwrapped
+        trace_old = env._env._trace
+        trace_copy = attribute.deep_copy_merge(trace, trace_old,
+                                               ['_config', '_dump_config'])
         env._env._trace = trace_copy
 
         assert state.size == self.state_size, (
