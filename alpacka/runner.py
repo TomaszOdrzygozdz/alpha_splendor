@@ -4,7 +4,7 @@ import argparse
 import functools
 import itertools
 import os
-
+import time
 import gin
 
 from alpacka import agents
@@ -14,7 +14,7 @@ from alpacka import metric_logging
 from alpacka import networks
 from alpacka import trainers
 from alpacka.utils import gin as gin_utils
-import time
+
 
 @gin.configurable
 class Runner:
@@ -145,7 +145,7 @@ class Runner:
         metric_logging.log_scalar_metrics(
             'agent',
             self._epoch,
-            {"time": time_diff}
+            {'time': time_diff}
         )
         for episode in episodes:
             self._trainer.add_episode(episode)

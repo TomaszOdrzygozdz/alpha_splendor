@@ -111,7 +111,9 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, ModelEnv):
 
 
 def deep_copy_without_fields(obj, fields_to_be_omitted):
-    values_to_save = [getattr(obj, field_name) for field_name in fields_to_be_omitted]
+    """Deep copies obj omitting some fields. Returns copied object"""
+    values_to_save = [getattr(obj, field_name)
+                      for field_name in fields_to_be_omitted]
     for field_name in fields_to_be_omitted:
         setattr(obj, field_name, None)
 
@@ -124,7 +126,10 @@ def deep_copy_without_fields(obj, fields_to_be_omitted):
 
 
 def deep_copy_with_fields(obj, fields_from_template, obj_template):
-    values_to_plug = [getattr(obj_template, field_name) for field_name in fields_from_template]
+    """Deep copies obj fields in
+    fields_from_template are copied from obj_template"""
+    values_to_plug = [getattr(obj_template, field_name)
+                      for field_name in fields_from_template]
     new_obj = copy.deepcopy(obj)
     for field_name, val in zip(fields_from_template, values_to_plug):
         setattr(new_obj, field_name, val)
@@ -169,8 +174,8 @@ class GoogleFootball(ModelEnv):
         self.step_count = 0
 
     def reset(self):
+        # pylint: disable=protected-access
         self.step_count = 0
-
         obs = self._env.reset()
         env = self._env.unwrapped
         env._env._trace._trace = collections.deque([], 4)
@@ -210,8 +215,10 @@ class GoogleFootball(ModelEnv):
         # state. Long-term fix on the way:
         # https://github.com/google-research/football/pull/115
         trace = env._env._trace
-        trace_copy = deep_copy_without_fields(trace, ["_config", "_dump_config"])
-        trace_copy._dump_config = []  # Placeholder to prevent exceptions when gc this object
+        trace_copy = deep_copy_without_fields(trace, ['_config',
+                                                      '_dump_config'])
+        # Placeholder to prevent exceptions when gc this object
+        trace_copy._dump_config = []
         return (
             state,
             copy.deepcopy(env._env._steps_time),
@@ -237,7 +244,8 @@ class GoogleFootball(ModelEnv):
 
         env = self._env.unwrapped
         trace_old = env._env._trace
-        trace_copy = deep_copy_with_fields(trace, ["_config", "_dump_config"], trace_old)
+        trace_copy = deep_copy_with_fields(trace, ['_config', '_dump_config'],
+                                           trace_old)
 
         env._env._trace = trace_copy
 
