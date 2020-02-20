@@ -1,11 +1,12 @@
 """Environment steppers."""
 
 import os
-from alpacka.batch_steppers import LocalBatchStepper, RayBatchStepper
+
+from alpacka import batch_steppers
 
 if 'LOCAL_RUN' in os.environ:
-    class AutoBatchStepper(LocalBatchStepper):
+    class AutoBatchStepper(batch_steppers.LocalBatchStepper):
         pass
 else:
-    class AutoBatchStepper(RayBatchStepper):
+    class AutoBatchStepper(batch_steppers.RayBatchStepper):
         pass

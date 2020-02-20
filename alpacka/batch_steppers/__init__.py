@@ -18,5 +18,5 @@ LocalBatchStepper = configure_batch_stapper(local.LocalBatchStepper)  # pylint: 
 RayBatchStepper = configure_batch_stapper(ray.RayBatchStepper)  # pylint: disable=invalid-name
 
 # pylint: disable=wrong-import-position
-from alpacka.batch_steppers import auto
+from alpacka.batch_steppers import auto  # This avoids circular imports.
 AutoBatchStepper = configure_batch_stapper(auto.AutoBatchStepper)  # pylint: disable=invalid-name

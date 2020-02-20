@@ -10,6 +10,8 @@ from gym import wrappers
 from gym.envs import classic_control
 from gym_sokoban.envs import sokoban_env_fast
 
+from alpacka.utils import attribute
+
 try:
     import gfootball.env as football_env
 except ImportError:
@@ -110,32 +112,6 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, ModelEnv):
         return self.render(mode=self.mode)
 
 
-def deep_copy_without_fields(obj, fields_to_be_omitted):
-    """Deep copies obj omitting some fields. Returns copied object"""
-    values_to_save = [getattr(obj, field_name)
-                      for field_name in fields_to_be_omitted]
-    for field_name in fields_to_be_omitted:
-        setattr(obj, field_name, None)
-
-    new_obj = copy.deepcopy(obj)
-
-    for field_name, val in zip(fields_to_be_omitted, values_to_save):
-        setattr(obj, field_name, val)
-
-    return new_obj
-
-
-def deep_copy_with_fields(obj, fields_from_template, obj_template):
-    """Deep copies obj fields in
-    fields_from_template are copied from obj_template"""
-    values_to_plug = [getattr(obj_template, field_name)
-                      for field_name in fields_from_template]
-    new_obj = copy.deepcopy(obj)
-    for field_name, val in zip(fields_from_template, values_to_plug):
-        setattr(new_obj, field_name, val)
-
-    return new_obj
-
 @gin.configurable
 class GoogleFootball(ModelEnv):
     """Google Research Football with state clone/restore and
@@ -149,7 +125,6 @@ class GoogleFootball(ModelEnv):
                  stacked=False,
                  dump_path=None,
                  solved_at=1,
-                 timelimit=None,
                  **kwargs):
         if football_env is None:
             raise ImportError('Could not import gfootball! '
@@ -170,12 +145,9 @@ class GoogleFootball(ModelEnv):
 
         self.action_space = self._env.action_space
         self.observation_space = self._env.observation_space
-        self.timelimit = timelimit
-        self.step_count = 0
 
     def reset(self):
         # pylint: disable=protected-access
-        self.step_count = 0
         obs = self._env.reset()
         env = self._env.unwrapped
         env._env._trace._trace = collections.deque([], 4)
@@ -183,12 +155,9 @@ class GoogleFootball(ModelEnv):
         return obs
 
     def step(self, action):
-        self.step_count += 1
         obs, reward, done, info = self._env.step(action)
         if done:
             info['solved'] = info['score_reward'] >= self._solved_at
-        if self.timelimit is not None and self.step_count > self.timelimit:
-            done = True
         return obs, reward, done, info
 
     def render(self, mode='human'):
@@ -215,7 +184,7 @@ class GoogleFootball(ModelEnv):
         # state. Long-term fix on the way:
         # https://github.com/google-research/football/pull/115
         trace = env._env._trace
-        trace_copy = deep_copy_without_fields(trace, ['_config',
+        trace_copy = attribute.deep_copy_without_fields(trace, ['_config',
                                                       '_dump_config'])
         # Placeholder to prevent exceptions when gc this object
         trace_copy._dump_config = []
@@ -223,7 +192,6 @@ class GoogleFootball(ModelEnv):
             state,
             copy.deepcopy(env._env._steps_time),
             copy.deepcopy(env._env._step),
-            copy.deepcopy(env._env._step_count),
             copy.deepcopy(env._env._cumulative_reward),
             copy.deepcopy(env._env._observation),
             trace_copy,
@@ -236,7 +204,6 @@ class GoogleFootball(ModelEnv):
             state,
             env._env._steps_time,
             env._env._step,
-            env._env._step_count,
             env._env._cumulative_reward,
             env._env._observation,
             trace,
@@ -244,9 +211,8 @@ class GoogleFootball(ModelEnv):
 
         env = self._env.unwrapped
         trace_old = env._env._trace
-        trace_copy = deep_copy_with_fields(trace, ['_config', '_dump_config'],
-                                           trace_old)
-
+        trace_copy = attribute.deep_copy_merge(trace, trace_old,
+                                               ['_config', '_dump_config'])
         env._env._trace = trace_copy
 
         assert state.size == self.state_size, (
