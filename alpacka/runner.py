@@ -83,6 +83,7 @@ class Runner:
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
         self._epoch = 0
+        self._total_episodes = 0
         self.time_stamp = time.time()
 
     @staticmethod
@@ -112,6 +113,7 @@ class Runner:
         if solved_list:
             solved_rate = sum(solved_list) / len(solved_list)
             metrics['solved_rate'] = solved_rate
+        metrics['count'] = self._total_episodes
 
         return metrics
 
@@ -131,6 +133,7 @@ class Runner:
             epoch=max(0, self._epoch - self._n_precollect_epochs),
             time_limit=self._episode_time_limit
         )
+        self._total_episodes += len(episodes)
         metric_logging.log_scalar_metrics(
             'episode',
             self._epoch,
