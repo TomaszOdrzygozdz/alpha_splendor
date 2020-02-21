@@ -102,11 +102,12 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
-    def __init__(self, parameter_schedules=None):
+    def __init__(self, parameter_schedules=None, callbacks=()):
         super().__init__(parameter_schedules)
 
         self._action_space = None
         self._epoch = None
+        self._callbacks = callbacks
 
     @asyncio.coroutine
     def reset(self, env, observation):  # pylint: disable=missing-param-doc
@@ -219,6 +220,9 @@ class OnlineAgent(Agent):
 
         yield from self.reset(model_env, observation)
 
+        for callback in self._callbacks:
+            callback.on_episode_begin(env, observation)
+
         transitions = []
         done = False
         info = {}
@@ -226,6 +230,11 @@ class OnlineAgent(Agent):
             # Forward network prediction requests to BatchStepper.
             (action, agent_info) = yield from self.act(observation)
             (next_observation, reward, done, info) = env.step(action)
+
+            for callback in self._callbacks:
+                callback.on_real_step(
+                    action, next_observation, reward, done, agent_info
+                )
 
             transitions.append(data.Transition(
                 observation=observation,
@@ -236,6 +245,9 @@ class OnlineAgent(Agent):
                 agent_info=agent_info,
             ))
             observation = next_observation
+
+        for callback in self._callbacks:
+            callback.on_episode_end()
 
         transitions = self.postprocess_transitions(transitions)
 
@@ -250,3 +262,29 @@ class OnlineAgent(Agent):
             solved=solved,
             truncated=truncated,
         )
+
+
+class AgentCallback:
+    """Base class for agent callbacks."""
+
+    # Events for all OnlineAgents.
+
+    def on_episode_begin(self, env, observation):
+        """Called in the beginning of a new episode."""
+
+    def on_episode_end(self):
+        """Called in the end of an episode."""
+
+    def on_real_step(self, action, observation, reward, done, agent_info):
+        """Called after every step in the real environment."""
+
+    # Events only for model-based agents.
+
+    def on_pass_begin(self):
+        """Called in the beginning of every planning pass."""
+
+    def on_pass_end(self):
+        """Called in the end of every planning pass."""
+
+    def on_model_step(self, action, observation, reward, done, agent_info):
+        """Called after every step in the model."""

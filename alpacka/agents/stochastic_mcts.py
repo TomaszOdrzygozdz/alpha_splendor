@@ -238,10 +238,13 @@ class TreeNode:
         We use it only to provide targets for value network training.
         value(s) = expected_a quality(s, a)
         """
-        return (
-            sum(child.quality * child.count for child in self.children) /
-            sum(child.count for child in self.children)
-        )
+        if self.is_leaf:
+            return 0
+        else:
+            return (
+                sum(child.quality * child.count for child in self.children) /
+                sum(child.count for child in self.children)
+            )
 
     @property
     def is_leaf(self):
@@ -345,6 +348,13 @@ class StochasticMCTSAgent(base.OnlineAgent):
             action = self._choose_action(node, exploratory=True)
             node = node.children[action]
             (observation, reward, done, _) = self._model.step(action)
+
+            agent_info = self._compute_node_info(node)
+            for callback in self._callbacks:
+                callback.on_model_step(
+                    action, observation, reward, done, agent_info
+                )
+
             path.append((reward, node))
         return (path, observation, done)
 
@@ -421,6 +431,9 @@ class StochasticMCTSAgent(base.OnlineAgent):
         Yields:
             Network prediction requests.
         """
+        for callback in self._callbacks:
+            callback.on_pass_begin()
+
         (path, observation, done) = self._traverse(root, observation)
         (_, leaf) = path[-1]
         if done:
@@ -430,6 +443,9 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._backpropagate(quality, path)
         # Go back to the root state.
         self._model.restore_state(self._root_state)
+
+        for callback in self._callbacks:
+            callback.on_pass_end()
 
     def reset(self, env, observation):
         """Reinitializes the search tree for a new environment."""
@@ -453,33 +469,37 @@ class StochasticMCTSAgent(base.OnlineAgent):
         return (action, info)
 
     def postprocess_transitions(self, transitions):
+        for transition in transitions:
+            transition.agent_info.update(
+                self._compute_node_info(transition.agent_info.pop('node'))
+            )
+        return transitions
+
+    def _compute_node_info(self, node):
         def unscale(x):
             x -= self._leaf_quality_bias
             if self._leaf_quality_dampening:
                 x /= self._leaf_quality_dampening
             return x
 
-        for transition in transitions:
-            node = transition.agent_info.pop('node')
-            value = unscale(node.value)
-            qualities = np.array([
-                unscale(child.quality) for child in node.children
-            ])
-            action_counts = np.array([child.count for child in node.children])
-            # "Smooth" histogram takes into account the initial actions
-            # performed on all children of an expanded leaf, resulting in
-            # a more spread out distribution.
-            action_histogram_smooth = action_counts / np.sum(action_counts)
-            # Ordinary histogram only takes into account the actual actions
-            # chosen in the inner nodes.
-            action_histogram = (action_counts - 1) / np.sum(action_counts - 1)
-            transition.agent_info.update({
-                'value': value,
-                'qualities': qualities,
-                'action_histogram_smooth': action_histogram_smooth,
-                'action_histogram': action_histogram,
-            })
-        return transitions
+        value = unscale(node.value)
+        qualities = np.array([
+            unscale(child.quality) for child in node.children
+        ])
+        action_counts = np.array([child.count for child in node.children])
+        # "Smooth" histogram takes into account the initial actions
+        # performed on all children of an expanded leaf, resulting in
+        # a more spread out distribution.
+        action_histogram_smooth = action_counts / np.sum(action_counts)
+        # Ordinary histogram only takes into account the actual actions
+        # chosen in the inner nodes.
+        action_histogram = (action_counts - 1) / np.sum(action_counts - 1)
+        return {
+            'value': value,
+            'qualities': qualities,
+            'action_histogram_smooth': action_histogram_smooth,
+            'action_histogram': action_histogram,
+        }
 
     @staticmethod
     def compute_metrics(episodes):
