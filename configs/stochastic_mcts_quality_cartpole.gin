@@ -21,6 +21,8 @@ KerasNetwork.train_callbacks = None
 StochasticMCTSAgent.discount = 0.99
 StochasticMCTSAgent.exploration_bonus_fn = @alpacka.agents.stochastic_mcts.puct_exploration_bonus
 StochasticMCTSAgent.exploration_weight = 3.0
+StochasticMCTSAgent.leaf_quality_bias = 0.0
+StochasticMCTSAgent.leaf_quality_dampening = 1.0
 StochasticMCTSAgent.n_passes = 10
 StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.QualityNetworkNewLeafRater
 

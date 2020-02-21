@@ -258,6 +258,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
         new_leaf_rater_class=RolloutNewLeafRater,
         exploration_bonus_fn=puct_exploration_bonus,
         exploration_weight=1.0,
+        leaf_quality_bias=0.0,
+        leaf_quality_dampening=1.0,
         **kwargs
     ):
         """Initializes StochasticMCTSAgent.
@@ -272,6 +274,11 @@ class StochasticMCTSAgent(base.OnlineAgent):
                 quality when choosing a node to explore in an MCTS pass.
                 Signature: (child_count, parent_count) -> bonus.
             exploration_weight (float): Weight of the exploration bonus.
+            leaf_quality_bias (float): Bias for leaf qualities. Can be used to
+                make the initial predictions more/less optimistic.
+            leaf_quality_dampening (float): Dampening rate for leaf qualities.
+                Can be used to decrease the influence of random network
+                initialization.
             kwargs: OnlineAgent init keyword arguments.
         """
         super().__init__(**kwargs)
@@ -280,6 +287,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._new_leaf_rater = new_leaf_rater_class(self._discount)
         self._exploration_bonus = exploration_bonus_fn
         self._exploration_weight = exploration_weight
+        self._leaf_quality_bias = leaf_quality_bias
+        self._leaf_quality_dampening = leaf_quality_dampening
         self._model = None
         self._root = None
         self._root_state = None
@@ -365,7 +374,11 @@ class StochasticMCTSAgent(base.OnlineAgent):
             self._action_space
         )
         leaf.children = [
-            TreeNode(quality, prob)
+            TreeNode(
+                quality * self._leaf_quality_dampening +
+                self._leaf_quality_bias,
+                prob,
+            )
             for (quality, prob) in child_qualities_and_probs
         ]
         action = self._choose_action(leaf, exploratory=True)
@@ -433,28 +446,76 @@ class StochasticMCTSAgent(base.OnlineAgent):
         for _ in range(self.n_passes):
             yield from self._run_pass(self._root, observation)
         info = {'node': self._root}
+        info.update(self._compute_tree_metrics(self._root))
 
         action = self._choose_action(self._root, exploratory=False)
         self._root = self._root.children[action]
         return (action, info)
 
-    @staticmethod
-    def postprocess_transitions(transitions):
-        postprocessed_transitions = []
+    def postprocess_transitions(self, transitions):
+        def unscale(x):
+            x -= self._leaf_quality_bias
+            if self._leaf_quality_dampening:
+                x /= self._leaf_quality_dampening
+            return x
+
         for transition in transitions:
-            node = transition.agent_info['node']
-            value = node.value
-            qualities = np.array([child.quality for child in node.children])
-            action_histogram = np.array(
-                [child.count / node.count for child in node.children]
-            )
-            postprocessed_transitions.append(
-                transition._replace(agent_info={
-                    'value': value,
-                    'qualities': qualities,
-                    'action_histogram': action_histogram,
-                }))
-        return postprocessed_transitions
+            node = transition.agent_info.pop('node')
+            value = unscale(node.value)
+            qualities = np.array([
+                unscale(child.quality) for child in node.children
+            ])
+            action_counts = np.array([child.count for child in node.children])
+            # "Smooth" histogram takes into account the initial actions
+            # performed on all children of an expanded leaf, resulting in
+            # a more spread out distribution.
+            action_histogram_smooth = action_counts / np.sum(action_counts)
+            # Ordinary histogram only takes into account the actual actions
+            # chosen in the inner nodes.
+            action_histogram = (action_counts - 1) / np.sum(action_counts - 1)
+            transition.agent_info.update({
+                'value': value,
+                'qualities': qualities,
+                'action_histogram_smooth': action_histogram_smooth,
+                'action_histogram': action_histogram,
+            })
+        return transitions
+
+    @staticmethod
+    def compute_metrics(episodes):
+        def episode_info(key):
+            for episode in episodes:
+                yield from episode.transition_batch.agent_info[key]
+
+        def entropy(probs):
+            def plogp(p):
+                # If out this case to avoid log(0).
+                return p * np.log(p) if p else 0
+            return -np.sum([plogp(p) for p in probs])
+
+        return {
+            'depth_mean': np.mean(list(episode_info('depth_mean'))),
+            'depth_max': max(episode_info('depth_max')),
+            'entropy_mean': np.mean(
+                list(map(entropy, episode_info('action_histogram')))
+            ),
+            'entropy_smooth_mean': np.mean(
+                list(map(entropy, episode_info('action_histogram_smooth')))
+            ),
+        }
+
+    def _compute_tree_metrics(self, root):
+        def generate_leaf_depths(node, depth):
+            if node.is_leaf:
+                yield depth
+            for child in node.children:
+                yield from generate_leaf_depths(child, depth + 1)
+
+        depths = list(generate_leaf_depths(root, 0))
+        return {
+            'depth_mean': sum(depths) / len(depths),
+            'depth_max': max(depths),
+        }
 
     def network_signature(self, observation_space, action_space):
         # Delegate defining the network signature to NewLeafRater. This is the
