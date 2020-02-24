@@ -14,6 +14,7 @@ from alpacka import data
 from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.agents import core
+from alpacka.trainers.supervised import target_discounted_return, gamma
 
 # Basic returns aggregators.
 gin.external_configurable(np.max, module='np')
@@ -31,12 +32,25 @@ def truncated_return(episode):
 def bootstrap_return_with_value(episode):
     """Bootstraps a state value at the end of the episode if truncated."""
     # TODO(pj): Move this inference to concurrent workers where the agent solves
-    # the environment. E.g. "last_value" in data.Episode for ActorCritic?
+    # the environment. E.g. "last_value" in data.Episode for ActorCritic? Update
+    # also similar functions as bootstraped_discounted_return()
     return_ = episode.return_
     if episode.truncated:
         batched_value, _ = yield np.expand_dims(
             episode.transition_batch.next_observation[-1], axis=0)
         return_ += batched_value[0, 0]
+    return return_
+
+
+@gin.configurable
+def bootstraped_discounted_return(episode):
+    """Bootstraps a state value at the end of the episode if truncated."""
+    return_ = target_discounted_return(episode)[0][0]
+    if episode.truncated:
+        batched_value, _ = yield np.expand_dims(
+            episode.transition_batch.next_observation[-1], axis=0)
+        return_ += batched_value[0, 0] * \
+                   gamma() ** len(episode.transition_batch.reward)
     return return_
 
 

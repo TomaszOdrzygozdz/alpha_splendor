@@ -23,6 +23,22 @@ def target_return(episode):
 
 
 @gin.configurable
+def gamma(value=1.):
+    return value
+
+
+@gin.configurable
+def target_discounted_return(episode):
+    rewards = episode.transition_batch.reward
+    return_ = np.zeros(len(rewards))
+    cum_suffix_reward = 0.
+    for i in reversed(range(len(rewards))):
+        cum_suffix_reward = cum_suffix_reward * gamma() + rewards[i]
+        return_[i] = cum_suffix_reward
+    return return_[:, np.newaxis]
+
+
+@gin.configurable
 def target_value(episode):
     return np.expand_dims(
         episode.transition_batch.agent_info['value'], axis=1
