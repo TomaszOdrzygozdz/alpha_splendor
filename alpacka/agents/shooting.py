@@ -23,33 +23,33 @@ gin.external_configurable(np.mean, module='np')
 
 @gin.configurable
 @asyncio.coroutine
-def truncated_return(episode, discount=1.):
+def truncated_return(episodes, discount=1.):
     """Returns sum of rewards up to the truncation of the episode."""
-    return discount_cumsum(episode.transition_batch.reward, discount)[0]
+    return np.array([
+        discount_cumsum(episode.transition_batch.reward, discount)[0]
+        for episode in episodes
+    ])
 
 
 @gin.configurable
-def bootstrap_return_with_value(episode, discount=1.):
+def bootstrap_return_with_value(episodes, discount=1.):
     """Bootstraps a state value at the end of the episode if truncated."""
-    return_ = discount_cumsum(episode.transition_batch.reward, discount)[0]
-    if episode.truncated:
-        batched_value, _ = yield np.expand_dims(
-            episode.transition_batch.next_observation[-1], axis=0)
-        return_ += batched_value[0, 0] * \
-                   discount ** len(episode.transition_batch.reward)
-    return return_
+    final_values, _ = yield np.array([
+        episode.transition_batch.next_observation[-1]
+        for episode in episodes
+    ])
+    final_values = np.squeeze(final_values, axis=1)
+    discounted_rewards = [
+        discount_cumsum(episode.transition_batch.reward, discount)[0]
+        for episode in episodes
+    ]
 
-
-@gin.configurable
-def bootstrap_return_with_quality(episode, discount=1.):
-    """Bootstraps a max q-value at the end of the episode if truncated."""
-    return_ = discount_cumsum(episode.transition_batch.reward, discount)[0]
-    if episode.truncated:
-        batched_qualities = yield np.expand_dims(
-            episode.transition_batch.next_observation[-1], axis=0)
-        return_ += np.max(batched_qualities[0]) * \
-                   discount ** len(episode.transition_batch.reward)
-    return return_
+    returns_ = [
+        episode_reward + final_value if episode.truncated else episode_reward
+        for episode, episode_reward, final_value in
+        zip(episodes, discounted_rewards, final_values)
+    ]
+    return returns_
 
 
 class ShootingAgent(base.OnlineAgent):
@@ -80,6 +80,8 @@ class ShootingAgent(base.OnlineAgent):
             agent_class (type): Rollout agent class.
             n_envs (int): Number of parallel environments to run.
             kwargs: OnlineAgent init keyword arguments.
+            discount (float): Future reward discount factor (also known as
+                gamma)
         """
         super().__init__(**kwargs)
         self._n_rollouts = n_rollouts
@@ -141,8 +143,9 @@ class ShootingAgent(base.OnlineAgent):
 
         # Computer episode returns and put them in a map.
         act_to_rets_map = {key: [] for key in range(self._action_space.n)}
-        for episode in episodes:
-            return_ = yield from self._estimate_fn(episode, self._discount)
+
+        returns_ = yield from self._estimate_fn(episodes, self._discount)
+        for episode, return_ in zip(episodes, returns_):
             act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
         # Aggregate episodes into action scores.
