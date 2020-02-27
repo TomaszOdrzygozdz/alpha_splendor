@@ -6,6 +6,7 @@ import numpy as np
 from alpacka import data
 from alpacka.trainers import base
 from alpacka.trainers import replay_buffers
+from alpacka.utils.transformations import discount_cumsum
 
 
 @gin.configurable
@@ -23,19 +24,11 @@ def target_return(episode):
 
 
 @gin.configurable
-def gamma(value=1.):
-    return value
-
-
-@gin.configurable
 def target_discounted_return(episode):
-    rewards = episode.transition_batch.reward
-    return_ = np.zeros(len(rewards))
-    cum_suffix_reward = 0.
-    for i in reversed(range(len(rewards))):
-        cum_suffix_reward = cum_suffix_reward * gamma() + rewards[i]
-        return_[i] = cum_suffix_reward
-    return return_[:, np.newaxis]
+    """Uses 'discounted_return' calculated by agent."""
+    return np.expand_dims(
+        episode.transition_batch.agent_info['discounted_return'], axis=1
+    )
 
 
 @gin.configurable

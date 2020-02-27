@@ -14,7 +14,7 @@ from alpacka import data
 from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.agents import core
-from alpacka.trainers.supervised import target_discounted_return, gamma
+from alpacka.utils.transformations import discount_cumsum
 
 # Basic returns aggregators.
 gin.external_configurable(np.max, module='np')
@@ -23,47 +23,32 @@ gin.external_configurable(np.mean, module='np')
 
 @gin.configurable
 @asyncio.coroutine
-def truncated_return(episode):
+def truncated_return(episode, discount=1.):
     """Returns sum of rewards up to the truncation of the episode."""
-    return episode.return_
+    return discount_cumsum(episode.transition_batch.reward, discount)[0]
 
 
 @gin.configurable
-def bootstrap_return_with_value(episode):
+def bootstrap_return_with_value(episode, discount=1.):
     """Bootstraps a state value at the end of the episode if truncated."""
-    # TODO(pj): Move this inference to concurrent workers where the agent solves
-    # the environment. E.g. "last_value" in data.Episode for ActorCritic? Update
-    # also similar functions as bootstraped_discounted_return()
-    return_ = episode.return_
-    if episode.truncated:
-        batched_value, _ = yield np.expand_dims(
-            episode.transition_batch.next_observation[-1], axis=0)
-        return_ += batched_value[0, 0]
-    return return_
-
-
-@gin.configurable
-def bootstraped_discounted_return(episode):
-    """Bootstraps a state value at the end of the episode if truncated."""
-    return_ = target_discounted_return(episode)[0][0]
+    return_ = discount_cumsum(episode.transition_batch.reward, discount)[0]
     if episode.truncated:
         batched_value, _ = yield np.expand_dims(
             episode.transition_batch.next_observation[-1], axis=0)
         return_ += batched_value[0, 0] * \
-                   gamma() ** len(episode.transition_batch.reward)
+                   discount ** len(episode.transition_batch.reward)
     return return_
 
 
 @gin.configurable
-def bootstrap_return_with_quality(episode):
+def bootstrap_return_with_quality(episode, discount=1.):
     """Bootstraps a max q-value at the end of the episode if truncated."""
-    # TODO(pj): Move this inference to concurrent workers where the agent solves
-    # the environment. E.g. "last_value" in data.Episode for ActorCritic?
-    return_ = episode.return_
+    return_ = discount_cumsum(episode.transition_batch.reward, discount)[0]
     if episode.truncated:
         batched_qualities = yield np.expand_dims(
             episode.transition_batch.next_observation[-1], axis=0)
-        return_ += np.max(batched_qualities[0])
+        return_ += np.max(batched_qualities[0]) * \
+                   discount ** len(episode.transition_batch.reward)
     return return_
 
 
@@ -79,6 +64,7 @@ class ShootingAgent(base.OnlineAgent):
         batch_stepper_class=batch_steppers.LocalBatchStepper,
         agent_class=core.RandomAgent,
         n_envs=10,
+        discount=1.,
         **kwargs
     ):
         """Initializes ShootingAgent.
@@ -103,6 +89,7 @@ class ShootingAgent(base.OnlineAgent):
         self._batch_stepper_class = batch_stepper_class
         self._agent_class = agent_class
         self._n_envs = n_envs
+        self._discount = discount
         self._model = None
         self._batch_stepper = None
         self._network_fn = None
@@ -155,7 +142,7 @@ class ShootingAgent(base.OnlineAgent):
         # Computer episode returns and put them in a map.
         act_to_rets_map = {key: [] for key in range(self._action_space.n)}
         for episode in episodes:
-            return_ = yield from self._estimate_fn(episode)
+            return_ = yield from self._estimate_fn(episode, self._discount)
             act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
         # Aggregate episodes into action scores.
@@ -191,6 +178,17 @@ class ShootingAgent(base.OnlineAgent):
     def network_signature(self, observation_space, action_space):
         agent = self._agent_class()
         return agent.network_signature(observation_space, action_space)
+
+    def postprocess_transitions(self, transitions):
+        rewards = [transition.reward for transition in transitions]
+        discounted_returns = discount_cumsum(rewards, self._discount)
+
+        for transition, discounted_return in zip(
+            transitions, discounted_returns
+        ):
+            transition.agent_info["discounted_return"] = discounted_return
+
+        return transitions
 
     @staticmethod
     def compute_metrics(episodes):
