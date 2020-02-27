@@ -1,3 +1,5 @@
+"""Data transformation utils."""
+
 import scipy.signal
 
 

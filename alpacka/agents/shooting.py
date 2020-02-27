@@ -189,7 +189,7 @@ class ShootingAgent(base.OnlineAgent):
         for transition, discounted_return in zip(
             transitions, discounted_returns
         ):
-            transition.agent_info["discounted_return"] = discounted_return
+            transition.agent_info['discounted_return'] = discounted_return
 
         return transitions
 

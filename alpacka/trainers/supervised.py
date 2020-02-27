@@ -6,7 +6,6 @@ import numpy as np
 from alpacka import data
 from alpacka.trainers import base
 from alpacka.trainers import replay_buffers
-from alpacka.utils.transformations import discount_cumsum
 
 
 @gin.configurable
