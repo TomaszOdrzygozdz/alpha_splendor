@@ -352,7 +352,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
             agent_info = self._compute_node_info(node)
             for callback in self._callbacks:
                 callback.on_model_step(
-                    action, observation, reward, done, agent_info
+                    agent_info, action, observation, reward, done
                 )
 
             path.append((reward, node))

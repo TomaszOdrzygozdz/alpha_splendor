@@ -233,7 +233,7 @@ class OnlineAgent(Agent):
 
             for callback in self._callbacks:
                 callback.on_real_step(
-                    action, next_observation, reward, done, agent_info
+                    agent_info, action, next_observation, reward, done
                 )
 
             transitions.append(data.Transition(
@@ -275,7 +275,7 @@ class AgentCallback:
     def on_episode_end(self):
         """Called in the end of an episode."""
 
-    def on_real_step(self, action, observation, reward, done, agent_info):
+    def on_real_step(self, agent_info, action, observation, reward, done):
         """Called after every step in the real environment."""
 
     # Events only for model-based agents.
@@ -286,5 +286,5 @@ class AgentCallback:
     def on_pass_end(self):
         """Called in the end of every planning pass."""
 
-    def on_model_step(self, action, observation, reward, done, agent_info):
+    def on_model_step(self, agent_info, action, observation, reward, done):
         """Called after every step in the model."""
