@@ -32,9 +32,9 @@ def test_bootstrap_return_with_value_estimator(truncated, x_return):
 
     # Run
     bootstrap_return = testing.run_with_constant_network_prediction(
-        shooting.bootstrap_return_with_value(episode),
+        shooting.bootstrap_return_with_value([episode]),
         logits=logits
-    )
+    )[0]
 
     # Test
     assert bootstrap_return == x_return
