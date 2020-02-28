@@ -59,9 +59,13 @@ def test_callback_traces_single_model_pass():
     callback.on_episode_begin(mock_env, 'obs0', epoch=0)
     callback.on_pass_begin()
     mock_env.state_info = 'state1_1'
-    callback.on_model_step({'agent_info': 11}, 'action1_1', 'obs1_1', 0.11, False)
+    callback.on_model_step(
+        {'agent_info': 11}, 'action1_1', 'obs1_1', 0.11, False
+    )
     mock_env.state_info = 'state1_2'
-    callback.on_model_step({'agent_info': 12}, 'action1_2', 'obs1_2', 0.12, False)
+    callback.on_model_step(
+        {'agent_info': 12}, 'action1_2', 'obs1_2', 0.12, False
+    )
     callback.on_pass_end()
     callback.on_real_step({'agent_info': 1}, 'action1', 'obs1', 0.1, True)
     callback.on_episode_end()
@@ -109,11 +113,15 @@ def test_callback_traces_two_model_passes():
     callback.on_episode_begin(mock_env, 'obs0', epoch=0)
     callback.on_pass_begin()
     mock_env.state_info = 'state1_1'
-    callback.on_model_step({'agent_info': 11}, 'action1_1', 'obs1_1', 0.11, False)
+    callback.on_model_step(
+        {'agent_info': 11}, 'action1_1', 'obs1_1', 0.11, False
+    )
     callback.on_pass_end()
     callback.on_pass_begin()
     mock_env.state_info = 'state1_2'
-    callback.on_model_step({'agent_info': 12}, 'action1_2', 'obs1_2', 0.12, False)
+    callback.on_model_step(
+        {'agent_info': 12}, 'action1_2', 'obs1_2', 0.12, False
+    )
     callback.on_pass_end()
     callback.on_real_step({'agent_info': 1}, 'action1', 'obs1', 0.1, True)
     callback.on_episode_end()
