@@ -24,7 +24,7 @@ def target_return(episode):
 
 @gin.configurable
 def target_discounted_return(episode):
-    """Uses 'discounted_return' calculated by agent."""
+    """Uses discounted_return calculated by agent."""
     return np.expand_dims(
         episode.transition_batch.agent_info['discounted_return'], axis=1
     )

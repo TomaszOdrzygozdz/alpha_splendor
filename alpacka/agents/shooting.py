@@ -34,20 +34,20 @@ def truncated_return(episodes, discount=1.):
 @gin.configurable
 def bootstrap_return_with_value(episodes, discount=1.):
     """Bootstraps a state value at the end of the episode if truncated."""
-    final_values, _ = yield np.array([
+    last_values, _ = yield np.array([
         episode.transition_batch.next_observation[-1]
         for episode in episodes
     ])
-    final_values = np.squeeze(final_values, axis=1)
-    discounted_rewards = [
+    last_values = np.squeeze(last_values, axis=1)
+    returns_ = [
         discount_cumsum(episode.transition_batch.reward, discount)[0]
         for episode in episodes
     ]
 
     returns_ = [
-        episode_reward + final_value if episode.truncated else episode_reward
-        for episode, episode_reward, final_value in
-        zip(episodes, discounted_rewards, final_values)
+        return_ + final_value if episode.truncated else return_
+        for episode, return_, final_value in
+        zip(episodes, returns_, last_values)
     ]
     return returns_
 
@@ -141,10 +141,9 @@ class ShootingAgent(base.OnlineAgent):
             episode.return_ for episode in episodes
         ) / len(episodes)
 
-        # Computer episode returns and put them in a map.
-        act_to_rets_map = {key: [] for key in range(self._action_space.n)}
-
+        # Compute episode returns and put them in a map.
         returns_ = yield from self._estimate_fn(episodes, self._discount)
+        act_to_rets_map = {key: [] for key in range(self._action_space.n)}
         for episode, return_ in zip(episodes, returns_):
             act_to_rets_map[episode.transition_batch.action[0]].append(return_)
 
