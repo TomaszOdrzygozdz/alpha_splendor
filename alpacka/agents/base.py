@@ -102,12 +102,14 @@ class OnlineAgent(Agent):
     object with the collected batch of transitions.
     """
 
-    def __init__(self, parameter_schedules=None, callbacks=()):
-        super().__init__(parameter_schedules)
+    def __init__(self, callback_classes=(), **kwargs):
+        super().__init__(**kwargs)
 
         self._action_space = None
         self._epoch = None
-        self._callbacks = callbacks
+        self._callbacks = [
+            callback_class() for callback_class in callback_classes
+        ]
 
     @asyncio.coroutine
     def reset(self, env, observation):  # pylint: disable=missing-param-doc
@@ -221,7 +223,7 @@ class OnlineAgent(Agent):
         yield from self.reset(model_env, observation)
 
         for callback in self._callbacks:
-            callback.on_episode_begin(env, observation)
+            callback.on_episode_begin(env, observation, epoch)
 
         transitions = []
         done = False
@@ -269,7 +271,7 @@ class AgentCallback:
 
     # Events for all OnlineAgents.
 
-    def on_episode_begin(self, env, observation):
+    def on_episode_begin(self, env, observation, epoch):
         """Called in the beginning of a new episode."""
 
     def on_episode_end(self):

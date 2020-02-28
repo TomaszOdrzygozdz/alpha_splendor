@@ -461,7 +461,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._root_state = self._model.clone_state()
         for _ in range(self.n_passes):
             yield from self._run_pass(self._root, observation)
-        info = {'node': self._root}
+        info = {'_node': self._root}
+        info.update(self._compute_node_info(self._root))
         info.update(self._compute_tree_metrics(self._root))
 
         action = self._choose_action(self._root, exploratory=False)
@@ -471,7 +472,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
     def postprocess_transitions(self, transitions):
         for transition in transitions:
             transition.agent_info.update(
-                self._compute_node_info(transition.agent_info.pop('node'))
+                self._compute_node_info(transition.agent_info.pop('_node'))
             )
         return transitions
 
