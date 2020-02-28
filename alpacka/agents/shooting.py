@@ -136,11 +136,6 @@ class ShootingAgent(base.OnlineAgent):
                 time_limit=self._rollout_time_limit,
             ))
 
-        # Calculate the MC estimate of a state value.
-        value = sum(
-            episode.return_ for episode in episodes
-        ) / len(episodes)
-
         # Compute episode returns and put them in a map.
         returns_ = yield from self._estimate_fn(episodes, self._discount)
         act_to_rets_map = {key: [] for key in range(self._action_space.n)}
@@ -152,6 +147,9 @@ class ShootingAgent(base.OnlineAgent):
         for action, returns in act_to_rets_map.items():
             action_scores[action] = (self._aggregate_fn(returns)
                                      if returns else np.nan)
+
+        # Calculate the estimate of a state value.
+        value = sum(returns_) / len(returns_)
 
         # Choose greedy action (ignore NaN scores).
         action = np.nanargmax(action_scores)
