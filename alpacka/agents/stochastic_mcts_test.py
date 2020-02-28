@@ -224,6 +224,7 @@ def test_backtracks_because_of_reward():
 
 def test_callbacks_are_called():
     mock_callback = mock.MagicMock()
+    mock_callback_class = lambda: mock_callback
 
     (env, new_leaf_rater_class) = make_one_level_binary_tree(
         left_value=0, right_value=0
@@ -231,7 +232,7 @@ def test_callbacks_are_called():
     agent = agents.StochasticMCTSAgent(
         n_passes=2,
         new_leaf_rater_class=new_leaf_rater_class,
-        callbacks=[mock_callback],
+        callback_classes=[mock_callback_class],
     )
     testing.run_without_suspensions(agent.solve(env))
 
