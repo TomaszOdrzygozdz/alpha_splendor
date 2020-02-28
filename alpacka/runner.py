@@ -106,13 +106,10 @@ class Runner:
             episode.transition_batch.reward.shape[0] for episode in episodes
         ) / len(episodes)
 
-        solved_list = [
+        metrics['solved_rate'] = sum(
             int(episode.solved) for episode in episodes
             if episode.solved is not None
-        ]
-        if solved_list:
-            solved_rate = sum(solved_list) / len(solved_list)
-            metrics['solved_rate'] = solved_rate
+        ) / len(episodes)
         metrics['count'] = self._total_episodes
 
         return metrics
