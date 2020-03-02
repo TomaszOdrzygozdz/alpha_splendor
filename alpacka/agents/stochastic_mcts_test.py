@@ -2,6 +2,7 @@
 
 import asyncio
 import functools
+from unittest import mock
 
 import numpy as np
 import pytest
@@ -219,3 +220,25 @@ def test_backtracks_because_of_reward():
     testing.run_without_suspensions(agent.reset(env, observation))
     (action, _) = testing.run_without_suspensions(agent.act(observation))
     assert action == 1
+
+
+def test_callbacks_are_called():
+    mock_callback = mock.MagicMock()
+    mock_callback_class = lambda: mock_callback
+
+    (env, new_leaf_rater_class) = make_one_level_binary_tree(
+        left_value=0, right_value=0
+    )
+    agent = agents.StochasticMCTSAgent(
+        n_passes=2,
+        new_leaf_rater_class=new_leaf_rater_class,
+        callback_classes=[mock_callback_class],
+    )
+    testing.run_without_suspensions(agent.solve(env))
+
+    mock_callback.on_episode_begin.assert_called_once()
+    assert mock_callback.on_pass_begin.call_count == 4
+    assert mock_callback.on_model_step.call_count == 3
+    assert mock_callback.on_pass_end.call_count == 4
+    assert mock_callback.on_real_step.call_count == 2
+    mock_callback.on_episode_end.assert_called_once()
