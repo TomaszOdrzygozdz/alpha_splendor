@@ -32,35 +32,9 @@ def test_bootstrap_return_with_value_estimator(truncated, x_return):
 
     # Run
     bootstrap_return = testing.run_with_constant_network_prediction(
-        shooting.bootstrap_return_with_value(episode),
+        shooting.bootstrap_return_with_value([episode]),
         logits=logits
-    )
-
-    # Test
-    assert bootstrap_return == x_return
-
-
-@pytest.mark.parametrize('truncated,x_return',
-                         [(False, 2 - 1),
-                          (True, 2 - 1 + 7)])
-def test_bootstrap_return_with_quality_estimator(truncated, x_return):
-    # Set up
-    episode = testing.construct_episodes(
-        actions=[
-            [0, 1, 2, 3],
-        ],
-        rewards=[
-            [0, 2, 0, -1]
-        ],
-        truncated=truncated
     )[0]
-    logits = (np.array([[7, 3, 4]]), None)
-
-    # Run
-    bootstrap_return = testing.run_with_constant_network_prediction(
-        shooting.bootstrap_return_with_quality(episode),
-        logits=logits
-    )
 
     # Test
     assert bootstrap_return == x_return
@@ -167,21 +141,14 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
 
 @pytest.mark.parametrize('estimate_fn,x_action,logits',
                          [(shooting.truncated_return, 0,
-                           [None] * 6),  # No predictions.
+                           None),  # No predictions.
                           (shooting.bootstrap_return_with_value, 1,
                            # The first three predictions are for the first
                            # action. No extra "bonus".
-                           [(np.array([[0]]), None)] * 3 +
                            # The last three predictions are for the second
                            # action. Extra bonus of 1 for mean aggregator.
-                           [(np.array([[1]]), None)] * 3),
-                          (shooting.bootstrap_return_with_quality, 1,
-                           # The first three predictions are for the first
-                           # action. No extra "bonus".
-                           [np.array([[0, 0, 0]])] * 3 +
-                           # The last three predictions are for the second
-                           # action. Extra bonus of 1 for mean aggregator.
-                           [np.array([[1, -1, 0]])] * 3)])
+                          (np.array([[0]] * 3 + [[1]] * 3), None))
+                          ])
 def test_greedy_decision_for_all_return_estimators(mock_env, mock_bstep,
                                                    estimate_fn, x_action,
                                                    logits):
@@ -199,7 +166,7 @@ def test_greedy_decision_for_all_return_estimators(mock_env, mock_bstep,
     testing.run_with_dummy_network_response(
         agent.reset(mock_env, observation)
     )
-    (actual_action, agent_info) = testing.run_with_network_prediction_list(
+    (actual_action, agent_info) = testing.run_with_constant_network_prediction(
         agent.act(None),
         logits=logits
     )
@@ -226,12 +193,14 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
         x_rollout_time_limit = rollout_time_limit
 
     @asyncio.coroutine
-    def _estimate_fn(episode):
+    def _estimate_fn(episodes, discount):
+        del discount
         # Test
-        actual_rollout_time_limit = len(episode.transition_batch.done)
-        assert actual_rollout_time_limit == x_rollout_time_limit
+        for episode in episodes:
+            actual_rollout_time_limit = len(episode.transition_batch.done)
+            assert actual_rollout_time_limit == x_rollout_time_limit
 
-        return 1.
+        return [1.] * len(episodes)
 
     with mock.patch('alpacka.agents.shooting.type') as mock_type:
         mock_type.return_value = lambda: mock_env

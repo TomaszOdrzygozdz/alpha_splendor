@@ -69,6 +69,7 @@ def convnet_mnist(
     d_ff=128,
     activation='relu',
     output_activation=None,
+    global_average_pooling=False,
 ):
     """Simple convolutional network."""
     inputs = _make_inputs(network_signature.input)
@@ -78,6 +79,8 @@ def convnet_mnist(
         x = keras.layers.Conv2D(
             d_conv, kernel_size=(3, 3), padding='same', activation=activation
         )(x)
+    if global_average_pooling:
+        x = keras.layers.GlobalAveragePooling2D()(x)
     x = keras.layers.Flatten()(x)
     x = keras.layers.Dense(d_ff, activation=activation)(x)
 
