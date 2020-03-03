@@ -57,13 +57,12 @@ mlp.hidden_sizes = (64, 64)
 mlp.output_activation = (None, None)
 
 # Parameters for Runner:
-# NOTE: Use RayBatchStepper here too if possible (e.g. on Prometheus it works).
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.ShootingAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.GoogleFootball
 Runner.env_kwargs = {'dump_path': './out'}
-Runner.n_envs = 3
+Runner.n_envs = 1
 Runner.episode_time_limit = 50
 Runner.n_epochs = None
 Runner.n_precollect_epochs = 5
@@ -77,6 +76,6 @@ SupervisedTrainer.target = (
     @alpacka.trainers.supervised.target_action_histogram,
 )
 SupervisedTrainer.batch_size = 64
-SupervisedTrainer.n_steps_per_epoch = 100
+SupervisedTrainer.n_steps_per_epoch = 35
 SupervisedTrainer.replay_buffer_sampling_hierarchy = []
 SupervisedTrainer.replay_buffer_capacity = 10000
