@@ -3,7 +3,6 @@
 It does Monte Carlo simulation."""
 
 import asyncio
-import math
 
 import gin
 import gym
@@ -97,6 +96,8 @@ class ShootingAgent(base.OnlineAgent):
         self._network_fn = None
         self._params = None
 
+        self._agent = agent_class()
+
     def reset(self, env, observation):
         """Reinitializes the agent for a new environment."""
         assert isinstance(env.action_space, gym.spaces.Discrete), (
@@ -113,7 +114,9 @@ class ShootingAgent(base.OnlineAgent):
         assert self._model is not None, (
             'Reset ShootingAgent first.'
         )
-        del observation
+
+        # Save the root state
+        root_state = self._model.clone_state()
 
         # Lazy initialize batch stepper
         if self._batch_stepper is None:
@@ -125,53 +128,96 @@ class ShootingAgent(base.OnlineAgent):
                 output_dir=None,
             )
 
-        # TODO(pj): Move it to BatchStepper. You should be able to query
-        # BatchStepper for a given number of episodes (by default n_envs).
-        episodes = []
-        for _ in range(math.ceil(self._n_rollouts / self._n_envs)):
-            episodes.extend(self._batch_stepper.run_episode_batch(
+        def evaluate(state):
+            """Evaluates state, returns an estimated state value."""
+            episodes = self._batch_stepper.run_episode_batch(
                 params=self._params,
                 epoch=self._epoch,
-                init_state=self._model.clone_state(),
+                init_state=state,
                 time_limit=self._rollout_time_limit,
-            ))
+            )
 
-        # Compute episode returns and put them in a map.
-        returns_ = yield from self._estimate_fn(episodes, self._discount)
-        act_to_rets_map = {key: [] for key in range(self._action_space.n)}
-        for episode, return_ in zip(episodes, returns_):
-            act_to_rets_map[episode.transition_batch.action[0]].append(return_)
+            returns_ = yield from self._estimate_fn(episodes, self._discount)
+            return np.mean(returns_)
 
-        # Aggregate episodes into action scores.
-        action_scores = np.empty(self._action_space.n)
-        for action, returns in act_to_rets_map.items():
-            action_scores[action] = (self._aggregate_fn(returns)
-                                     if returns else np.nan)
+        class Bandit:
+            """Bandit stores additional information to moves."""
+
+            def __init__(self):
+                self._count = 0
+                self._quality = 0
+
+            @property
+            def count(self):
+                return self._count
+
+            @property
+            def quality(self):
+                return self._quality
+
+            def visit(self, return_):
+                """Updates bandit quality."""
+
+                self._count += 1
+                self._quality += (return_ - self._quality) / self._count
+
+            def utility(self, total_count, c=1.):
+                """Returns bandit UCB1.
+
+                Args:
+                    c (float): The parameter c >= 0 controls the trade-off
+                        between choosing lucrative nodes (low c) and exploring
+                        nodes with low visit counts (high c). (Default: 1)
+                """
+
+                return self._quality + \
+                    c * np.sqrt(total_count) / (1 + self._count)
+
+        # Run flat-UCB for n_rollouts iterations.
+        bandits = [Bandit() for _ in range(self._action_space.n)]
+        for i in range(self._n_rollouts):
+            # 1. Select bandit.
+            action_utilities = [bandit.utility(i, c=1.25) for bandit in bandits]
+            action = np.argmax(action_utilities)
+
+            # 2. Play bandit.
+            _, reward, done, _ = self._model.step(action)
+            if done:
+                value = 0.
+            else:
+                value = yield from evaluate(self._model.clone_state())
+
+            # 3. Update bandit.
+            return_ = reward + self._discount * value
+            bandits[action].visit(return_)
+
+            # Restore model.
+            self._model.restore_state(root_state)
 
         # Calculate the estimate of a state value.
-        value = sum(returns_) / len(returns_)
+        action_counts, qualities = np.array(
+            [[bandit.count, bandit.quality] for bandit in bandits]).transpose()
+        value = np.sum(action_counts * qualities) / np.sum(action_counts)
 
-        # Choose greedy action (ignore NaN scores).
-        action = np.nanargmax(action_scores)
-        onehot_action = np.zeros_like(action_scores)
-        onehot_action[action] = 1
+        # Choose greedy action.
+        action = np.argmax(action_counts)
 
         # Pack statistics into agent info.
         agent_info = {
-            'action_histogram': onehot_action,
+            'action_histogram': action_counts / np.sum(action_counts),
             'value': value,
-            'qualities': np.nan_to_num(action_scores),
+            'qualities': qualities,
         }
 
         # Calculate simulation policy entropy, average value and logits.
-        agent_info_batch = data.nested_concatenate(
-            [episode.transition_batch.agent_info for episode in episodes])
-        if 'entropy' in agent_info_batch:
-            agent_info['sim_pi_entropy'] = np.mean(agent_info_batch['entropy'])
-        if 'value' in agent_info_batch:
-            agent_info['sim_pi_value'] = np.mean(agent_info_batch['value'])
-        if 'logits' in agent_info_batch:
-            agent_info['sim_pi_logits'] = np.mean(agent_info_batch['logits'])
+        yield from self._agent.reset(self._model, observation)
+        _, sim_agent_info = yield from self._agent.act(observation)
+        if 'entropy' in sim_agent_info:
+            agent_info['sim_pi_entropy'] = sim_agent_info['entropy']
+        if 'value' in sim_agent_info:
+            agent_info['sim_pi_value'] = sim_agent_info['value']
+        if 'logits' in sim_agent_info:
+            agent_info['sim_pi_logits'] = sim_agent_info['logits']
 
         self._run_agent_callbacks(episodes)
         return action, agent_info
@@ -196,8 +242,7 @@ class ShootingAgent(base.OnlineAgent):
                 callback.on_pass_end()
 
     def network_signature(self, observation_space, action_space):
-        agent = self._agent_class()
-        return agent.network_signature(observation_space, action_space)
+        return self._agent.network_signature(observation_space, action_space)
 
     def postprocess_transitions(self, transitions):
         rewards = [transition.reward for transition in transitions]
