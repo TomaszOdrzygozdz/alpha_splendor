@@ -64,6 +64,7 @@ class ShootingAgent(base.OnlineAgent):
         agent_class=core.RandomAgent,
         n_envs=10,
         discount=1.,
+        noise=None,
         **kwargs
     ):
         """Initializes ShootingAgent.
@@ -81,6 +82,8 @@ class ShootingAgent(base.OnlineAgent):
             kwargs: OnlineAgent init keyword arguments.
             discount (float): Future reward discount factor (also known as
                 gamma)
+            noise (float): Dirichlet distribution parameter alpha. Controls how
+                strong is noise added to a prior policy. If None, then disabled.
         """
         super().__init__(**kwargs)
         self._n_rollouts = n_rollouts
@@ -91,6 +94,7 @@ class ShootingAgent(base.OnlineAgent):
         self._agent_class = agent_class
         self._n_envs = n_envs
         self._discount = discount
+        self._noise = noise
         self._model = None
         self._batch_stepper = None
         self._network_fn = None
@@ -118,6 +122,18 @@ class ShootingAgent(base.OnlineAgent):
         # Save the root state
         root_state = self._model.clone_state()
 
+        # Run a prior agent.
+        yield from self._agent.reset(self._model, observation)
+        _, sim_agent_info = yield from self._agent.act(observation)
+
+        prior_probs = sim_agent_info['prob']
+        if self._noise is not None:
+            # Add dirichlet noise according to AlphaZero paper.
+            prior_probs = (
+                0.75 * prior_probs +
+                0.25 * np.random.dirichlet([self._noise, ] * len(prior_probs))
+            )
+
         # Lazy initialize batch stepper
         if self._batch_stepper is None:
             self._batch_stepper = self._batch_stepper_class(
@@ -143,7 +159,9 @@ class ShootingAgent(base.OnlineAgent):
         class Bandit:
             """Bandit stores additional information to moves."""
 
-            def __init__(self):
+            def __init__(self, prior_prob):
+                self._prior_prob = prior_prob
+
                 self._count = 0
                 self._quality = 0
 
@@ -171,10 +189,11 @@ class ShootingAgent(base.OnlineAgent):
                 """
 
                 return self._quality + \
-                    c * np.sqrt(total_count) / (1 + self._count)
+                    c * self._prior_prob * \
+                    np.sqrt(total_count) / (1 + self._count)
 
         # Run flat-UCB for n_rollouts iterations.
-        bandits = [Bandit() for _ in range(self._action_space.n)]
+        bandits = [Bandit(prior_prob) for prior_prob in prior_probs]
         for i in range(self._n_rollouts):
             # 1. Select bandit.
             action_utilities = [bandit.utility(i, c=1.25) for bandit in bandits]
@@ -210,8 +229,6 @@ class ShootingAgent(base.OnlineAgent):
         }
 
         # Calculate simulation policy entropy, average value and logits.
-        yield from self._agent.reset(self._model, observation)
-        _, sim_agent_info = yield from self._agent.act(observation)
         if 'entropy' in sim_agent_info:
             agent_info['sim_pi_entropy'] = sim_agent_info['entropy']
         if 'value' in sim_agent_info:
