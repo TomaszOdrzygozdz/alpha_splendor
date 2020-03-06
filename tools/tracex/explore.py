@@ -20,7 +20,7 @@ def index():
     return app.send_static_file('index.html')
 
 
-def render_trajectory(trajectory):
+def render_trajectory(trajectory, env_renderer):
     entities = {}
 
     def add_entity(entity):
@@ -41,28 +41,27 @@ def render_trajectory(trajectory):
         else:
             return x
 
-    def to_primitive_dict(obj, keys):
-        if obj is not None:
-            return {
-                key: alpacka_data.nested_map(to_primitive, getattr(obj, key))
-                for key in keys
-            }
-        else:
-            return {}
+    def render_state(state):
+        return {
+            'terminal': state.terminal,
+            'state_info': alpacka_data.nested_map(
+                to_primitive, state.state_info
+            ),
+        }
 
-    render_state = functools.partial(
-        to_primitive_dict, keys=('terminal', 'state_info')
-    )
-    render_transition = functools.partial(
-        to_primitive_dict, keys=('action', 'reward')
-    )
+    def render_transition(transition):
+        if transition is None:
+            return {}
+        else:
+            return {
+                'action': env_renderer.render_action(transition.action),
+                'reward': transition.reward,
+            }
 
     def render_pass(pass_, init):
         transition = pass_[0]
         data = {
             'type': 'model_init' if init else 'model',
-            'action': transition.action,
-            'reward': transition.reward,
             **render_state(transition.to_state),
             **render_transition(transition),
         }
@@ -132,5 +131,7 @@ def entity(entity_id):
 
 if __name__ == '__main__':
     trace = tracing.load(sys.argv[1])
-    (rendered_trajectory, entities) = render_trajectory(trace.trajectory)
+    (rendered_trajectory, entities) = render_trajectory(
+        trace.trajectory, trace.renderer
+    )
     app.run()

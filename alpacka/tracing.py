@@ -18,6 +18,7 @@ from alpacka.agents import base as agents_base
 
 # Trace of an agent's planning algorithm.
 Trace = collections.namedtuple('Trace', [
+    'renderer',    # EnvRenderer
     'trajectory',  # Trajectory
     'tree',        # [TreeNode], indexed by node_id
 ])
@@ -65,6 +66,10 @@ TreeNode = collections.namedtuple('TreeNode', [
 class EnvRenderer:
     """Base class for environment renderers."""
 
+    def __init__(self, env):
+        """Initializes EnvRenderer."""
+        del env
+
     def render_state(self, state_info):
         """Renders state_info to an image."""
         raise NotImplementedError
@@ -72,6 +77,13 @@ class EnvRenderer:
     def render_action(self, action):
         """Renders action to a string."""
         raise NotImplementedError
+
+
+class DummyRenderer(EnvRenderer):
+
+    def render_action(self, action):
+        """Renders action to a string."""
+        return str(action)
 
 
 @gin.configurable
@@ -196,7 +208,13 @@ class TraceCallback(agents_base.AgentCallback):
         if self._trajectory is None:
             return
 
+        try:
+            renderer_class = type(self._env.unwrapped).Renderer
+        except AttributeError:
+            renderer_class = DummyRenderer
+
         self._trace = Trace(
+            renderer=renderer_class(self._env),
             trajectory=self._trajectory,
             tree=self._tree_nodes,
         )

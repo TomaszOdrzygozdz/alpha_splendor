@@ -22,7 +22,7 @@ function buildTree(data) {
   
   const svg = d3.select(".canvas").append("svg")
       .attr("viewBox", [-margin.left, -margin.top, width, height])
-      .style("font", "8px sans-serif")
+      .style("font", "6px sans-serif")
       .style("user-select", "none")
       .attr("width", "100%")
       .attr("height", "100%")
@@ -216,7 +216,7 @@ function buildTree(data) {
         d => renderReward(d.target.data.reward),
         d => d.target.data.reward > 0 ? "#0f0" : "#f00",
         d => d.target.data.reward ? 1 : 0,
-        -10.5, 6
+        -6, 6
     );
   
     const realLink = gRealLink.selectAll("path").data(realTransitions);
