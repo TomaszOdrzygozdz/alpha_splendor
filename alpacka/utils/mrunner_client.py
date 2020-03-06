@@ -46,13 +46,11 @@ class NeptuneLogger:
 
     def log_scalar(self, name, step, value):
         """Logs a scalar to Neptune."""
-        del step
-        self._experiment.send_metric(name, value)
+        self._experiment.send_metric(name, step, value)
 
     def log_image(self, name, step, img):
         """Logs an image to Neptune."""
-        del step
-        self._experiment.send_image(name, img)
+        self._experiment.send_image(name, step, img)
 
     def log_property(self, name, value):
         """Logs a property to Neptune."""
