@@ -300,6 +300,15 @@ class ShootingAgent(base.OnlineAgent):
                 with_min_and_max=True
             ))
 
+        if 'action_histogram' in agent_info_batch:
+            search_pi = agent_info_batch['action_histogram']
+            search_entropy = -np.nansum(search_pi * np.log(search_pi), axis=-1)
+            metrics.update(metric_logging.compute_scalar_statistics(
+                search_entropy,
+                prefix='search_entropy',
+                with_min_and_max=True
+            ))
+
         if 'value' in agent_info_batch:
             metrics.update(metric_logging.compute_scalar_statistics(
                 agent_info_batch['value'],
