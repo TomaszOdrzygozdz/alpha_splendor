@@ -7,16 +7,18 @@ function buildTree(data) {
   tree = d3.tree().nodeSize([dx, dy])
   diagonal = d3.linkVertical().x(d => d.x).y(d => d.y - 2)
   const root = d3.hierarchy(data);
-  
-  root.x0 = width / 2;
-  root.y0 = 0;
-  root.descendants().forEach((d, i) => {
-    d.id = i;
+
+  const initNode = d => {
+    d.id = d.data.id;
     d._children = d.children;
     if (d.depth && (d.data.type == "real" || d.data.type == "model_init")) {
         d.children = null;
     }
-  });
+  };
+  
+  root.x0 = width / 2;
+  root.y0 = 0;
+  root.descendants().forEach(initNode);
   
   const svg = d3.select(".canvas").append("svg")
       .attr("viewBox", [-margin.left, -margin.top, width, height])
@@ -68,11 +70,11 @@ function buildTree(data) {
       .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
   
   function update(source) {
-    const nodes = root.descendants().reverse();
-    const links = root.links();
-  
     // Compute the new tree layout.
     tree(root);
+
+    const nodes = root.descendants().reverse();
+    const links = root.links();
   
     // Update the nodes…
     const node = gNode.selectAll("g")
@@ -89,7 +91,22 @@ function buildTree(data) {
         .attr("fill-opacity", d => d.data.type == "real" ? 1 : 0)
         .attr("stroke-opacity", d => d.data.type == "real" ? 1 : 0)
         .style("visibility", d => d.data.type == "root" ? "hidden" : "visible")
-        .on("click", d => {
+        .on("click", async d => {
+          if(d.data.stub) {
+              // Load data from the backend.
+              const data = await d3.json("/entity/" + d.data.id);
+              const node = d3.hierarchy(data);
+              node.descendants().forEach(dd => {
+                  initNode(dd);
+                  dd.depth += d.depth;
+              });
+              d._children = node._children;
+              d._children.forEach(dd => {
+                  dd.parent = d;
+              });
+              d.data.stub = false;
+          }
+
           d.children = d.children ? null : d._children;
           update(d);
         })
@@ -101,7 +118,7 @@ function buildTree(data) {
   
     nodeEnter.append("circle")
         .attr("r", 2.5)
-        .attr("fill", d => d._children ? "#555" : "#999")
+        .attr("fill", d => d.data.children !== undefined ? "#555" : "#999")
         .attr("stroke-width", 10)
         .filter(d => d.data.terminal)
         .clone(true).lower()
