@@ -92,6 +92,11 @@ function buildTree(data) {
         .on("click", d => {
           d.children = d.children ? null : d._children;
           update(d);
+        })
+        .on("mouseover", d => {
+          let data = d.data;
+          delete data.children;
+          d3.select(".info").html("<pre>" + JSON.stringify(data, null, 2) + "</pre>");
         });
   
     nodeEnter.append("circle")
