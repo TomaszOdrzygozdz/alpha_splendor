@@ -2,6 +2,7 @@
 
 
 import collections
+import copy
 import lzma
 import os
 import pickle
@@ -160,7 +161,7 @@ class TraceCallback(agents_base.AgentCallback):
         )
 
         state_info = getattr(self._env, 'state_info', observation)
-        self._pass.append(ModelTransition(
+        self._pass.append(copy.deepcopy(ModelTransition(
             agent_info=self._filter_agent_info(agent_info),
             action=action,
             reward=reward,
@@ -169,7 +170,7 @@ class TraceCallback(agents_base.AgentCallback):
                 node_id=self._current_node_id,
                 terminal=done,
             ),
-        ))
+        )))
 
     def on_pass_end(self):
         """Called in the end of every planning pass."""
@@ -190,7 +191,7 @@ class TraceCallback(agents_base.AgentCallback):
         self._current_node_id = self._current_root_id
 
         state_info = getattr(self._env, 'state_info', observation)
-        self._trajectory.transitions.append(RealTransition(
+        self._trajectory.transitions.append(copy.deepcopy(RealTransition(
             agent_info=self._filter_agent_info(agent_info),
             passes=self._passes,
             action=action,
@@ -200,7 +201,7 @@ class TraceCallback(agents_base.AgentCallback):
                 node_id=self._current_root_id,
                 terminal=done,
             ),
-        ))
+        )))
         self._passes = []
 
     def on_episode_end(self):

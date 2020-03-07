@@ -1,16 +1,18 @@
 """TraceX entrypoint."""
 
-import functools
+import io
 import sys
 
 import flask
 import numpy as np
+import PIL
 
 from alpacka import data as alpacka_data
 from alpacka import tracing
 
 
 app = flask.Flask(__name__, static_url_path='', static_folder='static')
+trace = None
 rendered_trajectory = None
 entities = None
 
@@ -37,7 +39,10 @@ def render_trajectory(trajectory, env_renderer):
 
     def to_primitive(x):
         if isinstance(x, np.ndarray):
-            return x.tolist()
+            if np.any(np.isnan(x)):
+                return None
+            else:
+                return x.tolist()
         else:
             return x
 
@@ -54,6 +59,9 @@ def render_trajectory(trajectory, env_renderer):
             return {}
         else:
             return {
+                'agent_info': alpacka_data.nested_map(
+                    to_primitive, transition.agent_info,
+                ),
                 'action': env_renderer.render_action(transition.action),
                 'reward': transition.reward,
             }
@@ -127,6 +135,16 @@ def data():
 @app.route('/entity/<int:entity_id>')
 def entity(entity_id):
     return flask.jsonify(entities[entity_id])
+
+
+@app.route('/render_state/<int:entity_id>')
+def render_state(entity_id):
+    rgb_array = trace.renderer.render_state(entities[entity_id]['state_info'])
+    img = PIL.Image.fromarray(rgb_array)
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    return flask.send_file(img_io, mimetype='image/png')
 
 
 if __name__ == '__main__':

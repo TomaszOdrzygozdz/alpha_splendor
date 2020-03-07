@@ -111,9 +111,15 @@ function buildTree(data) {
           update(d);
         })
         .on("mouseover", d => {
-          let data = d.data;
-          delete data.children;
-          d3.select(".info").html("<pre>" + JSON.stringify(data, null, 2) + "</pre>");
+          const data = {
+              id: d.data.id,
+              state_info: d.data.state_info,
+              terminal: d.data.terminal,
+          };
+          d3.select(".info").html(
+              "<img src=\"/render_state/" + d.data.id + "\" width=\"100%\"><br>" +
+              "<pre>" + JSON.stringify(data, null, 2) + "</pre>"
+          );
         });
   
     nodeEnter.append("circle")
@@ -152,7 +158,19 @@ function buildTree(data) {
           const o = {x: source.x0, y: source.y0};
           return diagonal({source: o, target: o});
         })
-        .attr("marker-end", "url(#model)");
+        .attr("marker-end", "url(#model)")
+        .on("mouseover", d => {
+          const data = {
+              state_info: d.source.data.state_info,
+              agent_info: d.target.data.agent_info,
+              action: d.target.data.action,
+              reward: d.target.data.reward,
+          };
+          d3.select(".info").html(
+              "<img src=\"/render_state/" + d.source.data.id + "\" width=\"100%\"><br>" +
+              "<pre>" + JSON.stringify(data, null, 2) + "</pre>"
+          );
+        });
   
     //nodeEnter.append("text")
     //    .attr("dy", "0.31em")
@@ -228,7 +246,19 @@ function buildTree(data) {
      .enter()
      .append("path")
      .attr("d", straight)
-     .attr("marker-end", "url(#real)");
+     .attr("marker-end", "url(#real)")
+     .on("mouseover", d => {
+       const data = {
+           state_info: d.source.data.state_info,
+           agent_info: d.target.data.agent_info,
+           action: d.target.data.action,
+           reward: d.target.data.reward,
+       };
+       d3.select(".info").html(
+           "<img src=\"/render_state/" + d.source.data.id + "\" width=\"100%\"><br>" +
+           "<pre>" + JSON.stringify(data, null, 2) + "</pre>"
+       );
+     });
     
     realLink.merge(realLinkEnter).transition(transition)
           .attr("d", straight);
