@@ -110,17 +110,7 @@ function buildTree(data) {
           d.children = d.children ? null : d._children;
           update(d);
         })
-        .on("mouseover", d => {
-          const data = {
-              id: d.data.id,
-              state_info: d.data.state_info,
-              terminal: d.data.terminal,
-          };
-          d3.select(".info").html(
-              "<img src=\"/render_state/" + d.data.id + "\" width=\"100%\"><br>" +
-              "<pre>" + JSON.stringify(data, null, 2) + "</pre>"
-          );
-        });
+        .on("mouseover", showNodeInfo);
   
     nodeEnter.append("circle")
         .attr("r", 2.5)
@@ -159,18 +149,7 @@ function buildTree(data) {
           return diagonal({source: o, target: o});
         })
         .attr("marker-end", "url(#model)")
-        .on("mouseover", d => {
-          const data = {
-              state_info: d.source.data.state_info,
-              agent_info: d.target.data.agent_info,
-              action: d.target.data.action,
-              reward: d.target.data.reward,
-          };
-          d3.select(".info").html(
-              "<img src=\"/render_state/" + d.source.data.id + "\" width=\"100%\"><br>" +
-              "<pre>" + JSON.stringify(data, null, 2) + "</pre>"
-          );
-        });
+        .on("mouseover", showLinkInfo);
   
     //nodeEnter.append("text")
     //    .attr("dy", "0.31em")
@@ -211,6 +190,32 @@ function buildTree(data) {
            .attr("y", d => d.source.y);
     }
 
+    function showInfo(stateId, info) {
+        d3.select(".info").html(
+            "<img src=\"/render_state/" + stateId + "\">" +
+            "<pre>" + JSON.stringify(info, null, 2) + "</pre>"
+        );
+    }
+
+    function showNodeInfo(d) {
+        const info = {
+            id: d.data.id,
+            state_info: d.data.state_info,
+            terminal: d.data.terminal,
+        };
+        showInfo(d.data.id, info);
+    }
+
+    function showLinkInfo(d) {
+        const info = {
+            state_info: d.source.data.state_info,
+            agent_info: d.target.data.agent_info,
+            action: d.target.data.action,
+            reward: d.target.data.reward,
+        };
+        showInfo(d.source.data.id, info);
+    }
+
     const realTransitions = d3.zip(root.children.slice(0, -1), root.children.slice(1))
       .map(pair => ({source: pair[0], target: pair[1]}));
 
@@ -247,18 +252,7 @@ function buildTree(data) {
      .append("path")
      .attr("d", straight)
      .attr("marker-end", "url(#real)")
-     .on("mouseover", d => {
-       const data = {
-           state_info: d.source.data.state_info,
-           agent_info: d.target.data.agent_info,
-           action: d.target.data.action,
-           reward: d.target.data.reward,
-       };
-       d3.select(".info").html(
-           "<img src=\"/render_state/" + d.source.data.id + "\" width=\"100%\"><br>" +
-           "<pre>" + JSON.stringify(data, null, 2) + "</pre>"
-       );
-     });
+     .on("mouseover", showLinkInfo);
     
     realLink.merge(realLinkEnter).transition(transition)
           .attr("d", straight);

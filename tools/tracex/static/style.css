@@ -39,3 +39,8 @@ h1 {
 .info {
     margin: 10px 25px;
 }
+
+.info img {
+    display: block;
+    width: 100%;
+}
