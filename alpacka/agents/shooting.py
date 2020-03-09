@@ -65,6 +65,7 @@ class ShootingAgent(base.OnlineAgent):
         n_envs=10,
         discount=1.,
         noise=None,
+        c=1.25,
         **kwargs
     ):
         """Initializes ShootingAgent.
@@ -84,6 +85,9 @@ class ShootingAgent(base.OnlineAgent):
                 gamma)
             noise (float): Dirichlet distribution parameter alpha. Controls how
                 strong is noise added to a prior policy. If None, then disabled.
+            c (float): The parameter c >= 0 controls the trade-off
+                between choosing lucrative nodes (low c) and exploring
+                nodes with low visit counts (high c).
         """
         super().__init__(**kwargs)
         self._n_rollouts = n_rollouts
@@ -95,6 +99,7 @@ class ShootingAgent(base.OnlineAgent):
         self._n_envs = n_envs
         self._discount = discount
         self._noise = noise
+        self._c = c
         self._model = None
         self._batch_stepper = None
         self._network_fn = None
@@ -196,7 +201,8 @@ class ShootingAgent(base.OnlineAgent):
         bandits = [Bandit(prior_prob) for prior_prob in prior_probs]
         for i in range(self._n_rollouts):
             # 1. Select bandit.
-            action_utilities = [bandit.utility(i, c=1.25) for bandit in bandits]
+            action_utilities = [
+                bandit.utility(i, c=self._c) for bandit in bandits]
             action = np.argmax(action_utilities)
 
             # 2. Play bandit.

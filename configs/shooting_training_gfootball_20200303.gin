@@ -49,6 +49,8 @@ ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 ShootingAgent.agent_class = @alpacka.agents.SoftmaxAgent
 ShootingAgent.n_envs = 1
 ShootingAgent.discount = 0.95
+ShootingAgent.noise = 0.5
+ShootingAgent.c = 1.0
 
 # Parameters for mlp:
 # ==============================================================================
