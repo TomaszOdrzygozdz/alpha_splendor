@@ -60,7 +60,7 @@ def test_restore_after_reset(env_fn):
     state_ = env.clone_state()
 
     # Test
-    env.step(0)  # Test if can take step
+    env.step(1)  # Test if can take step
     np.testing.assert_array_equal(obs, obs_)
     np.testing.assert_equal(state, state_)
 
@@ -72,12 +72,12 @@ def test_restore_after_step(env_fn):
     state = env.clone_state()
 
     # Run
-    env.step(0)  # TODO(pj): Make somehow sure the action changes env state/obs.
+    env.step(1)  # TODO(pj): Make somehow sure the action changes env state/obs.
     obs_ = env.restore_state(state)
     state_ = env.clone_state()
 
     # Test
-    env.step(0)  # Test if can take step
+    env.step(1)  # Test if can take step
     np.testing.assert_array_equal(obs, obs_)
     np.testing.assert_equal(state, state_)
 
@@ -86,7 +86,7 @@ def test_restore_to_step_after_reset(env_fn):
     # Set up
     env = env_fn()
     env.reset()
-    obs, _, _, _ = env.step(0)
+    obs, _, _, _ = env.step(1)
     state = env.clone_state()
 
     # Run
@@ -95,7 +95,7 @@ def test_restore_to_step_after_reset(env_fn):
     state_ = env.clone_state()
 
     # Test
-    env.step(0)  # Test if can take step
+    env.step(1)  # Test if can take step
     np.testing.assert_array_equal(obs, obs_)
     np.testing.assert_equal(state, state_)
 
@@ -111,6 +111,51 @@ def test_restore_in_place_of_reset(env_fn):
     state_ = env_imitator.clone_state()
 
     # Test
-    env_imitator.step(0)  # Test if can take step
+    env_imitator.step(1)  # Test if can take step
     np.testing.assert_array_equal(obs, obs_)
     np.testing.assert_equal(state, state_)
+
+
+@pytest.mark.skipif(envs.football_env is None,
+                    reason='Could not import Google Research Football.')
+def test_rerun_plan_after_restore_yields_the_same_trajectory_in_grf():
+    # Set up
+    env = envs.GoogleFootball()
+    env.reset()
+    state = env.clone_state()
+    plan = (4, 4, 5, 5, 6, 6, 5, 5, 4, 4, 5, 12, 0, 0, 0, 0)
+
+    # Run
+    trajectories = [[], []]
+    for idx in range(2):
+        env.restore_state(state)
+        for act in plan:
+            obs, _, _, _ = env.step(act)
+            trajectories[idx].append(obs)
+
+    # Test
+    first = np.array(trajectories[0])
+    second = np.array(trajectories[1])
+    assert np.array_equal(first, second)
+
+
+@pytest.mark.skipif(envs.football_env is None,
+                    reason='Could not import Google Research Football.')
+def test_rerun_plan_after_reset_yields_different_trajectory_in_grf():
+    # Set up
+    env = envs.GoogleFootball()
+    env.reset()
+    plan = (4, 4, 5, 5, 6, 6, 5, 5, 4, 4, 5, 12, 0, 0, 0, 0)
+
+    # Run
+    trajectories = [[], []]
+    for idx in range(2):
+        env.reset()
+        for act in plan:
+            obs, _, _, _ = env.step(act)
+            trajectories[idx].append(obs)
+
+    # Test
+    first = np.array(trajectories[0])
+    second = np.array(trajectories[1])
+    assert not np.array_equal(first, second)
