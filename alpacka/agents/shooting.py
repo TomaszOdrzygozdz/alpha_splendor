@@ -1,8 +1,9 @@
-"""Shooting agent.
+"""Shooting agents.
 
 It does Monte Carlo simulation."""
 
 import asyncio
+import math
 
 import gin
 import gym
@@ -52,7 +53,10 @@ def bootstrap_return_with_value(episodes, discount=1.):
 
 
 class ShootingAgent(base.OnlineAgent):
-    """Monte Carlo simulation agent."""
+    """Monte Carlo prediction agent.
+
+    Uses first-visit Monte Carlo prediction for estimating action qualities
+    in the current state."""
 
     def __init__(
         self,
@@ -64,8 +68,6 @@ class ShootingAgent(base.OnlineAgent):
         agent_class=core.RandomAgent,
         n_envs=10,
         discount=1.,
-        noise=None,
-        c=1.25,
         **kwargs
     ):
         """Initializes ShootingAgent.
@@ -80,14 +82,9 @@ class ShootingAgent(base.OnlineAgent):
             batch_stepper_class (type): BatchStepper class.
             agent_class (type): Rollout agent class.
             n_envs (int): Number of parallel environments to run.
-            kwargs: OnlineAgent init keyword arguments.
             discount (float): Future reward discount factor (also known as
                 gamma)
-            noise (float): Dirichlet distribution parameter alpha. Controls how
-                strong is noise added to a prior policy. If None, then disabled.
-            c (float): The parameter c >= 0 controls the trade-off
-                between choosing lucrative nodes (low c) and exploring
-                nodes with low visit counts (high c).
+            kwargs: OnlineAgent init keyword arguments.
         """
         super().__init__(**kwargs)
         self._n_rollouts = n_rollouts
@@ -98,14 +95,12 @@ class ShootingAgent(base.OnlineAgent):
         self._agent_class = agent_class
         self._n_envs = n_envs
         self._discount = discount
-        self._noise = noise
-        self._c = c
         self._model = None
         self._batch_stepper = None
         self._network_fn = None
         self._params = None
 
-        self._agent = agent_class()
+        self._sim_agent = agent_class()
 
     def reset(self, env, observation):
         """Reinitializes the agent for a new environment."""
@@ -123,13 +118,185 @@ class ShootingAgent(base.OnlineAgent):
         assert self._model is not None, (
             'Reset ShootingAgent first.'
         )
+        del observation
+
+        # Lazy initialize batch stepper
+        if self._batch_stepper is None:
+            self._batch_stepper = self._batch_stepper_class(
+                env_class=type(self._model),
+                agent_class=self._agent_class,
+                network_fn=self._network_fn,
+                n_envs=self._n_envs,
+                output_dir=None,
+            )
+
+        # TODO(pj): Move it to BatchStepper. You should be able to query
+        # BatchStepper for a given number of episodes (by default n_envs).
+        episodes = []
+        for _ in range(math.ceil(self._n_rollouts / self._n_envs)):
+            episodes.extend(self._batch_stepper.run_episode_batch(
+                params=self._params,
+                epoch=self._epoch,
+                init_state=self._model.clone_state(),
+                time_limit=self._rollout_time_limit,
+            ))
+
+        # Compute episode returns and put them in a map.
+        returns_ = yield from self._estimate_fn(episodes, self._discount)
+        act_to_rets_map = {key: [] for key in range(self._action_space.n)}
+        for episode, return_ in zip(episodes, returns_):
+            act_to_rets_map[episode.transition_batch.action[0]].append(return_)
+
+        # Aggregate episodes into action scores.
+        action_scores = np.empty(self._action_space.n)
+        for action, returns in act_to_rets_map.items():
+            action_scores[action] = (self._aggregate_fn(returns)
+                                     if returns else np.nan)
+
+        # Calculate the estimate of a state value.
+        value = sum(returns_) / len(returns_)
+
+        # Choose greedy action (ignore NaN scores).
+        action = np.nanargmax(action_scores)
+        onehot_action = np.zeros_like(action_scores)
+        onehot_action[action] = 1
+
+        # Pack statistics into agent info.
+        agent_info = {
+            'action_histogram': onehot_action,
+            'value': value,
+            'qualities': np.nan_to_num(action_scores),
+        }
+
+        # Calculate simulation policy entropy, average value and logits.
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+        if 'entropy' in agent_info_batch:
+            agent_info['sim_pi_entropy'] = np.mean(agent_info_batch['entropy'])
+        if 'value' in agent_info_batch:
+            agent_info['sim_pi_value'] = np.mean(agent_info_batch['value'])
+        if 'logits' in agent_info_batch:
+            agent_info['sim_pi_logits'] = np.mean(agent_info_batch['logits'])
+
+        self._run_agent_callbacks(episodes)
+        return action, agent_info
+
+    def network_signature(self, observation_space, action_space):
+        return self._sim_agent.network_signature(
+            observation_space, action_space)
+
+    def postprocess_transitions(self, transitions):
+        rewards = [transition.reward for transition in transitions]
+        discounted_returns = discount_cumsum(rewards, self._discount)
+
+        for transition, discounted_return in zip(
+            transitions, discounted_returns
+        ):
+            transition.agent_info['discounted_return'] = discounted_return
+
+        return transitions
+
+    def _run_agent_callbacks(self, episodes):
+        for episode in episodes:
+            for callback in self._callbacks:
+                callback.on_pass_begin()
+                transition_batch = episode.transition_batch
+                for ix in range(len(transition_batch.action)):
+                    step_agent_info = {
+                        key: value[ix]
+                        for key, value in transition_batch.agent_info.items()
+                    }
+                    callback.on_model_step(
+                        agent_info=step_agent_info,
+                        action=transition_batch.action[ix],
+                        observation=transition_batch.next_observation[ix],
+                        reward=transition_batch.reward[ix],
+                        done=transition_batch.done[ix]
+                    )
+                callback.on_pass_end()
+
+    @staticmethod
+    def compute_metrics(episodes):
+        metrics = {}
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+
+        if 'sim_pi_entropy' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_entropy'],
+                prefix='simulation_entropy',
+                with_min_and_max=True
+            ))
+
+        if 'sim_pi_value' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_value'],
+                prefix='network_value',
+                with_min_and_max=True
+            ))
+
+        if 'sim_pi_logits' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['sim_pi_logits'],
+                prefix='network_logits',
+                with_min_and_max=True
+            ))
+
+        if 'value' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['value'],
+                prefix='simulation_value',
+                with_min_and_max=True
+            ))
+
+        if 'qualities' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['qualities'],
+                prefix='simulation_qualities',
+                with_min_and_max=True
+            ))
+
+        return metrics
+
+
+class FlatPUCBAgent(ShootingAgent):
+    """Flat pUCB agent.
+
+    Uses pUCB formula for estimating action qualities and action probabilities
+    from action counts in the current state."""
+
+    def __init__(
+        self,
+        noise=None,
+        c=1.25,
+        **kwargs
+    ):
+        """Initializes FlatPUCBAgent.
+
+        Args:
+            noise (float): Dirichlet distribution parameter alpha. Controls how
+                strong is noise added to a prior policy. If None, then disabled.
+            c (float): The parameter c >= 0 controls the trade-off
+                between choosing lucrative nodes (low c) and exploring
+                nodes with low visit counts (high c).
+            kwargs: ShootingAgent init keyword arguments.
+        """
+        super().__init__(**kwargs)
+        self._noise = noise
+        self._c = c
+
+    def act(self, observation):
+        """Runs n_rollouts simulations and chooses the best action."""
+        assert self._model is not None, (
+            'Reset FlatPUCBAgent first.'
+        )
 
         # Save the root state
         root_state = self._model.clone_state()
 
         # Run a prior agent.
-        yield from self._agent.reset(self._model, observation)
-        _, sim_agent_info = yield from self._agent.act(observation)
+        yield from self._sim_agent.reset(self._model, observation)
+        _, sim_agent_info = yield from self._sim_agent.act(observation)
 
         prior_probs = sim_agent_info['prob']
         if self._noise is not None:
@@ -188,9 +355,14 @@ class ShootingAgent(base.OnlineAgent):
                 """Returns bandit UCB1.
 
                 Args:
+                    total_count (int): How many times in total any bandit was
+                        chosen.
                     c (float): The parameter c >= 0 controls the trade-off
                         between choosing lucrative nodes (low c) and exploring
                         nodes with low visit counts (high c). (Default: 1)
+
+                Return:
+                    Bandit utility according to pUCB formula.
                 """
 
                 return self._quality + \
@@ -245,66 +417,11 @@ class ShootingAgent(base.OnlineAgent):
         self._run_agent_callbacks(episodes)
         return action, agent_info
 
-    def _run_agent_callbacks(self, episodes):
-        for episode in episodes:
-            for callback in self._callbacks:
-                callback.on_pass_begin()
-                transition_batch = episode.transition_batch
-                for ix in range(len(transition_batch.action)):
-                    step_agent_info = {
-                        key: value[ix]
-                        for key, value in transition_batch.agent_info.items()
-                    }
-                    callback.on_model_step(
-                        agent_info=step_agent_info,
-                        action=transition_batch.action[ix],
-                        observation=transition_batch.next_observation[ix],
-                        reward=transition_batch.reward[ix],
-                        done=transition_batch.done[ix]
-                    )
-                callback.on_pass_end()
-
-    def network_signature(self, observation_space, action_space):
-        return self._agent.network_signature(observation_space, action_space)
-
-    def postprocess_transitions(self, transitions):
-        rewards = [transition.reward for transition in transitions]
-        discounted_returns = discount_cumsum(rewards, self._discount)
-
-        for transition, discounted_return in zip(
-            transitions, discounted_returns
-        ):
-            transition.agent_info['discounted_return'] = discounted_return
-
-        return transitions
-
     @staticmethod
     def compute_metrics(episodes):
-        # Calculate simulation policy entropy.
+        metrics = ShootingAgent.compute_metrics(episodes)
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
-        metrics = {}
-
-        if 'sim_pi_entropy' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['sim_pi_entropy'],
-                prefix='simulation_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'sim_pi_value' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['sim_pi_value'],
-                prefix='network_value',
-                with_min_and_max=True
-            ))
-
-        if 'sim_pi_logits' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['sim_pi_logits'],
-                prefix='network_logits',
-                with_min_and_max=True
-            ))
 
         if 'action_histogram' in agent_info_batch:
             search_pi = agent_info_batch['action_histogram']
@@ -312,20 +429,6 @@ class ShootingAgent(base.OnlineAgent):
             metrics.update(metric_logging.compute_scalar_statistics(
                 search_entropy,
                 prefix='search_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'value' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['value'],
-                prefix='simulation_value',
-                with_min_and_max=True
-            ))
-
-        if 'qualities' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['qualities'],
-                prefix='simulation_qualities',
                 with_min_and_max=True
             ))
 

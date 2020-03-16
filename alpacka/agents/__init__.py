@@ -26,6 +26,7 @@ DeterministicMCTSAgent = configure_agent(  # pylint: disable=invalid-name
     deterministic_mcts.DeterministicMCTSAgent
 )
 ShootingAgent = configure_agent(shooting.ShootingAgent)  # pylint: disable=invalid-name
+FlatPUCBAgent = configure_agent(shooting.FlatPUCBAgent)  # pylint: disable=invalid-name
 StochasticMCTSAgent = configure_agent(stochastic_mcts.StochasticMCTSAgent)  # pylint: disable=invalid-name
 
 # Helper agents (Agent + Distribution).

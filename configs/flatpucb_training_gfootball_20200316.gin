@@ -1,4 +1,4 @@
-# Config for short GRF training with ShootingAgent. Tuned (but not much) to
+# Config for short GRF training with FlatPUCBAgent. Tuned (but not much) to
 # maximize solved rate on 1h job on 24 core machine. (For longer training it
 # might be better to use larger discount and smaller learning rate).
 #
@@ -39,16 +39,18 @@ KerasNetwork.train_callbacks = None
 # ==============================================================================
 SoftmaxAgent.with_critic = True
 
-# Parameters for ShootingAgent:
+# Parameters for FlatPUCBAgent:
 # ==============================================================================
-ShootingAgent.n_rollouts = 24
-ShootingAgent.rollout_time_limit = 10
-ShootingAgent.aggregate_fn = @np.mean
-ShootingAgent.estimate_fn = @alpacka.agents.shooting.bootstrap_return_with_value
-ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
-ShootingAgent.agent_class = @alpacka.agents.SoftmaxAgent
-ShootingAgent.n_envs = 24
-ShootingAgent.discount = 0.95
+FlatPUCBAgent.n_rollouts = 24
+FlatPUCBAgent.rollout_time_limit = 10
+FlatPUCBAgent.aggregate_fn = @np.mean
+FlatPUCBAgent.estimate_fn = @alpacka.agents.shooting.bootstrap_return_with_value
+FlatPUCBAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+FlatPUCBAgent.agent_class = @alpacka.agents.SoftmaxAgent
+FlatPUCBAgent.n_envs = 1
+FlatPUCBAgent.discount = 0.95
+FlatPUCBAgent.noise = 0.5
+FlatPUCBAgent.c = 1.0
 
 # Parameters for mlp:
 # ==============================================================================
@@ -58,7 +60,7 @@ mlp.output_activation = (None, None)
 
 # Parameters for Runner:
 # ==============================================================================
-Runner.agent_class = @alpacka.agents.ShootingAgent
+Runner.agent_class = @alpacka.agents.FlatPUCBAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.GoogleFootball
 Runner.env_kwargs = {'dump_path': './out'}
