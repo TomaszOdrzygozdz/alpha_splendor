@@ -56,7 +56,8 @@ class ShootingAgent(base.OnlineAgent):
     """Monte Carlo prediction agent.
 
     Uses first-visit Monte Carlo prediction for estimating action qualities
-    in the current state."""
+    in the current state.
+    """
 
     def __init__(
         self,
@@ -263,27 +264,33 @@ class FlatPUCBAgent(ShootingAgent):
     """Flat pUCB agent.
 
     Uses pUCB formula for estimating action qualities and action probabilities
-    from action counts in the current state."""
+    from action counts in the current state.
+    """
 
     def __init__(
         self,
-        noise=None,
-        c=1.25,
+        prior_noise=None,
+        noise_weight=0.25,
+        exploration_weight=1.25,
         **kwargs
     ):
         """Initializes FlatPUCBAgent.
 
         Args:
-            noise (float): Dirichlet distribution parameter alpha. Controls how
-                strong is noise added to a prior policy. If None, then disabled.
-            c (float): The parameter c >= 0 controls the trade-off
-                between choosing lucrative nodes (low c) and exploring
-                nodes with low visit counts (high c).
+            prior_noise (float): Dirichlet distribution parameter alpha.
+                Controls how strong is noise added to a prior policy. If None,
+                then disabled.
+            noise_weight (float): Proportion in which prior noise is added.
+            exploration_weight (float): The parameter exploration_weight >= 0
+                controls the trade-off between choosing lucrative nodes (low
+                weight) and exploring nodes with low visit counts (high weight).
+                Rule of thumb: 7 / avg. number of legal moves.
             kwargs: ShootingAgent init keyword arguments.
         """
         super().__init__(**kwargs)
-        self._noise = noise
-        self._c = c
+        self._prior_noise = prior_noise
+        self._noise_weight = noise_weight
+        self._exploration_weight = exploration_weight
 
     def act(self, observation):
         """Runs n_rollouts simulations and chooses the best action."""
@@ -299,11 +306,12 @@ class FlatPUCBAgent(ShootingAgent):
         _, sim_agent_info = yield from self._sim_agent.act(observation)
 
         prior_probs = sim_agent_info['prob']
-        if self._noise is not None:
+        if self._prior_noise is not None:
             # Add dirichlet noise according to AlphaZero paper.
             prior_probs = (
-                0.75 * prior_probs +
-                0.25 * np.random.dirichlet([self._noise, ] * len(prior_probs))
+                (1 - self._noise_weight) * prior_probs +
+                self._noise_weight * np.random.dirichlet(
+                    [self._prior_noise, ] * len(prior_probs))
             )
 
         # Lazy initialize batch stepper
@@ -351,22 +359,23 @@ class FlatPUCBAgent(ShootingAgent):
                 self._count += 1
                 self._quality += (return_ - self._quality) / self._count
 
-            def utility(self, total_count, c=1.):
+            def utility(self, total_count, exploration_weight=1.):
                 """Returns bandit UCB1.
 
                 Args:
                     total_count (int): How many times in total any bandit was
                         chosen.
-                    c (float): The parameter c >= 0 controls the trade-off
-                        between choosing lucrative nodes (low c) and exploring
-                        nodes with low visit counts (high c). (Default: 1)
+                    exploration_weight (float): The parameter exploration_weight
+                        >= 0 controls the trade-off between choosing lucrative
+                        nodes (low weight) and exploring nodes with low visit
+                        counts (high weight).
 
                 Return:
                     Bandit utility according to pUCB formula.
                 """
 
                 return self._quality + \
-                    c * self._prior_prob * \
+                    exploration_weight * self._prior_prob * \
                     np.sqrt(total_count) / (1 + self._count)
 
         # Run flat-UCB for n_rollouts iterations.
@@ -374,7 +383,8 @@ class FlatPUCBAgent(ShootingAgent):
         for i in range(self._n_rollouts):
             # 1. Select bandit.
             action_utilities = [
-                bandit.utility(i, c=self._c) for bandit in bandits]
+                bandit.utility(i, exploration_weight=self._exploration_weight)
+                for bandit in bandits]
             action = np.argmax(action_utilities)
 
             # 2. Play bandit.

@@ -49,8 +49,8 @@ FlatPUCBAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 FlatPUCBAgent.agent_class = @alpacka.agents.SoftmaxAgent
 FlatPUCBAgent.n_envs = 1
 FlatPUCBAgent.discount = 0.95
-FlatPUCBAgent.noise = 0.5
-FlatPUCBAgent.c = 1.0
+FlatPUCBAgent.prior_noise = 0.5
+FlatPUCBAgent.exploration_weight = 1.0
 
 # Parameters for mlp:
 # ==============================================================================
