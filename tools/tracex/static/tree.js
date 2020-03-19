@@ -88,15 +88,16 @@ function buildTree(data) {
       const keys = Object.keys(data).sort();
       const values = keys.map(key => data[key]);
 
-      var margin = {top: 30, right: 10, bottom: 10, left: 30},
+      var margin = {top: 10, right: 10, bottom: 10, left: 40},
           width = 300 - margin.left - margin.right,
-          height = 200 - margin.top - margin.bottom;
+          height = 160 - margin.top - margin.bottom;
 
-      var y0 = Math.max(Math.abs(d3.min(values)), Math.abs(d3.max(values)));
+      const yMin = Math.min(d3.min(values), 0),
+            yMax = Math.max(d3.max(values), 0);
 
       var y = d3.scaleLinear()
-          .domain([-y0, y0])
-          .range([height,0])
+          .domain([yMin, yMax])
+          .range([height, 0])
           .nice();
 
       var x = d3.scaleBand()
