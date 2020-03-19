@@ -77,12 +77,14 @@ function buildTree(data) {
   }
 
 
-  function showHistogram(data) {
+  function showHistogram(name, data) {
+      const values = Object.keys(data).sort().map(key => data[key]);
+
       var margin = {top: 30, right: 10, bottom: 10, left: 30},
           width = 300 - margin.left - margin.right,
           height = 200 - margin.top - margin.bottom;
 
-      var y0 = Math.max(Math.abs(d3.min(data)), Math.abs(d3.max(data)));
+      var y0 = Math.max(Math.abs(d3.min(values)), Math.abs(d3.max(values)));
 
       var y = d3.scaleLinear()
           .domain([-y0, y0])
@@ -90,19 +92,21 @@ function buildTree(data) {
           .nice();
 
       var x = d3.scaleBand()
-          .domain(d3.range(data.length))
+          .domain(d3.range(values.length))
           .rangeRound([0, width], .2);
 
       var yAxis = d3.axisLeft(y);
 
-      var svg = d3.select(".sidebar").append("svg")
+      d3.select(".info").append("span").text(name);
+
+      var svg = d3.select(".info").append("svg")
           .attr("width", width + margin.left + margin.right)
           .attr("height", height + margin.top + margin.bottom)
         .append("g")
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
       svg.selectAll(".bar")
-          .data(data)
+          .data(values)
         .enter().append("rect")
           .attr("class", function(d) { return d < 0 ? "bar negative" : "bar positive"; })
           .attr("y", function(d) { return y(Math.max(0, d)); })
@@ -268,8 +272,15 @@ function buildTree(data) {
             reward: d.target.data.reward,
         };
         showInfo(d.source.data.id, info);
-        var data = d.target.data.agent_info['qualities'];
-        showHistogram(Object.values(data));
+        const data = d.target.data.agent_info;
+        var keys;
+        Object.keys(data).sort().forEach(name => {
+            if (data[name] instanceof Object) {
+                showHistogram(name, data[name]);
+                keys = Object.keys(data[name]).sort();
+            }
+        });
+        keys.forEach(key => d3.select(".info").append("div").text(key));
     }
 
     const realTransitions = d3.zip(root.children.slice(0, -1), root.children.slice(1))
