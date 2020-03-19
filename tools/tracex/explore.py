@@ -43,6 +43,8 @@ def render_trajectory(trajectory, env_renderer):
                 return None
             else:
                 return x.tolist()
+        elif isinstance(x, np.number):
+            return x.item()
         else:
             return x
 
@@ -54,16 +56,28 @@ def render_trajectory(trajectory, env_renderer):
             ),
         }
 
+    def render_agent_info(agent_info):
+        def render_entry(entry):
+            if isinstance(entry, list):
+                return {
+                    env_renderer.render_action(action): value
+                    for (action, value) in enumerate(entry)
+                }
+
+        return {
+            key: render_entry(value) for (key, value) in agent_info.items()
+        }
+
     def render_transition(transition):
         if transition is None:
             return {}
         else:
             return {
-                'agent_info': alpacka_data.nested_map(
+                'agent_info': render_agent_info(alpacka_data.nested_map(
                     to_primitive, transition.agent_info,
-                ),
+                )),
                 'action': env_renderer.render_action(transition.action),
-                'reward': transition.reward,
+                'reward': to_primitive(transition.reward),
             }
 
     def render_pass(pass_, init):

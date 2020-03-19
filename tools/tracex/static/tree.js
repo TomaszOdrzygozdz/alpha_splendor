@@ -22,7 +22,7 @@ function buildTree(data) {
   
   const svg = d3.select(".canvas").append("svg")
       .attr("viewBox", [-margin.left, -margin.top, width, height])
-      .style("font", "6px sans-serif")
+      .style("font", "3px sans-serif")
       .style("user-select", "none")
       .attr("width", "100%")
       .attr("height", "100%")
@@ -68,6 +68,61 @@ function buildTree(data) {
       .duration(duration)
       .attr("viewBox", [-margin.left, -margin.top, width, height])
       .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
+
+  var collapsed = true;
+  function toggleSidebar() {
+      d3.select('.canvas').style('width', collapsed ? '50%' : '80%');
+      d3.select('.sidebar').style('width', collapsed ? '50%' : '20%');
+      collapsed = !collapsed;
+  }
+
+
+  function showHistogram(data) {
+      var margin = {top: 30, right: 10, bottom: 10, left: 30},
+          width = 300 - margin.left - margin.right,
+          height = 200 - margin.top - margin.bottom;
+
+      var y0 = Math.max(Math.abs(d3.min(data)), Math.abs(d3.max(data)));
+
+      var y = d3.scaleLinear()
+          .domain([-y0, y0])
+          .range([height,0])
+          .nice();
+
+      var x = d3.scaleBand()
+          .domain(d3.range(data.length))
+          .rangeRound([0, width], .2);
+
+      var yAxis = d3.axisLeft(y);
+
+      var svg = d3.select(".sidebar").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      svg.selectAll(".bar")
+          .data(data)
+        .enter().append("rect")
+          .attr("class", function(d) { return d < 0 ? "bar negative" : "bar positive"; })
+          .attr("y", function(d) { return y(Math.max(0, d)); })
+          .attr("x", function(d, i) { return x(i); })
+          .attr("height", function(d) { return Math.abs(y(d) - y(0)); })
+          .attr("width", x.bandwidth() - 2);
+
+      svg.append("g")
+          .attr("class", "x axis")
+          .call(yAxis);
+
+      svg.append("g")
+          .attr("class", "y axis")
+        .append("line")
+          .attr("y1", y(0))
+          .attr("y2", y(0))
+          .attr("x1", 0)
+          .attr("x2", width);
+  }
+
   
   function update(source) {
     // Compute the new tree layout.
@@ -138,7 +193,7 @@ function buildTree(data) {
   
     // Update the links…
     const link = gLink.selectAll("path")
-      .data(links, d => d.target.id);
+      .data(links, d => 'l' + d.target.id);
   
     // Enter any new links at the parent's previous position.
     const linkEnter = link.enter()
@@ -195,12 +250,12 @@ function buildTree(data) {
             "<img src=\"/render_state/" + stateId + "\">" +
             "<pre>" + JSON.stringify(info, null, 2) + "</pre>"
         );
+        d3.select(".info img").on('click' , toggleSidebar);
     }
 
     function showNodeInfo(d) {
         const info = {
             id: d.data.id,
-            state_info: d.data.state_info,
             terminal: d.data.terminal,
         };
         showInfo(d.data.id, info);
@@ -208,12 +263,13 @@ function buildTree(data) {
 
     function showLinkInfo(d) {
         const info = {
-            state_info: d.source.data.state_info,
             agent_info: d.target.data.agent_info,
             action: d.target.data.action,
             reward: d.target.data.reward,
         };
         showInfo(d.source.data.id, info);
+        var data = d.target.data.agent_info['qualities'];
+        showHistogram(Object.values(data));
     }
 
     const realTransitions = d3.zip(root.children.slice(0, -1), root.children.slice(1))
@@ -225,24 +281,28 @@ function buildTree(data) {
     ]);
 
     addLabels(
-        gActionLabel.selectAll("text").data(visibleLinks, d => d.target.id),
+        gActionLabel.selectAll("text").data(visibleLinks, d => 'a' + d.target.id),
         d => d.target.data.action,
         d => "#fa0",
         d => 1,
-        -6, -2
+        -10, -2
     );
 
-    const renderReward = reward => reward > 0 ? '+' + reward : '-' + reward;
+    function renderReward(reward) {
+        const prefix = reward > 0 ? '+' : '-';
+        return prefix + Math.round(reward * 100) / 100;
+    }
 
     addLabels(
-        gRewardLabel.selectAll("text").data(visibleLinks, d => d.target.id),
+        gRewardLabel.selectAll("text").data(visibleLinks, d => 'r' + d.target.id),
         d => renderReward(d.target.data.reward),
         d => d.target.data.reward > 0 ? "#0f0" : "#f00",
         d => d.target.data.reward ? 1 : 0,
-        -6, 6
+        -10, 4
     );
   
-    const realLink = gRealLink.selectAll("path").data(realTransitions);
+    const realLink = gRealLink.selectAll("path")
+      .data(realTransitions, d => 'l' + d.target.id);
   
     const straight = pair => "M" + pair.source.x + "," + pair.source.y
          + " " + pair.target.x + "," + pair.target.y;
