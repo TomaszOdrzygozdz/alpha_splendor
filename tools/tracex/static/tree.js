@@ -71,14 +71,22 @@ function buildTree(data) {
 
   var collapsed = true;
   function toggleSidebar() {
-      d3.select('.canvas').style('width', collapsed ? '50%' : '80%');
-      d3.select('.sidebar').style('width', collapsed ? '50%' : '20%');
+      d3.select('.canvas').style('width', collapsed ? '50%' : '75%');
+      d3.select('.sidebar').style('width', collapsed ? '50%' : '25%');
       collapsed = !collapsed;
   }
 
+  const color = frac => {
+      const minHue = 240, maxHue=-80;
+      const hue = ((frac * (maxHue - minHue)) + minHue);
+      const saturation = 90 - Math.cos(frac * 2 * Math.PI) * 10;
+      const lightness = 50 - Math.sin(frac * 2 * Math.PI) * 20;
+      return "hsl(" + hue + "," + saturation + "%," + lightness + "%)";
+  }
 
   function showHistogram(name, data) {
-      const values = Object.keys(data).sort().map(key => data[key]);
+      const keys = Object.keys(data).sort();
+      const values = keys.map(key => data[key]);
 
       var margin = {top: 30, right: 10, bottom: 10, left: 30},
           width = 300 - margin.left - margin.right,
@@ -92,26 +100,27 @@ function buildTree(data) {
           .nice();
 
       var x = d3.scaleBand()
-          .domain(d3.range(values.length))
+          .domain(d3.range(keys.length))
           .rangeRound([0, width], .2);
 
       var yAxis = d3.axisLeft(y);
 
-      d3.select(".info").append("span").text(name);
+      d3.select(".info").append("div").text(name);
 
       var svg = d3.select(".info").append("svg")
+          .style("background-color", "#eee")
           .attr("width", width + margin.left + margin.right)
           .attr("height", height + margin.top + margin.bottom)
         .append("g")
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
       svg.selectAll(".bar")
-          .data(values)
+          .data(keys)
         .enter().append("rect")
-          .attr("class", function(d) { return d < 0 ? "bar negative" : "bar positive"; })
-          .attr("y", function(d) { return y(Math.max(0, d)); })
-          .attr("x", function(d, i) { return x(i); })
-          .attr("height", function(d) { return Math.abs(y(d) - y(0)); })
+          .style("fill", (k, i) => color(i / (keys.length - 1)))
+          .attr("y", k => y(Math.max(0, data[k])))
+          .attr("x", (k, i) => x(i))
+          .attr("height", k => Math.abs(y(data[k]) - y(0)))
           .attr("width", x.bandwidth() - 2);
 
       svg.append("g")
@@ -127,6 +136,14 @@ function buildTree(data) {
           .attr("x2", width);
   }
 
+  function showLegend(keys) {
+      const legend = d3.selectAll(".legend").html("");
+      keys.forEach((k, i) => {
+          legend.append("div")
+              .text(k + " ")
+              .style("color", color(i / (keys.length - 1)));
+      });
+  }
   
   function update(source) {
     // Compute the new tree layout.
@@ -280,7 +297,9 @@ function buildTree(data) {
                 keys = Object.keys(data[name]).sort();
             }
         });
-        keys.forEach(key => d3.select(".info").append("div").text(key));
+        if (keys) {
+            showLegend(keys);
+        }
     }
 
     const realTransitions = d3.zip(root.children.slice(0, -1), root.children.slice(1))

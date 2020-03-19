@@ -26,15 +26,16 @@ h1 {
 .canvas {
     background-color: #eee;
     float: left;
-    width: 80%;
+    width: 75%;
     margin: 0;
 }
 
 .sidebar {
     float: right;
-    width: 20%;
+    width: 25%;
     height: 100%;
-    overflow: scroll;
+    overflow-x: visible;
+    overflow-y: scroll;
 }
 
 .info {
@@ -46,12 +47,22 @@ h1 {
     width: 100%;
 }
 
-.bar.positive {
-  fill: steelblue;
+.legend {
+    padding: 10px 25px;
+    column-width: 7em;
+    column-gap: 0;
 }
 
-.bar.negative {
-  fill: brown;
+.legend.visible {
+    position: absolute;
+    bottom: 0;
+    width: inherit;
+    background-color: #eee;
+}
+
+.legend.placeholder {
+    visibility: hidden;
+    width: auto;
 }
 
 .axis text {
