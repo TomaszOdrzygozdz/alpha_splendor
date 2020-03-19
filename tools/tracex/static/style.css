@@ -11,6 +11,7 @@ body {
 }
 
 h1 {
+  float: left;
   font-size: 48pt;
   margin: 10px 25px;
 }
@@ -38,13 +39,27 @@ h1 {
     overflow-y: scroll;
 }
 
+.toolbar {
+    float: right;
+    margin: 10px 10px;
+}
+
+.toolbar i {
+    cursor: pointer;
+}
+
 .info {
+    clear: both;
     margin: 10px 25px;
 }
 
-.info img {
+.info.graph img {
     display: block;
     width: 100%;
+}
+
+.info.text {
+    display: none;
 }
 
 .legend {

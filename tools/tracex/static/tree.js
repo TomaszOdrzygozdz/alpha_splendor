@@ -69,11 +69,19 @@ function buildTree(data) {
       .attr("viewBox", [-margin.left, -margin.top, width, height])
       .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
 
+  var graph = true;
+  d3.select(".toggle-graph")
+    .on('click' , () => {
+      graph = !graph;
+      d3.selectAll(".graph").style("display", graph ? "block" : "none");
+      d3.selectAll(".text").style("display", !graph ? "block" : "none");
+  });
+
   var collapsed = true;
   function toggleSidebar() {
-      d3.select('.canvas').style('width', collapsed ? '50%' : '75%');
-      d3.select('.sidebar').style('width', collapsed ? '50%' : '25%');
       collapsed = !collapsed;
+      d3.select('.canvas').style('width', collapsed ? '75%' : '50%');
+      d3.select('.sidebar').style('width', collapsed ? '25%' : '50%');
   }
 
   const color = frac => {
@@ -106,9 +114,9 @@ function buildTree(data) {
 
       var yAxis = d3.axisLeft(y);
 
-      d3.select(".info").append("div").text(name);
+      d3.select(".info.graph").append("div").text(name);
 
-      var svg = d3.select(".info").append("svg")
+      var svg = d3.select(".info.graph").append("svg")
           .style("background-color", "#eee")
           .attr("width", width + margin.left + margin.right)
           .attr("height", height + margin.top + margin.bottom)
@@ -268,16 +276,18 @@ function buildTree(data) {
     }
 
     function showInfo(stateId, info) {
-        d3.select(".info").html(
-            "<img src=\"/render_state/" + stateId + "\">" +
+        d3.select(".info.graph").html(
+            "<img src=\"/render_state/" + stateId + "\">"
+        );
+        d3.select(".info.graph img").on('click' , toggleSidebar);
+        d3.select(".info.text").html(
             "<pre>" + JSON.stringify(info, null, 2) + "</pre>"
         );
-        d3.select(".info img").on('click' , toggleSidebar);
     }
 
     function showNodeInfo(d) {
         const info = {
-            id: d.data.id,
+            state_info: d.data.state_info,
             terminal: d.data.terminal,
         };
         showInfo(d.data.id, info);
@@ -288,6 +298,7 @@ function buildTree(data) {
             agent_info: d.target.data.agent_info,
             action: d.target.data.action,
             reward: d.target.data.reward,
+            to_state_info: d.target.data.state_info,
         };
         showInfo(d.source.data.id, info);
         const data = d.target.data.agent_info;
