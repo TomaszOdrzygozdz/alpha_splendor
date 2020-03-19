@@ -114,7 +114,7 @@ function buildTree(data) {
 
       var yAxis = d3.axisLeft(y);
 
-      d3.select(".info.graph").append("div").text(name);
+      d3.select(".info.graph").append("div").html(name);
 
       var svg = d3.select(".info.graph").append("svg")
           .style("background-color", "#eee")

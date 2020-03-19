@@ -53,6 +53,11 @@ h1 {
     margin: 10px 25px;
 }
 
+.info.graph div {
+    margin: 10px 0 5px 0;
+    font: 12pt monospace;
+}
+
 .info.graph img {
     display: block;
     width: 100%;
@@ -62,10 +67,15 @@ h1 {
     display: none;
 }
 
+.info.text pre {
+    font: 10pt monospace;
+}
+
 .legend {
     padding: 10px 25px;
-    column-width: 7em;
+    column-width: 8em;
     column-gap: 0;
+    font: 10pt monospace;
 }
 
 .legend.visible {
