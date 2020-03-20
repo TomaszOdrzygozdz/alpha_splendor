@@ -8,22 +8,7 @@ import pickle
 import cloudpickle
 import neptune
 
-
-class NeptuneLogger:
-    """Logs to Neptune."""
-
-    def __init__(self, experiment):
-        """Initialize NeptuneLogger with the Neptune experiment."""
-        self._experiment = experiment
-
-    def log_scalar(self, name, step, value):
-        """Logs a scalar to Neptune."""
-        del step
-        self._experiment.send_metric(name, value)
-
-    def log_property(self, name, value):
-        """Logs a property to Neptune."""
-        self._experiment.set_property(name, value)
+from alpacka.utils.neptune import NeptuneLogger
 
 
 def get_configuration(spec_path):
