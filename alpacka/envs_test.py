@@ -7,18 +7,19 @@ import numpy as np
 import pytest
 
 from alpacka import envs
+from alpacka.envs import gfootball
 
 
 envs_to_test = [
     envs.CartPole,
-    envs.Sokoban
+    envs.Sokoban,
 ]
-if envs.football_env is not None:
+if gfootball.football_env is not None:
     envs_to_test.append(envs.GoogleFootball)
 
 wrappers_to_test = [
     None,
-    functools.partial(envs.TimeLimitWrapper, max_episode_steps=10)
+    functools.partial(envs.TimeLimitWrapper, max_episode_steps=10),
 ]
 
 @pytest.fixture(scope='module',
@@ -116,7 +117,7 @@ def test_restore_in_place_of_reset(env_fn):
     np.testing.assert_equal(state, state_)
 
 
-@pytest.mark.skipif(envs.football_env is None,
+@pytest.mark.skipif(gfootball.football_env is None,
                     reason='Could not import Google Research Football.')
 def test_rerun_plan_after_restore_yields_the_same_trajectory_in_grf():
     # Set up
@@ -139,7 +140,7 @@ def test_rerun_plan_after_restore_yields_the_same_trajectory_in_grf():
     assert np.array_equal(first, second)
 
 
-@pytest.mark.skipif(envs.football_env is None,
+@pytest.mark.skipif(gfootball.football_env is None,
                     reason='Could not import Google Research Football.')
 def test_rerun_plan_after_reset_yields_different_trajectory_in_grf():
     # Set up
