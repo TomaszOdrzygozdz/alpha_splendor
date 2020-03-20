@@ -298,7 +298,7 @@ function buildTree(data) {
             agent_info: d.target.data.agent_info,
             action: d.target.data.action,
             reward: d.target.data.reward,
-            to_state_info: d.target.data.state_info,
+            from_state_info: d.source.data.state_info,
         };
         showInfo(d.source.data.id, info);
         const data = d.target.data.agent_info;
