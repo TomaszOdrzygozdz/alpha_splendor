@@ -21,10 +21,7 @@ class GoogleFootball(base.ModelEnv):
 
     state_size = 480000
 
-    class Renderer:
-
-        def __init__(self, env):
-            del env
+    class Renderer(base.EnvRenderer):
 
         def render_state(self, state_info):
             return gfootball_utils.get_frame(state_info)

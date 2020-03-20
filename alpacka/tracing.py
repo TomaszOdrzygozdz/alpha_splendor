@@ -10,7 +10,8 @@ import random
 
 import gin
 
-from alpacka.agents import base as agents_base
+from alpacka import agents
+from alpacka import envs
 
 
 # Data structures for traces.
@@ -64,28 +65,11 @@ TreeNode = collections.namedtuple('TreeNode', [
 ])
 
 
-class EnvRenderer:
-    """Base class for environment renderers."""
-
-    def __init__(self, env):
-        """Initializes EnvRenderer."""
-        del env
-
-    def render_state(self, state_info):
-        """Renders state_info to an image."""
-        raise NotImplementedError
-
-    def render_action(self, action):
-        """Renders action to a string."""
-        raise NotImplementedError
-
-
-class DummyRenderer(EnvRenderer):
+class DummyRenderer(envs.EnvRenderer):
 
     def render_state(self, state_info):
         """Renders state_info to an image."""
         del state_info
-        return None
 
     def render_action(self, action):
         """Renders action to a string."""
@@ -93,7 +77,7 @@ class DummyRenderer(EnvRenderer):
 
 
 @gin.configurable
-class TraceCallback(agents_base.AgentCallback):
+class TraceCallback(agents.AgentCallback):
     """Callback for collecting traces."""
 
     def __init__(self, output_dir=None, sample_rate=1.0):

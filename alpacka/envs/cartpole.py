@@ -9,10 +9,7 @@ from alpacka.envs import base
 class CartPole(classic_control.CartPoleEnv, base.ModelEnv):
     """CartPole with state clone/restore and returning a "solved" flag."""
 
-    class Renderer:
-
-        def __init__(self, env):
-            del env
+    class Renderer(base.EnvRenderer):
 
         def render_state(self, state_info):
             env = classic_control.CartPoleEnv()
