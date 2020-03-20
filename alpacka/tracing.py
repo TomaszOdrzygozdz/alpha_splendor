@@ -1,4 +1,30 @@
-"""Debug tracing of agent's decisions."""
+"""Debug tracing of agent's decisions.
+
+This module allows tracing of the decisions made by both model-free and
+model-based agents. For the latter, the traces contain the trajectory performed
+on the real environment as well as the planning passes made when choosing
+actions.
+
+Traces are dumped to disk and can be viewed using our trace explorer TraceX -
+see the README in alpacka/tools/tracex.
+
+Information collected in traces:
+    state_info: Either the value of the attribute state_info of the environment
+        if it's defined, or the current observation otherwise. State info can be
+        visualized in TraceX. To support that, define a nested class Renderer
+        subclassing envs.EnvRenderer in your Env.
+    action: Action from the environment. Can be shown in a human-readable form.
+        To support that, define a nested class Renderer subclassing
+        envs.EnvRenderer in your Env.
+    reward: Reward from the environment.
+    terminal: Done flag from the environment.
+    agent_info: The info dict returned in OnlineAgent.act(). Keys should be
+        string. Values can be either scalar or vector. Vector values are assumed
+        to be of length equal to the number of actions and visualized in TraceX
+        as histograms.
+
+TODO(koz4k): Describe trees and support them in TraceX.
+"""
 
 
 import collections
