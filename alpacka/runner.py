@@ -14,6 +14,7 @@ from alpacka import metric_logging
 from alpacka import networks
 from alpacka import trainers
 from alpacka.utils import gin as gin_utils
+from alpacka.utils.mrunner_client import NeptuneAPITokenException
 
 
 @gin.configurable
@@ -224,7 +225,8 @@ if __name__ == '__main__':
         try:
             neptune_logger = mrunner_client.configure_neptune(specification)
             metric_logging.register_logger(neptune_logger)
-        except KeyError:
+
+        except NeptuneAPITokenException:
             print('HINT: To run with Neptune logging please set your '
                   'NEPTUNE_API_TOKEN environment variable')
 

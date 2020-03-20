@@ -6,7 +6,6 @@ import gin
 import numpy as np
 
 from alpacka.batch_steppers import core
-from alpacka.utils.neptune import connect_to_neptune_experiment_add_logger
 
 # WA for: https://github.com/ray-project/ray/issues/5250
 # One of later packages (e.g. gym_sokoban.envs) imports numba internally.
@@ -15,6 +14,18 @@ from alpacka.utils.neptune import connect_to_neptune_experiment_add_logger
 import numba  # pylint: disable=wrong-import-order
 import ray  # pylint: disable=wrong-import-order
 del numba
+
+
+_worker_init_hooks = []
+
+
+def add_worker_init_hook(hook):
+    """Add hook called in at initialization of Ray workers
+
+    Args:
+        hook: callable
+    """
+    _worker_init_hooks.append(hook)
 
 
 class RayObject(typing.NamedTuple):
@@ -42,7 +53,7 @@ class RayBatchStepper(core.BatchStepper):
         """Ray actor used to step agent-environment-network in own process."""
 
         def __init__(
-            self, env_class, agent_class, network_fn, config, neptune_info,
+            self, env_class, agent_class, network_fn, config, init_hooks,
         ):
             # Limit number of threads used between independent tf.op-s to 1.
             import tensorflow as tf  # pylint: disable=import-outside-toplevel
@@ -51,7 +62,9 @@ class RayBatchStepper(core.BatchStepper):
 
             # TODO(pj): Test that skip_unknown is required!
             gin.parse_config(config, skip_unknown=True)
-            connect_to_neptune_experiment_add_logger(neptune_info)
+
+            for hook in init_hooks:
+                hook()
 
             self.env = env_class()
             self.agent = agent_class()
@@ -70,7 +83,6 @@ class RayBatchStepper(core.BatchStepper):
         super().__init__(env_class, agent_class, network_fn, n_envs, output_dir)
 
         config = RayBatchStepper._get_config(env_class, agent_class, network_fn)
-        neptune_info = RayBatchStepper._get_neptune_info()
         ray_worker_cls = ray.remote(RayBatchStepper.Worker)
 
         if not ray.is_initialized():
@@ -81,7 +93,7 @@ class RayBatchStepper(core.BatchStepper):
             }
             ray.init(**kwargs)
         self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
-            env_class, agent_class, network_fn, config, neptune_info)
+            env_class, agent_class, network_fn, config, _worker_init_hooks)
             for _ in range(n_envs)]
 
         self._params = RayObject(None, None)
@@ -126,20 +138,3 @@ class RayBatchStepper(core.BatchStepper):
         agent_class()
         network_fn()
         return gin.operative_config_str()
-
-    @staticmethod
-    def _get_neptune_info():
-        """ Get info about neptune experiment (if initialized)"""
-
-        try:
-            import neptune  # pylint: disable=import-outside-toplevel
-        except ImportError:
-            return None
-
-        if neptune.project is None:
-            return None
-        else:
-            return {
-                'project_full_id': neptune.project.full_id,
-                'experiment_id': neptune.get_experiment().id
-            }

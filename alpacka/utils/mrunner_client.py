@@ -2,13 +2,15 @@
 
 import atexit
 import datetime
+import functools
 import os
 import pickle
 
 import cloudpickle
 import neptune
 
-from alpacka.utils.neptune import NeptuneLogger
+from alpacka import metric_logging
+from alpacka.batch_steppers import ray
 
 
 def get_configuration(spec_path):
@@ -35,10 +37,37 @@ def get_configuration(spec_path):
     return specification, gin_bindings
 
 
+class NeptuneLogger:
+    """Logs to Neptune."""
+
+    def __init__(self, experiment):
+        """Initialize NeptuneLogger with the Neptune experiment."""
+        self._experiment = experiment
+
+    def log_scalar(self, name, step, value):
+        """Logs a scalar to Neptune."""
+        del step
+        self._experiment.send_metric(name, value)
+
+    def log_image(self, name, step, img):
+        """Logs an image to Neptune."""
+        del step
+        self._experiment.send_image(name, img)
+
+    def log_property(self, name, value):
+        """Logs a property to Neptune."""
+        self._experiment.set_property(name, value)
+
+
+class NeptuneAPITokenException(Exception):
+    def __init__(self):
+        super().__init__('NEPTUNE_API_TOKEN environment variable is not set!')
+
+
 def configure_neptune(specification):
     """Configures the Neptune experiment, then returns the Neptune logger."""
     if 'NEPTUNE_API_TOKEN' not in os.environ:
-        raise KeyError('NEPTUNE_API_TOKEN environment variable is not set!')
+        raise NeptuneAPITokenException()
 
     git_info = specification.get('git_info', None)
     if git_info:
@@ -53,5 +82,22 @@ def configure_neptune(specification):
                               properties=properties,
                               git_info=git_info)
     atexit.register(neptune.stop)
+
+    # Add hook for Ray workers to make  them connect with appropriate neptune
+    # experiment and set neptune logger.
+    def connect_to_neptune_experiment_add_logger(project_id, experiment_id):
+        neptune.init(project_id)
+        exp = neptune.project.get_experiments(
+            id=experiment_id
+        )[0]
+        metric_logging.register_logger(NeptuneLogger(exp))
+
+    ray.add_worker_init_hook(
+        functools.partial(
+            connect_to_neptune_experiment_add_logger,
+            project_id=neptune.project.full_id,
+            experiment_id=neptune.get_experiment().id,
+        )
+    )
 
     return NeptuneLogger(neptune.get_experiment())
