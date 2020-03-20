@@ -6,7 +6,7 @@ TraceX - Trace eXplorer.
 
 ### Install
 
-`pip install flask Pillow`
+Run `pip install -e .[tracex]` in the Alpacka root directory.
 
 ### Dump traces
 
