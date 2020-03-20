@@ -23,7 +23,7 @@ import numpy as np
 
 def _get_cv2():
     try:
-        import cv2
+        import cv2  # pylint: disable=import-outside-toplevel
         return cv2
     except ImportError:
         raise ImportError(
@@ -47,16 +47,17 @@ class _TextWriter:
 
     def write(self, text, scale_factor=1):
         cv2 = _get_cv2()
-        font = cv2.FONT_HERSHEY_SIMPLEX
+        font = cv2.FONT_HERSHEY_SIMPLEX  # pylint: disable=no-member
         text_pos = (self._pos_x, self._pos_y)
         font_scale = 0.5 * scale_factor
         line_type = 1
-        cv2.putText(self._frame, text, text_pos, font, font_scale, self._color,
+        cv2.putText(self._frame, text, text_pos, font, font_scale, self._color,  # pylint: disable=no-member
                     line_type)
         self._pos_y += int(20 * scale_factor)
 
 
 def get_frame(trace):
+    """Visualizes a state based on a GFootball trace dict."""
     cv2 = _get_cv2()
     frame = np.uint8(np.zeros((600, 800, 3)))
     corner1 = (0, 0)
@@ -64,11 +65,11 @@ def get_frame(trace):
     corner3 = (799, 599)
     corner4 = (0, 599)
     line_color = (0, 255, 255)
-    cv2.line(frame, corner1, corner2, line_color)
-    cv2.line(frame, corner2, corner3, line_color)
-    cv2.line(frame, corner3, corner4, line_color)
-    cv2.line(frame, corner4, corner1, line_color)
-    cv2.line(frame, (399, 0), (399, 799), line_color)
+    cv2.line(frame, corner1, corner2, line_color)  # pylint: disable=no-member
+    cv2.line(frame, corner2, corner3, line_color)  # pylint: disable=no-member
+    cv2.line(frame, corner3, corner4, line_color)  # pylint: disable=no-member
+    cv2.line(frame, corner4, corner1, line_color)  # pylint: disable=no-member
+    cv2.line(frame, (399, 0), (399, 799), line_color)  # pylint: disable=no-member
     writer = _TextWriter(
         frame,
         trace['ball'][0],
@@ -84,8 +85,6 @@ def get_frame(trace):
             field_coords=True,
             color=(0, 255, 0))
         letter = 'H'
-        #if 'active' in trace and player_idx in trace['active']:
-        #  letter = 'X'
         if 'left_agent_controlled_player' in trace and player_idx in trace[
             'left_agent_controlled_player']:
             letter = 'X'

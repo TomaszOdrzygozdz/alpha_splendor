@@ -10,6 +10,10 @@ class CartPole(classic_control.CartPoleEnv, base.ModelEnv):
     """CartPole with state clone/restore and returning a "solved" flag."""
 
     class Renderer(base.EnvRenderer):
+        """Renderer for CartPole.
+
+        Uses CartPole's render() function for state rendering.
+        """
 
         def render_state(self, state_info):
             env = classic_control.CartPoleEnv()

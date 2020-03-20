@@ -23,6 +23,20 @@ def index():
 
 
 def render_trajectory(trajectory, env_renderer):
+    """Renders a trajectory into a collection of node entity dicts.
+
+    The returned dicts are JSON-serializable.
+
+    Entities are described in lazify_entity.
+
+    Args:
+        trajectory (tracing.Trajectory): Trajectory to render.
+        env_renderer (envs.EnvRenderer): EnvRenderer to use.
+
+    Returns:
+        Pair (root, entities), where root is the root entity dict, and
+        entities is a dict of node entities, indexed by id.
+    """
     entities = {}
 
     def add_entity(entity):
@@ -117,6 +131,21 @@ def render_trajectory(trajectory, env_renderer):
 
 
 def lazify_entity(entity, depth, lazy_keys):
+    """Trims an entity to decrease its size.
+
+    Entity is a JSON-serializable recursive data structure. This function trim
+    the depth of this structure, leaving "stubs" that need to be requested via
+    separate API calls. Trimmed entities get their "stub" key set to True.
+
+    Args:
+        entity: Entity to lazify.
+        depth (int): Maximum depth.
+        lazy_keys (list of str): Dict keys to recurse into. The others will
+            be rewritten as-is.
+
+    Returns:
+        Lazified entity.
+    """
     if isinstance(entity, dict):
         entity = {
             key: (

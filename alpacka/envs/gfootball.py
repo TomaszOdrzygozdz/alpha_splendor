@@ -22,6 +22,10 @@ class GoogleFootball(base.ModelEnv):
     state_size = 480000
 
     class Renderer(base.EnvRenderer):
+        """Renderer for GFootball.
+
+        Uses the state visualization from GFootball's dumped videos.
+        """
 
         def render_state(self, state_info):
             return gfootball_utils.get_frame(state_info)
