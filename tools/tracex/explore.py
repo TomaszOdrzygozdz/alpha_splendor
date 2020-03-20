@@ -163,8 +163,6 @@ def render_state(entity_id):
 
 if __name__ == '__main__':
     trace = tracing.load(sys.argv[1])
-    from alpacka import envs
-    trace = trace._replace(renderer=envs.GoogleFootball.Renderer(None))
     (rendered_trajectory, entities) = render_trajectory(
         trace.trajectory, trace.renderer
     )

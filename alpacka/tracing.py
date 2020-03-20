@@ -82,6 +82,11 @@ class EnvRenderer:
 
 class DummyRenderer(EnvRenderer):
 
+    def render_state(self, state_info):
+        """Renders state_info to an image."""
+        del state_info
+        return None
+
     def render_action(self, action):
         """Renders action to a string."""
         return str(action)
