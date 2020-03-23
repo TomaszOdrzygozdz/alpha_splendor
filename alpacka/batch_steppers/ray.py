@@ -19,7 +19,7 @@ del numba
 _worker_init_hooks = []
 
 
-def add_worker_init_hook(hook):
+def register_worker_init_hook(hook):
     """Add hook called in at initialization of Ray workers
 
     Args:

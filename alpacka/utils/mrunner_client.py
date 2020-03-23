@@ -92,7 +92,7 @@ def configure_neptune(specification):
         )[0]
         metric_logging.register_logger(NeptuneLogger(exp))
 
-    ray.add_worker_init_hook(
+    ray.register_worker_init_hook(
         functools.partial(
             connect_to_neptune_experiment_add_logger,
             project_id=neptune.project.full_id,
