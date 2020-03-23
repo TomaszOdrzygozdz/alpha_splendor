@@ -55,6 +55,9 @@ def compute_scalar_statistics(x, prefix=None, with_min_and_max=False):
         with_min_and_max (bool): If true, return min and max of x in
             addition to mean and std.
 
+    Note:
+        NaN values are ignored when calculating statistics.
+
     Returns:
         Dictionary with statistic names as keys (can be prefixed, see the prefix
         argument) and statistic values.
@@ -62,10 +65,10 @@ def compute_scalar_statistics(x, prefix=None, with_min_and_max=False):
     prefix = prefix + '_' if prefix else ''
     stats = {}
 
-    stats[prefix + 'mean'] = np.mean(x)
-    stats[prefix + 'std'] = np.std(x)
+    stats[prefix + 'mean'] = np.nanmean(x)
+    stats[prefix + 'std'] = np.nanstd(x)
     if with_min_and_max:
-        stats[prefix + 'min'] = np.min(x)
-        stats[prefix + 'max'] = np.max(x)
+        stats[prefix + 'min'] = np.nanmin(x)
+        stats[prefix + 'max'] = np.nanmax(x)
 
     return stats

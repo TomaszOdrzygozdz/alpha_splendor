@@ -28,7 +28,7 @@ def get_configuration(spec_path):
     parameters = specification['parameters']
     gin_bindings = []
     for key, value in parameters.items():
-        if isinstance(value, str) and not (value[0] == '@' or value[0] == '%'):
+        if isinstance(value, str) and not value[0] in ('@', '%', '{', '(', '['):
             binding = f'{key} = "{value}"'
         else:
             binding = f'{key} = {value}'

@@ -1,6 +1,9 @@
 """Parameter schedules."""
 
+import gin
 
+
+@gin.configurable
 class LinearAnnealing:
     """Implement the linear annealing parameter schedule."""
 

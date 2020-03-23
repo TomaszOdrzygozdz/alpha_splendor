@@ -1,4 +1,4 @@
-# Config for short GRF training with FlatPUCBAgent. Tuned (but not much) to
+# Config for short GRF training with BanditAgent. Tuned (but not much) to
 # maximize solved rate on 1h job on 24 core machine. (For longer training it
 # might be better to use larger discount and smaller learning rate).
 #
@@ -7,6 +7,7 @@
 #   progress within 1h can be seen. Other scenarios which shows progress within
 #   1h in some cases are
 #       'academy_corner',
+#       'academy_empty_goal_close',
 #       'academy_pass_and_shoot_with_keeper',
 #       'academy_run_pass_and_shoot_with_keeper'
 #       'academy_run_to_score'
@@ -38,19 +39,19 @@ KerasNetwork.train_callbacks = None
 # Parameters for SoftmaxGreedyAgent:
 # ==============================================================================
 SoftmaxAgent.with_critic = True
+SoftmaxAgent.temperature = 4.0
 
-# Parameters for FlatPUCBAgent:
+# Parameters for BanditAgent:
 # ==============================================================================
-FlatPUCBAgent.n_rollouts = 24
-FlatPUCBAgent.rollout_time_limit = 10
-FlatPUCBAgent.aggregate_fn = @np.mean
-FlatPUCBAgent.estimate_fn = @alpacka.agents.shooting.bootstrap_return_with_value
-FlatPUCBAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
-FlatPUCBAgent.agent_class = @alpacka.agents.SoftmaxAgent
-FlatPUCBAgent.n_envs = 1
-FlatPUCBAgent.discount = 0.95
-FlatPUCBAgent.prior_noise = 0.5
-FlatPUCBAgent.exploration_weight = 1.0
+BanditAgent.n_rollouts = 50
+BanditAgent.rollout_time_limit = 10
+BanditAgent.estimate_fn = @alpacka.agents.mc_simulation.bootstrap_return_with_value
+BanditAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+BanditAgent.agent_class = @alpacka.agents.SoftmaxAgent
+BanditAgent.n_envs = 1
+BanditAgent.discount = 0.95
+BanditAgent.prior_noise = None
+BanditAgent.exploration_weight = 2.5
 
 # Parameters for mlp:
 # ==============================================================================
@@ -60,7 +61,7 @@ mlp.output_activation = (None, None)
 
 # Parameters for Runner:
 # ==============================================================================
-Runner.agent_class = @alpacka.agents.FlatPUCBAgent
+Runner.agent_class = @alpacka.agents.BanditAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @alpacka.envs.GoogleFootball
 Runner.env_kwargs = {'dump_path': './out'}

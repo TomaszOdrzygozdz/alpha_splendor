@@ -44,10 +44,10 @@ SoftmaxAgent.with_critic = True
 ShootingAgent.n_rollouts = 24
 ShootingAgent.rollout_time_limit = 10
 ShootingAgent.aggregate_fn = @np.mean
-ShootingAgent.estimate_fn = @alpacka.agents.shooting.bootstrap_return_with_value
+ShootingAgent.estimate_fn = @alpacka.agents.mc_simulation.bootstrap_return_with_value
 ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
 ShootingAgent.agent_class = @alpacka.agents.SoftmaxAgent
-ShootingAgent.n_envs = 24
+ShootingAgent.n_envs = 2
 ShootingAgent.discount = 0.95
 
 # Parameters for mlp:
