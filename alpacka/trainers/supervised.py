@@ -47,6 +47,11 @@ def target_action_histogram(episode):
     return episode.transition_batch.agent_info['action_histogram']
 
 
+@gin.configurable
+def target_action_histogram_smooth(episode):
+    return episode.transition_batch.agent_info['action_histogram_smooth']
+
+
 class SupervisedTrainer(base.Trainer):
     """Supervised trainer.
 
