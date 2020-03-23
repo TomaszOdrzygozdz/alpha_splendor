@@ -173,7 +173,27 @@ class ShootingAgent(base.OnlineAgent):
         if 'logits' in agent_info_batch:
             agent_info['sim_pi_logits'] = np.mean(agent_info_batch['logits'])
 
+        self._run_agent_callbacks(episodes)
         return action, agent_info
+
+    def _run_agent_callbacks(self, episodes):
+        for episode in episodes:
+            for callback in self._callbacks:
+                callback.on_pass_begin()
+                transition_batch = episode.transition_batch
+                for ix in range(len(transition_batch.action)):
+                    step_agent_info = {
+                        key: value[ix]
+                        for key, value in transition_batch.agent_info.items()
+                    }
+                    callback.on_model_step(
+                        agent_info=step_agent_info,
+                        action=transition_batch.action[ix],
+                        observation=transition_batch.next_observation[ix],
+                        reward=transition_batch.reward[ix],
+                        done=transition_batch.done[ix]
+                    )
+                callback.on_pass_end()
 
     def network_signature(self, observation_space, action_space):
         agent = self._agent_class()
