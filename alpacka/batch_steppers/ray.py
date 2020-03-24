@@ -16,6 +16,18 @@ import ray  # pylint: disable=wrong-import-order
 del numba
 
 
+_worker_init_hooks = []
+
+
+def register_worker_init_hook(hook):
+    """Add hook called in at initialization of Ray workers
+
+    Args:
+        hook: callable
+    """
+    _worker_init_hooks.append(hook)
+
+
 class RayObject(typing.NamedTuple):
     """Keeps value and id of an object in the Ray Object Store."""
     id: typing.Any
@@ -40,7 +52,9 @@ class RayBatchStepper(core.BatchStepper):
     class Worker:
         """Ray actor used to step agent-environment-network in own process."""
 
-        def __init__(self, env_class, agent_class, network_fn, config):
+        def __init__(
+            self, env_class, agent_class, network_fn, config, init_hooks,
+        ):
             # Limit number of threads used between independent tf.op-s to 1.
             import tensorflow as tf  # pylint: disable=import-outside-toplevel
             tf.config.threading.set_inter_op_parallelism_threads(1)
@@ -48,6 +62,9 @@ class RayBatchStepper(core.BatchStepper):
 
             # TODO(pj): Test that skip_unknown is required!
             gin.parse_config(config, skip_unknown=True)
+
+            for hook in init_hooks:
+                hook()
 
             self.env = env_class()
             self.agent = agent_class()
@@ -76,7 +93,8 @@ class RayBatchStepper(core.BatchStepper):
             }
             ray.init(**kwargs)
         self.workers = [ray_worker_cls.remote(  # pylint: disable=no-member
-            env_class, agent_class, network_fn, config) for _ in range(n_envs)]
+            env_class, agent_class, network_fn, config, _worker_init_hooks)
+            for _ in range(n_envs)]
 
         self._params = RayObject(None, None)
         self._solve_kwargs = RayObject(None, None)
