@@ -87,9 +87,10 @@ class GoogleFootball(base.ModelEnv):
         # https://github.com/google-research/football/pull/115
         trace = env._env._trace
         trace_copy = attribute.deep_copy_without_fields(trace, ['_config',
-                                                        '_dump_config'])
-        # Placeholder to prevent exceptions when gc this object
-        trace_copy._dump_config = []
+                                                                '_dump_config'])
+        trace_copy._config = trace._config
+        trace_copy._dump_config = trace._dump_config
+
         state_tuple = (
             state,
             copy.deepcopy(env._env._steps_time),
@@ -100,6 +101,7 @@ class GoogleFootball(base.ModelEnv):
         )
         # Imitate a tuple without the trace part to fool np.testing.assert_equal
         # during testing.
+
         class StateModuloTrace(tuple):
             def __len__(self):
                 assert super().__len__() == 6
@@ -115,14 +117,8 @@ class GoogleFootball(base.ModelEnv):
             env._env._step,
             env._env._cumulative_reward,
             env._env._observation,
-            trace,
+            env._env._trace,
         ) = state
-
-        env = self._env.unwrapped
-        trace_old = env._env._trace
-        trace_copy = attribute.deep_copy_merge(trace, trace_old,
-                                               ['_config', '_dump_config'])
-        env._env._trace = trace_copy
 
         assert state.size == self.state_size, (
             f'State size does not match: {state.size} != {self.state_size}')

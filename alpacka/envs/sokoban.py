@@ -1,7 +1,7 @@
 """Sokoban environment."""
 
-from gym_sokoban.envs import sokoban_env_fast
 import numpy as np
+from gym_sokoban.envs import sokoban_env_fast
 
 from alpacka.envs import base
 
