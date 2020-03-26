@@ -20,5 +20,6 @@ setup(
     extras_require={
         'mrunner': ['mrunner @ git+https://gitlab.com/awarelab/mrunner.git'],
         'dev': ['pylint', 'pylint_quotes', 'pytest', 'ray[debug]'],
+        'tracex': ['flask', 'Pillow'],
     }
 )

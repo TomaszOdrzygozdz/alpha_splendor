@@ -1,7 +1,34 @@
-"""Debug tracing of agent's decisions."""
+"""Debug tracing of agent's decisions.
+
+This module allows tracing of the decisions made by both model-free and
+model-based agents. For the latter, the traces contain the trajectory performed
+on the real environment as well as the planning passes made when choosing
+actions.
+
+Traces are dumped to disk and can be viewed using our trace explorer TraceX -
+see the README in alpacka/tools/tracex.
+
+Information collected in traces:
+    state_info: Either the value of the attribute state_info of the environment
+        if it's defined, or the current observation otherwise. State info can be
+        visualized in TraceX. To support that, define a nested class Renderer
+        subclassing envs.EnvRenderer in your Env.
+    action: Action from the environment. Can be shown in a human-readable form.
+        To support that, define a nested class Renderer subclassing
+        envs.EnvRenderer in your Env.
+    reward: Reward from the environment.
+    terminal: Done flag from the environment.
+    agent_info: The info dict returned in OnlineAgent.act(). Keys should be
+        string. Values can be either scalar or vector. Vector values are assumed
+        to be of length equal to the number of actions and visualized in TraceX
+        as histograms.
+
+TODO(koz4k): Describe trees and support them in TraceX.
+"""
 
 
 import collections
+import copy
 import lzma
 import os
 import pickle
@@ -9,7 +36,8 @@ import random
 
 import gin
 
-from alpacka.agents import base as agents_base
+from alpacka import agents
+from alpacka import envs
 
 
 # Data structures for traces.
@@ -18,6 +46,7 @@ from alpacka.agents import base as agents_base
 
 # Trace of an agent's planning algorithm.
 Trace = collections.namedtuple('Trace', [
+    'renderer',    # EnvRenderer
     'trajectory',  # Trajectory
     'tree',        # [TreeNode], indexed by node_id
 ])
@@ -62,20 +91,19 @@ TreeNode = collections.namedtuple('TreeNode', [
 ])
 
 
-class EnvRenderer:
-    """Base class for environment renderers."""
+class DummyRenderer(envs.EnvRenderer):
 
     def render_state(self, state_info):
         """Renders state_info to an image."""
-        raise NotImplementedError
+        del state_info
 
     def render_action(self, action):
         """Renders action to a string."""
-        raise NotImplementedError
+        return str(action)
 
 
 @gin.configurable
-class TraceCallback(agents_base.AgentCallback):
+class TraceCallback(agents.AgentCallback):
     """Callback for collecting traces."""
 
     def __init__(self, output_dir=None, sample_rate=1.0):
@@ -148,7 +176,7 @@ class TraceCallback(agents_base.AgentCallback):
         )
 
         state_info = getattr(self._env, 'state_info', observation)
-        self._pass.append(ModelTransition(
+        self._pass.append(copy.deepcopy(ModelTransition(
             agent_info=self._filter_agent_info(agent_info),
             action=action,
             reward=reward,
@@ -157,7 +185,7 @@ class TraceCallback(agents_base.AgentCallback):
                 node_id=self._current_node_id,
                 terminal=done,
             ),
-        ))
+        )))
 
     def on_pass_end(self):
         """Called in the end of every planning pass."""
@@ -178,7 +206,7 @@ class TraceCallback(agents_base.AgentCallback):
         self._current_node_id = self._current_root_id
 
         state_info = getattr(self._env, 'state_info', observation)
-        self._trajectory.transitions.append(RealTransition(
+        self._trajectory.transitions.append(copy.deepcopy(RealTransition(
             agent_info=self._filter_agent_info(agent_info),
             passes=self._passes,
             action=action,
@@ -188,7 +216,7 @@ class TraceCallback(agents_base.AgentCallback):
                 node_id=self._current_root_id,
                 terminal=done,
             ),
-        ))
+        )))
         self._passes = []
 
     def on_episode_end(self):
@@ -196,7 +224,13 @@ class TraceCallback(agents_base.AgentCallback):
         if self._trajectory is None:
             return
 
+        try:
+            renderer_class = type(self._env.unwrapped).Renderer
+        except AttributeError:
+            renderer_class = DummyRenderer
+
         self._trace = Trace(
+            renderer=renderer_class(self._env),
             trajectory=self._trajectory,
             tree=self._tree_nodes,
         )

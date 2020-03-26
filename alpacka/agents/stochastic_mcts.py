@@ -345,11 +345,11 @@ class StochasticMCTSAgent(base.OnlineAgent):
         node = root
         done = False
         while not node.is_leaf and not done:
+            agent_info = self._compute_node_info(node)
             action = self._choose_action(node, exploratory=True)
             node = node.children[action]
             (observation, reward, done, _) = self._model.step(action)
 
-            agent_info = self._compute_node_info(node)
             for callback in self._callbacks:
                 callback.on_model_step(
                     agent_info, action, observation, reward, done
@@ -478,7 +478,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
 
     def _compute_node_info(self, node):
         def unscale(x):
-            x -= self._leaf_quality_bias
+            # Prevent in-place subtraction.
+            x = x - self._leaf_quality_bias
             if self._leaf_quality_dampening:
                 x /= self._leaf_quality_dampening
             return x

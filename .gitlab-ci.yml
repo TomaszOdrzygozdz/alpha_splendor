@@ -10,7 +10,7 @@ before_script:
   - chmod 700 ~/.ssh
   - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
   # Install the package.
-  - pip install -e .[dev,mrunner]
+  - pip install -e .[dev,mrunner,tracex]
 
 stages:
   - Static Analysis
@@ -20,6 +20,7 @@ pylint:
   stage: Static Analysis
   script:
   - pylint alpacka
+  - pylint tools/tracex
 
 pytest:
   stage: Unit Testing

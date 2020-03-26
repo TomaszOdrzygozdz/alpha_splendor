@@ -8,6 +8,7 @@ import numpy as np
 
 from alpacka.envs import base
 from alpacka.utils import attribute
+from alpacka.utils import gfootball as gfootball_utils
 
 try:
     import gfootball.env as football_env
@@ -19,6 +20,20 @@ class GoogleFootball(base.ModelEnv):
     """Google Research Football conforming to the ModelEnv interface."""
 
     state_size = 480000
+
+    class Renderer(base.EnvRenderer):
+        """Renderer for GFootball.
+
+        Uses the state visualization from GFootball's dumped videos.
+        """
+
+        def render_state(self, state_info):
+            return gfootball_utils.get_frame(state_info)
+
+        def render_action(self, action):
+            action_set = football_env.football_action_set.full_action_set
+            return str(action_set[action])
+
 
     def __init__(self,
                  env_name='academy_empty_goal_close',
@@ -165,3 +180,19 @@ class GoogleFootball(base.ModelEnv):
             observation = wrapper.observation(observation)
 
         return observation
+
+    @property
+    def state_info(self):
+        observations = self._env.unwrapped.observation()
+        print(observations)
+        assert len(observations) == 1
+        return {
+            key: value
+            for (key, value) in observations[0].items()
+            if key in {
+                'left_team', 'left_team_direction',
+                'right_team', 'right_team_direction',
+                'ball', 'ball_direction', 'ball_owned_team',
+                'active', 'game_mode',
+            }
+        }

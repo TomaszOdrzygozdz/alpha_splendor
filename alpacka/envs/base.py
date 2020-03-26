@@ -1,4 +1,4 @@
-"""Environment base classes."""
+"""Base classes related to environments."""
 
 import gym
 
@@ -17,4 +17,20 @@ class ModelEnv(gym.Env):
 
     def restore_state(self, state):
         """Restores environment state, returns the observation."""
+        raise NotImplementedError
+
+
+class EnvRenderer:
+    """Base class for environment renderers."""
+
+    def __init__(self, env):
+        """Initializes EnvRenderer."""
+        del env
+
+    def render_state(self, state_info):
+        """Renders state_info to an image."""
+        raise NotImplementedError
+
+    def render_action(self, action):
+        """Renders action to a string."""
         raise NotImplementedError

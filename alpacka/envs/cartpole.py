@@ -9,6 +9,22 @@ from alpacka.envs import base
 class CartPole(classic_control.CartPoleEnv, base.ModelEnv):
     """CartPole with state clone/restore and returning a "solved" flag."""
 
+    class Renderer(base.EnvRenderer):
+        """Renderer for CartPole.
+
+        Uses CartPole's render() function for state rendering.
+        """
+
+        def render_state(self, state_info):
+            env = classic_control.CartPoleEnv()
+            env.state = state_info
+            rgb_array = env.render(mode='rgb_array')
+            env.close()
+            return rgb_array
+
+        def render_action(self, action):
+            return ['left', 'right'][action]
+
     def __init__(self, solved_at=500, reward_scale=1., **kwargs):
         super().__init__(**kwargs)
 
