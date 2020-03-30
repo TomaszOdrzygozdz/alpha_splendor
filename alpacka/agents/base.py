@@ -46,10 +46,10 @@ class Agent:
             coroutine = agent.solve(env)
             try:
                 # get inputs from agent.solve
-                prediction_request = next(coroutine)  
+                prediction_request = next(coroutine)
                 network_output = process_request(prediction_request)
                 # send preditions to agent.solve
-                prediction_request = coroutine.send(network_output) 
+                prediction_request = coroutine.send(network_output)
                 # Possibly more prediction requests...
             except StopIteration as e:
                 episode = e.value
