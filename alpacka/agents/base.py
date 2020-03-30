@@ -54,7 +54,12 @@ class Agent:
 
         Agents that do not use neural networks should wrap their solve() method
         in an @asyncio.coroutine decorator, so Python knows to treat it as
-        a coroutine even though it doesn't have any yield.
+        a coroutine even though it doesn't have any yield statement.
+
+        We don't use asyncio for anything other than importing this decorator.
+        We use coroutines for different purposes than asyncio. For a quick
+        summary of coroutines and their use in asyncio, please refer to
+        http://masnun.com/2015/11/13/python-generators-coroutines-native-coroutines-and-async-await.html.
 
         Args:
             env (gym.Env): Environment to solve.
