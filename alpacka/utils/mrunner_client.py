@@ -28,7 +28,7 @@ def get_configuration(spec_path):
     parameters = specification['parameters']
     gin_bindings = []
     for key, value in parameters.items():
-        if isinstance(value, str) and not (value[0] == '@' or value[0] == '%'):
+        if isinstance(value, str) and not value[0] in ('@', '%', '{', '(', '['):
             binding = f'{key} = "{value}"'
         else:
             binding = f'{key} = {value}'
@@ -46,13 +46,11 @@ class NeptuneLogger:
 
     def log_scalar(self, name, step, value):
         """Logs a scalar to Neptune."""
-        del step
-        self._experiment.send_metric(name, value)
+        self._experiment.send_metric(name, step, value)
 
     def log_image(self, name, step, img):
         """Logs an image to Neptune."""
-        del step
-        self._experiment.send_image(name, img)
+        self._experiment.send_image(name, step, img)
 
     def log_property(self, name, value):
         """Logs a property to Neptune."""

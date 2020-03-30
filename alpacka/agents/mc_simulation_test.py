@@ -1,4 +1,4 @@
-"""Tests for alpacka.agents.shooting."""
+"""Tests for alpacka.agents.mc_simulation."""
 
 import asyncio
 import math
@@ -11,7 +11,7 @@ from alpacka import agents
 from alpacka import batch_steppers
 from alpacka import envs
 from alpacka import testing
-from alpacka.agents import shooting
+from alpacka.agents import mc_simulation
 
 
 @pytest.mark.parametrize('truncated,x_return',
@@ -32,7 +32,7 @@ def test_bootstrap_return_with_value_estimator(truncated, x_return):
 
     # Run
     bootstrap_return = testing.run_with_constant_network_prediction(
-        shooting.bootstrap_return_with_value([episode]),
+        mc_simulation.bootstrap_return_with_value([episode]),
         logits=logits
     )[0]
 
@@ -140,14 +140,14 @@ def test_greedy_decision_for_all_aggregators(mock_env, mock_bstep,
 
 
 @pytest.mark.parametrize('estimate_fn,x_action,logits',
-                         [(shooting.truncated_return, 0,
+                         [(mc_simulation.truncated_return, 0,
                            None),  # No predictions.
-                          (shooting.bootstrap_return_with_value, 1,
+                          (mc_simulation.bootstrap_return_with_value, 1,
                            # The first three predictions are for the first
                            # action. No extra "bonus".
                            # The last three predictions are for the second
                            # action. Extra bonus of 1 for mean aggregator.
-                          (np.array([[0]] * 3 + [[1]] * 3), None))
+                           (np.array([[0]] * 3 + [[1]] * 3), None))
                           ])
 def test_greedy_decision_for_all_return_estimators(mock_env, mock_bstep,
                                                    estimate_fn, x_action,
@@ -202,7 +202,7 @@ def test_rollout_time_limit(mock_env, rollout_time_limit):
 
         return [1.] * len(episodes)
 
-    with mock.patch('alpacka.agents.shooting.type') as mock_type:
+    with mock.patch('alpacka.agents.mc_simulation.type') as mock_type:
         mock_type.return_value = lambda: mock_env
         agent = agents.ShootingAgent(
             n_rollouts=1,
