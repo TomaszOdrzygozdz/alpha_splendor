@@ -1,4 +1,6 @@
-"""Sokoban environment."""
+"""Sokoban environments."""
+
+import random
 
 import numpy as np
 from gym_sokoban.envs import sokoban_env_fast
@@ -31,3 +33,24 @@ class Sokoban(sokoban_env_fast.SokobanEnvFast, base.ModelEnv):
     def restore_state(self, state):
         self.restore_full_state(state)
         return self.render(mode=self.mode)
+
+
+class ActionNoiseSokoban(Sokoban):
+    """Sokoban with randomized actions."""
+
+    def __init__(self, action_noise, *args, **kwargs):
+        """Initializes ActionNoiseSokoban.
+
+        Args:
+            action_noise: float, how often action passed to step() should be
+                replaced by one sampled uniformly from action space.
+            args: passed to Sokoban.__init__()
+            kwargs: passed to Sokoban.__init__()
+        """
+        super().__init__(*args, **kwargs)
+        self._action_noise = action_noise
+
+    def step(self, action):
+        if random.random() < self._action_noise:
+            action = self.action_space.sample()
+        return super().step(action)
