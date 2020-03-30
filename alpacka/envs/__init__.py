@@ -17,6 +17,7 @@ def configure_env(env_class):
     )
 
 
+ActionNoiseSokoban = configure_env(sokoban.ActionNoiseSokoban) # pylint: disable=invalid-name
 CartPole = configure_env(cartpole.CartPole)  # pylint: disable=invalid-name
 GoogleFootball = configure_env(gfootball.GoogleFootball)  # pylint: disable=invalid-name
 Sokoban = configure_env(sokoban.Sokoban)  # pylint: disable=invalid-name
