@@ -133,7 +133,6 @@ class MCSimulationAgent(base.OnlineAgent):
         if 'logits' in prior_info:
             agent_info['sim_logits'] = prior_info['logits']
 
-        self._run_agent_callbacks(episodes)
         return action, agent_info
 
     def network_signature(self, observation_space, action_space):
@@ -255,6 +254,7 @@ class ShootingAgent(MCSimulationAgent):
                 init_state=self._model.clone_state(),
                 time_limit=self._rollout_time_limit,
             ))
+        self._run_agent_callbacks(episodes)
 
         # Compute episode returns and put them in a map.
         returns_ = yield from self._estimate_fn(episodes, self._discount)
@@ -355,6 +355,7 @@ class BanditAgent(MCSimulationAgent):
             init_state=state,
             time_limit=self._rollout_time_limit,
         )
+        self._run_agent_callbacks(episodes)
 
         returns_ = yield from self._estimate_fn(episodes, self._discount)
         return np.mean(returns_)
@@ -435,7 +436,6 @@ class BanditAgent(MCSimulationAgent):
             'bonuses': self._bonus_fn(action_counts, prior_probs=prior_probs),
         })
 
-        self._run_agent_callbacks(episodes)
         return action, agent_info
 
     @staticmethod
