@@ -527,16 +527,34 @@ class StochasticMCTSAgent(base.OnlineAgent):
         }
 
     def _compute_tree_metrics(self, root):
-        def generate_leaf_depths(node, depth):
-            if node.is_leaf:
-                yield depth
-            for child in node.children:
-                yield from generate_leaf_depths(child, depth + 1)
+        # TODO: unit-test this function
+        leaf_depths = list()
+        path = [root]
+        # number of visited children for given node in path
+        children_visited = [0]
 
-        depths = list(generate_leaf_depths(root, 0))
+        def go_to_parent():
+            path.pop()
+            children_visited.pop()
+
+        # Iterate over leaves with DFS
+        while path:
+            node = path[-1]
+            if node.is_leaf:
+                leaf_depths.append(len(path) - 1)
+                go_to_parent()
+            elif children_visited[-1] == len(node.children):
+                # all children of given node were already visited
+                go_to_parent()
+            else:
+                # expand new child
+                path.append(node.children[children_visited[-1]])
+                children_visited[-1] += 1
+                children_visited.append(0)
+
         return {
-            'depth_mean': sum(depths) / len(depths),
-            'depth_max': max(depths),
+            'depth_mean': sum(leaf_depths) / len(leaf_depths),
+            'depth_max': max(leaf_depths),
         }
 
     def network_signature(self, observation_space, action_space):
