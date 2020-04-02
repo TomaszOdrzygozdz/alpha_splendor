@@ -261,8 +261,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
         new_leaf_rater_class=RolloutNewLeafRater,
         exploration_bonus_fn=puct_exploration_bonus,
         exploration_weight=1.0,
-        leaf_quality_bias=0.0,
-        leaf_quality_dampening=1.0,
         sampling_temperature=0.0,
         **kwargs
     ):
@@ -278,11 +276,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
                 quality when choosing a node to explore in an MCTS pass.
                 Signature: (child_count, parent_count) -> bonus.
             exploration_weight (float): Weight of the exploration bonus.
-            leaf_quality_bias (float): Bias for leaf qualities. Can be used to
-                make the initial predictions more/less optimistic.
-            leaf_quality_dampening (float): Dampening rate for leaf qualities.
-                Can be used to decrease the influence of random network
-                initialization.
             sampling_temperature (float): Sampling temperature for choosing the
                 actions on the real environment.
             kwargs: OnlineAgent init keyword arguments.
@@ -293,8 +286,6 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._new_leaf_rater = new_leaf_rater_class(self._discount)
         self._exploration_bonus = exploration_bonus_fn
         self._exploration_weight = exploration_weight
-        self._leaf_quality_bias = leaf_quality_bias
-        self._leaf_quality_dampening = leaf_quality_dampening
         self._sampling_temperature = sampling_temperature
         self._model = None
         self._root = None
@@ -394,11 +385,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
             self._action_space
         )
         leaf.children = [
-            TreeNode(
-                quality * self._leaf_quality_dampening +
-                self._leaf_quality_bias,
-                prob,
-            )
+            TreeNode(quality, prob)
             for (quality, prob) in child_qualities_and_probs
         ]
         action = self._choose_action(leaf, exploratory=True)
@@ -487,17 +474,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
         return transitions
 
     def _compute_node_info(self, node):
-        def unscale(x):
-            # Prevent in-place subtraction.
-            x = x - self._leaf_quality_bias
-            if self._leaf_quality_dampening:
-                x /= self._leaf_quality_dampening
-            return x
-
-        value = unscale(node.value)
-        qualities = np.array([
-            unscale(child.quality) for child in node.children
-        ])
+        value = node.value
+        qualities = np.array([child.quality for child in node.children])
         action_counts = np.array([child.count for child in node.children])
         # "Smooth" histogram takes into account the initial actions
         # performed on all children of an expanded leaf, resulting in
