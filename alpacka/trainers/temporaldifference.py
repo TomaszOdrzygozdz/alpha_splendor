@@ -11,7 +11,7 @@ from alpacka.trainers import replay_buffers
 @gin.configurable
 def target_n_return(episode):
     x = np.cumsum(episode.transition_batch.reward[::-1], dtype=np.float)[::-1, np.newaxis]
-    return x
+    return x, x
 
 
 class TDTrainer(base.Trainer):
@@ -52,7 +52,7 @@ class TDTrainer(base.Trainer):
         self._n_steps_per_epoch = n_steps_per_epoch
 
         # (input, target)
-        datapoint_sig = (network_signature.input, network_signature.output)
+        datapoint_sig = (network_signature.input, (network_signature.output, network_signature.output))
         self._replay_buffer = replay_buffers.HierarchicalReplayBuffer(
             datapoint_sig,
             capacity=replay_buffer_capacity,
@@ -73,11 +73,15 @@ class TDTrainer(base.Trainer):
             buckets,
         )
 
+        # xxx = self._replay_buffer.sample(self._batch_size)
+        # print(xxx)
+
     def train_epoch(self, network):
 
         def data_stream():
             # calculate new labels in fly
             for _ in range(self._n_steps_per_epoch):
-                yield self._replay_buffer.sample(self._batch_size)
+                xxx = self._replay_buffer.sample(self._batch_size)
+                yield (xxx[0], xxx[1][0])
 
         return network.train(data_stream)
