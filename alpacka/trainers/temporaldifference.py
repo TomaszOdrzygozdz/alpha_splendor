@@ -2,16 +2,50 @@
 
 import gin
 import numpy as np
+import math
 
 from alpacka import data
 from alpacka.trainers import base
 from alpacka.trainers import replay_buffers
 
 
+
 @gin.configurable
-def target_n_return(episode):
-    x = np.cumsum(episode.transition_batch.reward[::-1], dtype=np.float)[::-1, np.newaxis]
-    return x, x
+def target_n_return(episode, n, lambda_):
+    assert n >= 1, "TD(0) does not make sense"
+    truncated = episode.truncated
+    rewards = episode.transition_batch.reward
+    ep_len = len(episode.transition_batch.observation)
+    cum_reward = 0
+
+    # TODO remove me after testes
+    for i in range(ep_len-1):
+        assert np.sum(np.abs(episode.transition_batch.next_observation[2] - episode.transition_batch.observation[3])) == 0, "Just a stupid test"
+
+
+    cum_rewards = []
+    bootstrap_obs = []
+    bootstrap_lambdas = []
+    for curr_obs_index in reversed(range(ep_len)):
+        reward_to_remove = 0 if curr_obs_index + n >= ep_len else math.pow(lambda_, n-1)*rewards[curr_obs_index + n]
+        cum_reward -= reward_to_remove
+        cum_reward *= lambda_
+        cum_reward += rewards[curr_obs_index]
+
+        bootstrap_index = min(curr_obs_index + n, ep_len)
+        bootstrap_ob = episode.transition_batch.observation[bootstrap_index - 1]
+        bootstrap_lambda = math.pow(lambda_, bootstrap_index - curr_obs_index)
+        if bootstrap_index == ep_len and not truncated:
+            bootstrap_lambda = 0
+
+        cum_rewards.append(cum_reward)
+        bootstrap_obs.append(bootstrap_ob)
+        bootstrap_lambdas.append(bootstrap_lambda)
+
+
+    # x = np.cumsum(episode.transition_batch.reward[::-1], dtype=np.float)[::-1, np.newaxis]
+    # return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], np.array(bootstrap_obs)[::-1], np.array(bootstrap_lambdas, dtype=np.float)[::-1, np.newaxis]
+    return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], np.array(bootstrap_lambdas, dtype=np.float)[::-1, np.newaxis]
 
 
 class TDTrainer(base.Trainer):
@@ -24,6 +58,8 @@ class TDTrainer(base.Trainer):
     def __init__(
         self,
         network_signature,
+        temporal_diff_n,
+        lambda_=1.0,
         batch_size=64,
         n_steps_per_epoch=1000,
         replay_buffer_capacity=1000000,
@@ -36,6 +72,7 @@ class TDTrainer(base.Trainer):
             target (pytree): Pytree of functions episode -> target for
                 determining the targets for network training. The structure of
                 the tree should reflect the structure of a target.
+            temporal_diff_n: temporal difference distance, np.inf is supported
             batch_size (int): Batch size.
             n_steps_per_epoch (int): Number of optimizer steps to do per
                 epoch.
@@ -44,7 +81,7 @@ class TDTrainer(base.Trainer):
                 attribute names, defining the sampling hierarchy.
         """
         super().__init__(network_signature)
-        target = target_n_return
+        target = lambda episode: target_n_return(episode, temporal_diff_n, lambda_)
         self._target_fn = lambda episode: data.nested_map(
             lambda f: f(episode), target
         )
@@ -77,6 +114,8 @@ class TDTrainer(base.Trainer):
         # print(xxx)
 
     def train_epoch(self, network):
+        # sample = self._replay_buffer.sample(self._batch_size)
+        # network.predict(sample)
 
         def data_stream():
             # calculate new labels in fly
