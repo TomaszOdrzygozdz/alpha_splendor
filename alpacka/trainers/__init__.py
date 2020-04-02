@@ -4,6 +4,7 @@ import gin
 
 from alpacka.trainers import dummy
 from alpacka.trainers import supervised
+from alpacka.trainers import temporaldifference
 from alpacka.trainers.base import Trainer
 
 
@@ -17,3 +18,4 @@ def configure_trainer(trainer_class):
 
 DummyTrainer = configure_trainer(dummy.DummyTrainer)  # pylint: disable=invalid-name
 SupervisedTrainer = configure_trainer(supervised.SupervisedTrainer)  # pylint: disable=invalid-name
+TDTrainer = configure_trainer(temporaldifference.TDTrainer)  # pylint: disable=invalid-name
