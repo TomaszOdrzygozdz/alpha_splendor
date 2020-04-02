@@ -484,11 +484,22 @@ class StochasticMCTSAgent(base.OnlineAgent):
         # Ordinary histogram only takes into account the actual actions
         # chosen in the inner nodes.
         action_histogram = (action_counts - 1) / np.sum(action_counts - 1)
+        prior_probabilities = np.array([
+            child.prior_probability for child in node.children
+        ])
+        exploration_bonuses = self._exploration_weight * np.array([
+            self._exploration_bonus(child.count, node.count)
+            for child in node.children
+        ])
+        total_scores = qualities + prior_probabilities * exploration_bonuses
         return {
             'value': value,
             'qualities': qualities,
             'action_histogram_smooth': action_histogram_smooth,
             'action_histogram': action_histogram,
+            'prior_probabilities': prior_probabilities,
+            'exploration_bonuses': exploration_bonuses,
+            'total_scores': total_scores,
         }
 
     @staticmethod
