@@ -263,6 +263,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         exploration_weight=1.0,
         leaf_quality_bias=0.0,
         leaf_quality_dampening=1.0,
+        sampling_temperature=0.0,
         **kwargs
     ):
         """Initializes StochasticMCTSAgent.
@@ -282,6 +283,8 @@ class StochasticMCTSAgent(base.OnlineAgent):
             leaf_quality_dampening (float): Dampening rate for leaf qualities.
                 Can be used to decrease the influence of random network
                 initialization.
+            sampling_temperature (float): Sampling temperature for choosing the
+                actions on the real environment.
             kwargs: OnlineAgent init keyword arguments.
         """
         super().__init__(**kwargs)
@@ -292,6 +295,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._exploration_weight = exploration_weight
         self._leaf_quality_bias = leaf_quality_bias
         self._leaf_quality_dampening = leaf_quality_dampening
+        self._sampling_temperature = sampling_temperature
         self._model = None
         self._root = None
         self._root_state = None
@@ -309,12 +313,18 @@ class StochasticMCTSAgent(base.OnlineAgent):
             Action to take.
         """
         def rate_child(child):
-            quality = child.quality
             if exploratory:
-                quality += (
+                quality = child.quality + (
                     self._exploration_weight * child.prior_probability *
                     self._exploration_bonus(child.count, node.count)
                 )
+            else:
+                # Sample an action to perform on the real environment using
+                # Gumbel sampling. No need to normalize logits.
+                quality = np.log(child.count)
+                u = np.random.uniform(low=1e-6, high=1.0 - 1e-6)
+                g = -np.log(-np.log(u))
+                quality += g * self._sampling_temperature
             return quality
 
         child_qualities = [rate_child(child) for child in node.children]
