@@ -20,7 +20,7 @@ def target_n_return(episode, n, lambda_):
 
     # TODO remove me after testes
     for i in range(ep_len-1):
-        assert np.sum(np.abs(episode.transition_batch.next_observation[2] - episode.transition_batch.observation[3])) == 0, "Just a stupid test"
+        assert np.sum(np.abs(episode.transition_batch.next_observation[i] - episode.transition_batch.observation[i+1])) == 0, "Just a stupid test"
 
 
     cum_rewards = []
@@ -44,8 +44,8 @@ def target_n_return(episode, n, lambda_):
 
 
     # x = np.cumsum(episode.transition_batch.reward[::-1], dtype=np.float)[::-1, np.newaxis]
-    # return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], np.array(bootstrap_obs)[::-1], np.array(bootstrap_lambdas, dtype=np.float)[::-1, np.newaxis]
-    return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], np.array(bootstrap_lambdas, dtype=np.float)[::-1, np.newaxis]
+    return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], np.array(bootstrap_obs)[::-1], np.array(bootstrap_lambdas, dtype=np.float)[::-1, np.newaxis]
+    # return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], np.array(bootstrap_lambdas, dtype=np.float)[::-1, np.newaxis]
 
 
 class TDTrainer(base.Trainer):
@@ -88,8 +88,8 @@ class TDTrainer(base.Trainer):
         self._batch_size = batch_size
         self._n_steps_per_epoch = n_steps_per_epoch
 
-        # (input, target)
-        datapoint_sig = (network_signature.input, (network_signature.output, network_signature.output))
+        # TODO: possibly better names? (input, target)
+        datapoint_sig = (network_signature.input, (network_signature.output, network_signature.input, network_signature.output))
         self._replay_buffer = replay_buffers.HierarchicalReplayBuffer(
             datapoint_sig,
             capacity=replay_buffer_capacity,
@@ -110,17 +110,13 @@ class TDTrainer(base.Trainer):
             buckets,
         )
 
-        # xxx = self._replay_buffer.sample(self._batch_size)
-        # print(xxx)
-
     def train_epoch(self, network):
-        # sample = self._replay_buffer.sample(self._batch_size)
-        # network.predict(sample)
 
         def data_stream():
             # calculate new labels in fly
             for _ in range(self._n_steps_per_epoch):
-                xxx = self._replay_buffer.sample(self._batch_size)
-                yield (xxx[0], xxx[1][0])
+                obs, (cum_reward, bootstrap_obs, bootstrap_lambda) = self._replay_buffer.sample(self._batch_size)
+                target = cum_reward + bootstrap_lambda * network.predict(bootstrap_obs)
+                yield obs, target
 
         return network.train(data_stream)
