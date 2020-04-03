@@ -22,6 +22,11 @@ wrappers_to_test = [
     functools.partial(envs.TimeLimitWrapper, max_episode_steps=10),
 ]
 
+football_test = pytest.mark.skipif(
+    gfootball.football_env is None,
+    reason='Could not import Google Research Football.',
+)
+
 @pytest.fixture(scope='module',
                 params=itertools.product(envs_to_test, wrappers_to_test))
 def env_fn(request):
@@ -117,8 +122,7 @@ def test_restore_in_place_of_reset(env_fn):
     np.testing.assert_equal(state, state_)
 
 
-@pytest.mark.skipif(gfootball.football_env is None,
-                    reason='Could not import Google Research Football.')
+@football_test
 def test_rerun_plan_after_restore_yields_the_same_trajectory_in_grf():
     # Set up
     env = envs.GoogleFootball()
@@ -140,8 +144,7 @@ def test_rerun_plan_after_restore_yields_the_same_trajectory_in_grf():
     assert np.array_equal(first, second)
 
 
-@pytest.mark.skipif(gfootball.football_env is None,
-                    reason='Could not import Google Research Football.')
+@football_test
 def test_rerun_plan_after_reset_yields_different_trajectory_in_grf():
     # Set up
     env = envs.GoogleFootball()
@@ -160,3 +163,16 @@ def test_rerun_plan_after_reset_yields_different_trajectory_in_grf():
     first = np.array(trajectories[0])
     second = np.array(trajectories[1])
     assert not np.array_equal(first, second)
+
+
+@football_test
+def test_restore_after_done_in_grf():
+    env = envs.GoogleFootball(env_name='academy_empty_goal_close')
+    env.reset()
+    state = env.clone_state()
+    # Go right until reaching the goal.
+    done = False
+    while not done:
+        (_, _, done, _) = env.step(5)
+    env.restore_state(state)
+    env.step(5)  # Check if we can make a step after restore.
