@@ -107,7 +107,7 @@ class GoogleFootball(base.ModelEnv):
         # Temporary fix for a bug in Football related to restoring state after
         # done. Proper fix is on the way:
         # https://github.com/google-research/football/pull/135
-        # pylint: disable=protected-access,import-outside-toplevel,no-name-in-module
+        # pylint: disable=protected-access,import-outside-toplevel,no-name-in-module,import-error
         from gfootball.env import observation_processor
         env = self._env.unwrapped._env
         if env._trace is None:
