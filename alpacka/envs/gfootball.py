@@ -1,13 +1,11 @@
 """Google Football environment."""
 
 import collections
-import copy
 
 import gym
 import numpy as np
 
 from alpacka.envs import base
-from alpacka.utils import attribute
 from alpacka.utils import gfootball as gfootball_utils
 
 try:
@@ -93,48 +91,9 @@ class GoogleFootball(base.ModelEnv):
         # Byte suffix to enforce self.state_size of state.
         suffix = bytes(self.state_size - len(size_encoded) - len(raw_state))
         resized_state = size_encoded + raw_state + suffix
-        state = np.frombuffer(resized_state, dtype=np.uint8)
-
-        env = self._env.unwrapped
-
-        # Temporary fix for a reward bug in Google Football: put everything in
-        # state. Long-term fix on the way:
-        # https://github.com/google-research/football/pull/115
-        trace = env._env._trace
-        trace_copy = attribute.deep_copy_without_fields(trace, ['_config',
-                                                                '_dump_config'])
-        trace_copy._config = trace._config
-        trace_copy._dump_config = trace._dump_config
-
-        state_tuple = (
-            state,
-            copy.deepcopy(env._env._steps_time),
-            copy.deepcopy(env._env._step),
-            copy.deepcopy(env._env._cumulative_reward),
-            copy.deepcopy(env._env._observation),
-            trace_copy,
-        )
-        # Imitate a tuple without the trace part to fool np.testing.assert_equal
-        # during testing.
-
-        class StateModuloTrace(tuple):
-            def __len__(self):
-                assert super().__len__() == 6
-                return 5
-        return StateModuloTrace(state_tuple)
+        return np.frombuffer(resized_state, dtype=np.uint8)
 
     def restore_state(self, state):
-        # pylint: disable=protected-access
-        env = self._env.unwrapped
-        (
-            state,
-            env._env._steps_time,
-            env._env._step,
-            env._env._cumulative_reward,
-            env._env._observation,
-            env._env._trace,
-        ) = state
-
         assert state.size == self.state_size, (
             f'State size does not match: {state.size} != {self.state_size}')
 
@@ -144,6 +103,16 @@ class GoogleFootball(base.ModelEnv):
         assert (state[(size_decoded + 3):] == 0).all()
 
         self._env.set_state(bytes(raw_state))
+
+        # Temporary fix for a bug in Football related to restoring state after
+        # done. Proper fix is on the way:
+        # https://github.com/google-research/football/pull/135
+        # pylint: disable=protected-access,import-outside-toplevel,no-name-in-module
+        from gfootball.env import observation_processor
+        env = self._env.unwrapped._env
+        if env._trace is None:
+            env._trace = observation_processor.ObservationProcessor(env._config)
+
         return self._observation
 
     @property
