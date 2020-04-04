@@ -261,6 +261,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         new_leaf_rater_class=RolloutNewLeafRater,
         exploration_bonus_fn=puct_exploration_bonus,
         exploration_weight=1.0,
+        action_selection_mode='count',
         sampling_temperature=0.0,
         **kwargs
     ):
@@ -276,6 +277,9 @@ class StochasticMCTSAgent(base.OnlineAgent):
                 quality when choosing a node to explore in an MCTS pass.
                 Signature: (child_count, parent_count) -> bonus.
             exploration_weight (float): Weight of the exploration bonus.
+            action_selection_mode (str): Mode of selecting the final action.
+                Either 'count' - select based on the action visit count, or
+                'quality' - select based on the estimated quality.
             sampling_temperature (float): Sampling temperature for choosing the
                 actions on the real environment.
             kwargs: OnlineAgent init keyword arguments.
@@ -286,6 +290,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
         self._new_leaf_rater = new_leaf_rater_class(self._discount)
         self._exploration_bonus = exploration_bonus_fn
         self._exploration_weight = exploration_weight
+        self._action_selection_mode = action_selection_mode
         self._sampling_temperature = sampling_temperature
         self._model = None
         self._root = None
@@ -312,7 +317,10 @@ class StochasticMCTSAgent(base.OnlineAgent):
             else:
                 # Sample an action to perform on the real environment using
                 # Gumbel sampling. No need to normalize logits.
-                quality = np.log(child.count)
+                if self._action_selection_mode == 'count':
+                    quality = np.log(child.count)
+                else:
+                    quality = child.quality
                 u = np.random.uniform(low=1e-6, high=1.0 - 1e-6)
                 g = -np.log(-np.log(u))
                 quality += g * self._sampling_temperature
