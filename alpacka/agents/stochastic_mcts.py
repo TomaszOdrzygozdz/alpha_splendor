@@ -323,11 +323,11 @@ class StochasticMCTSAgent(base.OnlineAgent):
                     g = -np.log(-np.log(u))
                     quality += g * self._sampling_temperature
                 elif self._action_selection_mode == 'quality':
-                    assert self._sampling_temperature==0, "Not yet implemented"
+                    assert self._sampling_temperature == 0, 'Not implemented'
                     quality = child.quality
                 else:
-                    raise RuntimeException("action_selection_mode:" + 
-                    action_selection_mode + " is not supported")
+                    raise Exception('action_selection_mode:' + 
+                    self._action_selection_mode + ' is not supported')
             return quality
 
         child_qualities = [rate_child(child) for child in node.children]
