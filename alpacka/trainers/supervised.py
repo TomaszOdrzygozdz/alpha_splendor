@@ -67,6 +67,7 @@ class SupervisedTrainer(base.Trainer):
         n_steps_per_epoch=1000,
         replay_buffer_capacity=1000000,
         replay_buffer_sampling_hierarchy=(),
+        **kwargs
     ):
         """Initializes SupervisedTrainer.
 
@@ -81,6 +82,7 @@ class SupervisedTrainer(base.Trainer):
             replay_buffer_capacity (int): Maximum size of the replay buffer.
             replay_buffer_sampling_hierarchy (tuple): Sequence of Episode
                 attribute names, defining the sampling hierarchy.
+            kwargs: annihilate unnecessary parameters
         """
         super().__init__(network_signature)
         self._target_fn = lambda episode: data.nested_map(

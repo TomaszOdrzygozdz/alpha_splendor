@@ -10,13 +10,15 @@ class Trainer:
     learning on a tree.
     """
 
-    def __init__(self, network_signature):
+    def __init__(self, network_signature, **kwargs):
         """No-op constructor just to specify the interface.
 
         Args:
             network_signature (pytree): Input signature for the network.
+            kwargs: other parameters.
         """
         del network_signature
+        del kwargs
 
     def add_episode(self, episode):
         """Adds an episode to memory.
