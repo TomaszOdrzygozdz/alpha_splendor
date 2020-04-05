@@ -326,7 +326,7 @@ class StochasticMCTSAgent(base.OnlineAgent):
                     assert self._sampling_temperature==0, "Not yet implemented"
                     quality = child.quality
                 else:
-                    throw RuntimeException("action_selection_mode:" + 
+                    raise RuntimeException("action_selection_mode:" + 
                     action_selection_mode + " is not supported")
             return quality
 
