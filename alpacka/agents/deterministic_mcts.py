@@ -6,8 +6,8 @@ import gin
 import numpy as np
 
 from alpacka import data
-from alpacka.agents import base
 from alpacka import metric_logging
+from alpacka.agents import base
 from alpacka.utils import space as space_utils
 
 
