@@ -25,7 +25,7 @@ def _make_inputs(input_signature):
     return data.nested_map(init_layer, input_signature)
 
 
-def _make_output_heads(hidden, output_signature, output_activation):
+def _make_output_heads(hidden, output_signature, output_activation, zero_init):
     """Initializes Dense layers for heads.
 
     Args:
@@ -33,6 +33,8 @@ def _make_output_heads(hidden, output_signature, output_activation):
         output_signature (pytree of TensorSignatures): Output signature.
         output_activation (pytree of activations): Activation of every head. See
             tf.keras.layers.Activation docstring for possible values.
+        zero_init (bool): Whether to initialize the heads with zeros. Useful for
+            ensuring proper exploration in the initial stages of RL training.
 
     Returns:
         Pytree of head output tensors.
@@ -40,15 +42,24 @@ def _make_output_heads(hidden, output_signature, output_activation):
     def init_head(signature, activation):
         assert signature.dtype == np.float32
         (depth,) = signature.shape
-        return keras.layers.Dense(depth, activation=activation)(hidden)
+        kwargs = {'activation': activation}
+        if zero_init:
+            kwargs['kernel_initializer'] = 'zeros'
+            kwargs['bias_initializer'] = 'zeros'
+        return keras.layers.Dense(depth, **kwargs)(hidden)
     return data.nested_zip_with(
         init_head, (output_signature, output_activation)
     )
 
 
 @gin.configurable
-def mlp(network_signature, hidden_sizes=(32,), activation='relu',
-        output_activation=None):
+def mlp(
+    network_signature,
+    hidden_sizes=(32,),
+    activation='relu',
+    output_activation=None,
+    output_zero_init=False,
+):
     """Simple multilayer perceptron."""
     # TODO(koz4k): Consider moving common boilerplate code to KerasNetwork.
     inputs = _make_inputs(network_signature.input)
@@ -57,7 +68,9 @@ def mlp(network_signature, hidden_sizes=(32,), activation='relu',
     for h in hidden_sizes:
         x = keras.layers.Dense(h, activation=activation)(x)
 
-    outputs = _make_output_heads(x, network_signature.output, output_activation)
+    outputs = _make_output_heads(
+        x, network_signature.output, output_activation, output_zero_init
+    )
     return keras.Model(inputs=inputs, outputs=outputs)
 
 
@@ -69,6 +82,7 @@ def convnet_mnist(
     d_ff=128,
     activation='relu',
     output_activation=None,
+    output_zero_init=False,
     global_average_pooling=False,
 ):
     """Simple convolutional network."""
@@ -84,7 +98,9 @@ def convnet_mnist(
     x = keras.layers.Flatten()(x)
     x = keras.layers.Dense(d_ff, activation=activation)(x)
 
-    outputs = _make_output_heads(x, network_signature.output, output_activation)
+    outputs = _make_output_heads(
+        x, network_signature.output, output_activation, output_zero_init
+    )
     return keras.Model(inputs=inputs, outputs=outputs)
 
 

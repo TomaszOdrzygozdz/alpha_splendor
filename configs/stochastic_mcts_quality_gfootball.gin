@@ -1,15 +1,19 @@
-# Parameters for CartPole:
+import alpacka.tracing
+
+# Parameters for GoogleFootball:
 # ==============================================================================
-CartPole.solved_at = 150
+GoogleFootball.env_name = 'academy_empty_goal'
+GoogleFootball.representation = 'simple115'
+GoogleFootball.stacked = False
 
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = ('mean_squared_error', 'categorical_crossentropy')
-KerasNetwork.loss_weights = [1.0, 10.0]
+KerasNetwork.loss_weights = [1.0, 0.001]
 KerasNetwork.metrics = [['mae', 'mse'], ['categorical_crossentropy']]
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
 KerasNetwork.optimizer = 'adam'
-KerasNetwork.weight_decay = 0.0
+KerasNetwork.weight_decay = 1e-6
 KerasNetwork.train_callbacks = None
 
 # Parameters for LocalBatchStepper:
@@ -20,16 +24,21 @@ KerasNetwork.train_callbacks = None
 # ==============================================================================
 StochasticMCTSAgent.discount = 0.99
 StochasticMCTSAgent.exploration_bonus_fn = @alpacka.agents.stochastic_mcts.puct_exploration_bonus
-StochasticMCTSAgent.exploration_weight = 10.0
-StochasticMCTSAgent.n_passes = 10
+StochasticMCTSAgent.exploration_weight = 1.0
+StochasticMCTSAgent.n_passes = 30
 StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.QualityNetworkNewLeafRater
-StochasticMCTSAgent.action_selection_mode = 'count'
-StochasticMCTSAgent.sampling_temperature = 0.1
+StochasticMCTSAgent.sampling_temperature = 0.3
+StochasticMCTSAgent.callback_classes = (@alpacka.tracing.TraceCallback,)
+
+# Parameters for TraceCallback:
+# ==============================================================================
+TraceCallback.output_dir = './traces/'
+TraceCallback.sample_rate = 0.01
 
 # Parameters for mlp:
 # ==============================================================================
 mlp.activation = 'relu'
-mlp.hidden_sizes = (64,)
+mlp.hidden_sizes = (64, 64)
 mlp.output_activation = (None, 'softmax')
 mlp.output_zero_init = True
 
@@ -44,12 +53,13 @@ QualityNetworkNewLeafRater.use_policy = True
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.StochasticMCTSAgent
-Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
-Runner.env_class = @alpacka.envs.CartPole
-Runner.n_envs = 1
-Runner.episode_time_limit = 500
+Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
+Runner.env_class = @alpacka.envs.GoogleFootball
+Runner.env_kwargs = {}
+Runner.n_envs = 64
+Runner.episode_time_limit = 100
 Runner.n_epochs = None
-Runner.n_precollect_epochs = 100
+Runner.n_precollect_epochs = 30
 Runner.network_class = @alpacka.networks.KerasNetwork
 Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
@@ -60,14 +70,14 @@ SupervisedTrainer.target = (
     @alpacka.trainers.supervised.target_action_histogram_smooth,
 )
 SupervisedTrainer.batch_size = 64
-SupervisedTrainer.n_steps_per_epoch = 100
-SupervisedTrainer.replay_buffer_capacity = 10000
+SupervisedTrainer.n_steps_per_epoch = 1000
+SupervisedTrainer.replay_buffer_capacity = 1000000
 SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
 
 # Parameters for target_qualities:
 # ==============================================================================
 # None.
 
-# Parameters for target_action_histogram_smooth:
+# Parameters for target_action_histogram:
 # ==============================================================================
 # None.

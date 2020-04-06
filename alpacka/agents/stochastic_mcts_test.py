@@ -121,7 +121,7 @@ def make_one_level_binary_tree(
         (0, 0, 0, 1, 1),  # Should choose right because of high reward.
     ]
 )
-def test_decision_after_one_pass(
+def test_decision_after_two_passes(
     left_value,
     right_value,
     left_reward,
@@ -130,12 +130,12 @@ def test_decision_after_one_pass(
 ):
     # 0, action 0 -> 1 (left)
     # 0, action 1 -> 2 (right)
-    # 1 pass, should choose depending on qualities.
+    # 2 passes, should choose depending on qualities.
     (env, new_leaf_rater_class) = make_one_level_binary_tree(
         left_value, right_value, left_reward, right_reward
     )
     agent = agents.StochasticMCTSAgent(
-        n_passes=1,
+        n_passes=2,
         new_leaf_rater_class=new_leaf_rater_class,
     )
     observation = env.reset()
@@ -170,7 +170,7 @@ def test_backtracks_because_of_value():
     # 0, action 1 -> 2 (high value)
     # 2, action 0 -> 3 (very low value)
     # 2, action 1 -> 3 (very low value)
-    # 2 passes, should choose 0.
+    # 4 passes, should choose 0.
     env = testing.TabularEnv(
         init_state=0,
         n_actions=2,
@@ -187,13 +187,15 @@ def test_backtracks_because_of_value():
         },
     )
     agent = agents.StochasticMCTSAgent(
-        n_passes=2,
+        n_passes=4,
         new_leaf_rater_class=functools.partial(
             TabularNewLeafRater,
             state_values={
                 0: 0,
                 1: 0,
                 2: 1,
+                3: 0,
+                4: 0,
                 5: -10,
                 6: -10,
             },

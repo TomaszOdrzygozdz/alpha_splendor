@@ -39,8 +39,7 @@ class CartPole(classic_control.CartPoleEnv, base.ModelEnv):
 
     def step(self, action):
         (observation, reward, done, info) = super().step(action)
-        if done:
-            info['solved'] = self._step >= self.solved_at
+        info['solved'] = self._step >= self.solved_at
         self._step += 1
         return (observation, reward * self.reward_scale, done, info)
 

@@ -1,6 +1,6 @@
 # Parameters for CartPole:
 # ==============================================================================
-CartPole.solved_at = 100
+CartPole.solved_at = 150
 
 # Parameters for KerasNetwork:
 # ==============================================================================
@@ -20,17 +20,18 @@ KerasNetwork.train_callbacks = None
 # ==============================================================================
 StochasticMCTSAgent.discount = 0.99
 StochasticMCTSAgent.exploration_bonus_fn = @alpacka.agents.stochastic_mcts.puct_exploration_bonus
-StochasticMCTSAgent.exploration_weight = 1.0
-StochasticMCTSAgent.leaf_quality_bias = 0.0
-StochasticMCTSAgent.leaf_quality_dampening = 1.0
-StochasticMCTSAgent.n_passes = 10
+StochasticMCTSAgent.exploration_weight = 10.0
+StochasticMCTSAgent.n_passes = 20
 StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.ValueNetworkNewLeafRater
+StochasticMCTSAgent.action_selection_mode = 'count'
+StochasticMCTSAgent.sampling_temperature = 0.1
 
 # Parameters for mlp:
 # ==============================================================================
 mlp.activation = 'relu'
-mlp.hidden_sizes = (16,)
+mlp.hidden_sizes = (64,)
 mlp.output_activation = None
+mlp.output_zero_init = True
 
 # Parameters for puct_exploration_bonus:
 # ==============================================================================
@@ -57,7 +58,7 @@ Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 SupervisedTrainer.target = @alpacka.trainers.supervised.target_value
 SupervisedTrainer.batch_size = 64
 SupervisedTrainer.n_steps_per_epoch = 100
-SupervisedTrainer.replay_buffer_capacity = 1000000
+SupervisedTrainer.replay_buffer_capacity = 10000
 SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
 
 # Parameters for target_solved:
