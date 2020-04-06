@@ -315,19 +315,20 @@ class StochasticMCTSAgent(base.OnlineAgent):
                     self._exploration_bonus(child.count, node.count)
                 )
             else:
-                # Sample an action to perform on the real environment using
-                # Gumbel sampling. No need to normalize logits.
                 if self._action_selection_mode == 'count':
                     quality = np.log(child.count)
-                    u = np.random.uniform(low=1e-6, high=1.0 - 1e-6)
-                    g = -np.log(-np.log(u))
-                    quality += g * self._sampling_temperature
                 elif self._action_selection_mode == 'quality':
-                    assert self._sampling_temperature == 0, 'Not implemented'
                     quality = child.quality
                 else:
-                    raise Exception('action_selection_mode:' +
-                    self._action_selection_mode + ' is not supported')
+                    raise ValueError(
+                        'action_selection_mode ' + self._action_selection_mode +
+                        ' is not supported.'
+                    )
+                # Sample an action to perform on the real environment using
+                # Gumbel sampling. No need to normalize logits.
+                u = np.random.uniform(low=1e-6, high=1.0 - 1e-6)
+                g = -np.log(-np.log(u))
+                quality += g * self._sampling_temperature
             return quality
 
         child_qualities = [rate_child(child) for child in node.children]
