@@ -99,10 +99,6 @@ class MCSimulationAgent(base.OnlineAgent):
         self._model = env
         self._network_fn, self._params = yield data.NetworkRequest()
 
-    @asyncio.coroutine
-    def _act(self, observation, prior_info):
-        raise NotImplementedError()
-
     def act(self, observation):
         """Runs simulations and chooses the best action."""
         assert self._model is not None, (
@@ -149,6 +145,21 @@ class MCSimulationAgent(base.OnlineAgent):
             transition.agent_info['discounted_return'] = discounted_return
 
         return transitions
+
+    @asyncio.coroutine
+    def _act(self, observation, prior_info):
+        raise NotImplementedError()
+
+    def _rollout_simulation_agent(self, state=None):
+        init_state = state if state is not None else self._model.clone_state()
+        episodes = self._batch_stepper.run_episode_batch(
+            params=self._params,
+            epoch=self._epoch,
+            init_state=init_state,
+            time_limit=self._rollout_time_limit,
+        )
+        self._run_agent_callbacks(episodes)
+        return episodes
 
     def _run_agent_callbacks(self, episodes):
         for episode in episodes:
@@ -236,13 +247,7 @@ class ShootingAgent(MCSimulationAgent):
         # BatchStepper for a given number of episodes (by default n_envs).
         episodes = []
         for _ in range(math.ceil(self._n_rollouts / self._n_envs)):
-            episodes.extend(self._batch_stepper.run_episode_batch(
-                params=self._params,
-                epoch=self._epoch,
-                init_state=self._model.clone_state(),
-                time_limit=self._rollout_time_limit,
-            ))
-        self._run_agent_callbacks(episodes)
+            episodes.extend(self._rollout_simulation_agent())
 
         # Compute episode returns and put them in a map.
         returns_ = yield from self._estimate_fn(episodes, self._discount)
@@ -337,14 +342,7 @@ class BanditAgent(MCSimulationAgent):
 
     def _evaluate(self, state):
         """Evaluates state, returns an estimated state value."""
-        episodes = self._batch_stepper.run_episode_batch(
-            params=self._params,
-            epoch=self._epoch,
-            init_state=state,
-            time_limit=self._rollout_time_limit,
-        )
-        self._run_agent_callbacks(episodes)
-
+        episodes = self._rollout_simulation_agent(state)
         returns_ = yield from self._estimate_fn(episodes, self._discount)
         return np.mean(returns_)
 
