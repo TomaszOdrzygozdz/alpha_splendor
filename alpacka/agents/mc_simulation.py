@@ -127,11 +127,11 @@ class MCSimulationAgent(base.OnlineAgent):
 
         # Calculate simulation policy entropy, average value and logits.
         if 'entropy' in prior_info:
-            agent_info['sim_entropy'] = prior_info['entropy']
+            agent_info['simulation_entropy'] = prior_info['entropy']
         if 'value' in prior_info:
-            agent_info['sim_value'] = prior_info['value']
+            agent_info['network_value'] = prior_info['value']
         if 'logits' in prior_info:
-            agent_info['sim_logits'] = prior_info['logits']
+            agent_info['network_logits'] = prior_info['logits']
 
         return action, agent_info
 
@@ -175,39 +175,27 @@ class MCSimulationAgent(base.OnlineAgent):
         agent_info_batch = data.nested_concatenate(
             [episode.transition_batch.agent_info for episode in episodes])
 
-        if 'sim_entropy' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['sim_entropy'],
-                prefix='simulation_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'sim_value' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['sim_value'],
-                prefix='network_value',
-                with_min_and_max=True
-            ))
-
-        if 'sim_logits' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['sim_logits'],
-                prefix='network_logits',
-                with_min_and_max=True
-            ))
+        # Don't log the action histogram.
+        agent_info_batch.pop('action_histogram', None)
 
         if 'value' in agent_info_batch:
             metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['value'],
+                agent_info_batch.pop('value'),
                 prefix='simulation_value',
                 with_min_and_max=True
             ))
 
         if 'qualities' in agent_info_batch:
             metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['qualities'],
+                agent_info_batch.pop('qualities'),
                 prefix='simulation_qualities',
                 with_min_and_max=True
+            ))
+
+        # Log the rest of metrics from agent info.
+        for prefix, x in agent_info_batch.items():
+            metrics.update(metric_logging.compute_scalar_statistics(
+                x, prefix=prefix, with_min_and_max=True
             ))
 
         return metrics
@@ -417,76 +405,30 @@ class BanditAgent(MCSimulationAgent):
         if self._temperature > 0.01:
             action_counts_temp = action_counts ** (1 / self._temperature)
             action_probs = action_counts_temp / np.sum(action_counts_temp)
-            agent_info['entropy'] = -np.nansum(
+            agent_info['search_entropy'] = -np.nansum(
                 action_probs * np.log(action_probs))
 
             # Sample action.
             action = np.random.choice(len(action_probs), p=action_probs)
         else:
-            agent_info['entropy'] = 0
+            agent_info['search_entropy'] = 0
 
             # Choose action greedily.
             action = np.argmax(action_counts)
 
+        # Calculate the action histogram and its entropy
+        action_histogram = action_counts / np.sum(action_counts)
+        histogram_entropy = -np.nansum(
+            action_histogram * np.log(action_histogram))
+
         # Pack statistics into agent info.
         agent_info.update({
-            'action_histogram': action_counts / np.sum(action_counts),
+            'action_histogram': action_histogram,
+            'histogram_entropy': histogram_entropy,
             'value': value,
             'qualities': qualities,
-            'bonuses': self._bonus_fn(action_counts, prior_probs=prior_probs),
+            'simulation_bonuses': self._bonus_fn(
+                action_counts, prior_probs=prior_probs),
         })
 
         return action, agent_info
-
-    @staticmethod
-    def compute_metrics(episodes):
-        metrics = MCSimulationAgent.compute_metrics(episodes)
-        agent_info_batch = data.nested_concatenate(
-            [episode.transition_batch.agent_info for episode in episodes])
-
-        if 'noise_entropy' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['noise_entropy'],
-                prefix='noise_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'prior_entropy' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['prior_entropy'],
-                prefix='prior_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'sim_noise_cross_entropy' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['sim_noise_cross_entropy'],
-                prefix='sim_noise_cross_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'action_histogram' in agent_info_batch:
-            action_histogram = agent_info_batch['action_histogram']
-            histogram_entropy = -np.nansum(
-                action_histogram * np.log(action_histogram), axis=-1)
-            metrics.update(metric_logging.compute_scalar_statistics(
-                histogram_entropy,
-                prefix='histogram_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'entropy' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['entropy'],
-                prefix='search_entropy',
-                with_min_and_max=True
-            ))
-
-        if 'bonuses' in agent_info_batch:
-            metrics.update(metric_logging.compute_scalar_statistics(
-                agent_info_batch['bonuses'],
-                prefix='simulation_bonuses',
-                with_min_and_max=True
-            ))
-
-        return metrics
