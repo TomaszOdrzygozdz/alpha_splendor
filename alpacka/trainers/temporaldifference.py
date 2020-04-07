@@ -1,11 +1,15 @@
 """Temporal difference trainer."""
 
+import collections
 import gin
 import numpy as np
 
 from alpacka import data
 from alpacka.trainers import base
 from alpacka.trainers import replay_buffers
+
+TDTargetData = collections.namedtuple(
+    'TDTargetData', ['cum_reward', 'bootstrap_obs', 'bootstrap_gamma'])
 
 
 @gin.configurable
@@ -43,10 +47,10 @@ def target_n_return(episode, n, gamma):
     bootstrap_obs = []
     bootstrap_gammas = []
     for curr_obs_index in reversed(range(ep_len)):
-        reward_to_remove = 0 if curr_obs_index + n >= ep_len \
-            else gamma ** (n - 1) * rewards[curr_obs_index + n]
+        reward_to_remove = (0 if curr_obs_index + n >= ep_len
+            else gamma ** (n - 1) * rewards[curr_obs_index + n])
         # cum_rewards calculated progressively
-        # (for efficiency ressons when n is big)
+        # (for efficiency reasons when n is big)
         cum_reward -= reward_to_remove
         cum_reward *= gamma
         cum_reward += rewards[curr_obs_index]
@@ -62,9 +66,12 @@ def target_n_return(episode, n, gamma):
         bootstrap_obs.append(bootstrap_ob)
         bootstrap_gammas.append(bootstrap_gamma)
 
-    return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], \
-           np.array(bootstrap_obs)[::-1], \
-           np.array(bootstrap_gammas, dtype=np.float)[::-1, np.newaxis]
+    datapoints = TDTargetData(cum_reward=np.array(cum_rewards,
+                                            dtype=np.float)[::-1, np.newaxis],
+                              bootstrap_obs=np.array(bootstrap_obs)[::-1],
+                              bootstrap_gamma=np.array(bootstrap_gammas,
+                                            dtype=np.float)[::-1, np.newaxis])
+    return datapoints
 
 
 class TDTrainer(base.Trainer):
@@ -110,10 +117,11 @@ class TDTrainer(base.Trainer):
         self._batch_size = batch_size
         self._n_steps_per_epoch = n_steps_per_epoch
 
-        # TODO: possibly better names? (input, target)
-        datapoint_sig = (network_signature.input, (network_signature.output,
-                                                   network_signature.input,
-                                                   network_signature.output))
+        td_target_signature = TDTargetData(
+            cum_reward=network_signature.output,
+            bootstrap_obs=network_signature.input,
+            bootstrap_gamma=network_signature.output)
+        datapoint_sig = (network_signature.input, td_target_signature)
         self._replay_buffer = replay_buffers.HierarchicalReplayBuffer(
             datapoint_sig,
             capacity=replay_buffer_capacity,
