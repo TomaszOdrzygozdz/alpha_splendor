@@ -10,7 +10,29 @@ from alpacka.trainers import replay_buffers
 
 @gin.configurable
 def target_n_return(episode, n, gamma):
-    """Calculates targets with n-step bootstraped returns."""
+    """Calculates targets with n-step bootstraped returns.
+
+    It returns three vectors cum_rewards, bootstrap_obs, bootstrap_gammas
+    of the same length as the given episode (ep_len).
+
+    Typically (a):
+        cum_rewards[i] = r_i + ... + gamma^{n-1} r_{i+n-1},
+        bootstrap_obs[i] is the observation at step i+n,
+        bootstrap_gammas[i] = gamma^n.
+
+    Things are adjusted towards the end of the episode (b):
+        cum_rewards[i] = r_i + ... + r_{ep_len-1},
+        bootstrap_obs[i] is the observation at step ep_len,
+        bootstrap_gammas[i] = gamma^{ep_len - i} if not done else 0.
+
+    These values are used to calculate, td targets during training:
+        trarget[i] = cum_rewards[i] +  bootstrap_gammas[i]
+                                       * value(bootstrap_obs[i]).
+
+    Which for case (a) is the usual TD(n) target:
+        trarget[i] = r_i + ... + gamma^{n-1} r_{i+n-1} +  gamma^n
+                                                         * value(obs[i+n]).
+    """
     assert n >= 1, 'TD(0) does not make sense'
     truncated = episode.truncated
     rewards = episode.transition_batch.reward
@@ -23,6 +45,8 @@ def target_n_return(episode, n, gamma):
     for curr_obs_index in reversed(range(ep_len)):
         reward_to_remove = 0 if curr_obs_index + n >= ep_len \
             else gamma ** (n - 1) * rewards[curr_obs_index + n]
+        # cum_rewards calculated progressively
+        # (for efficiency ressons when n is big)
         cum_reward -= reward_to_remove
         cum_reward *= gamma
         cum_reward += rewards[curr_obs_index]
@@ -30,13 +54,13 @@ def target_n_return(episode, n, gamma):
         bootstrap_index = min(curr_obs_index + n, ep_len)
         bootstrap_ob = \
             episode.transition_batch.next_observation[bootstrap_index - 1]
-        bootstrap_lambda = gamma ** (bootstrap_index - curr_obs_index)
+        bootstrap_gamma = gamma ** (bootstrap_index - curr_obs_index)
         if bootstrap_index == ep_len and not truncated:
-            bootstrap_lambda = 0
+            bootstrap_gamma = 0
 
         cum_rewards.append(cum_reward)
         bootstrap_obs.append(bootstrap_ob)
-        bootstrap_gammas.append(bootstrap_lambda)
+        bootstrap_gammas.append(bootstrap_gamma)
 
     return np.array(cum_rewards, dtype=np.float)[::-1, np.newaxis], \
            np.array(bootstrap_obs)[::-1], \
