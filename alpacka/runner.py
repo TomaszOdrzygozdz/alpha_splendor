@@ -229,7 +229,7 @@ if __name__ == '__main__':
         spec_path = gin_bindings.pop()
 
         specification, overrides = mrunner_client.get_configuration(spec_path)
-        gin_bindings.extend(overrides)
+        gin_bindings = overrides + gin_bindings
 
         try:
             neptune_logger = mrunner_client.configure_neptune(specification)
