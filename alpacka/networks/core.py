@@ -12,6 +12,11 @@ class Network:
         """
         self._network_signature = network_signature
 
+    def clone(self):
+        new_network = type(self)(network_signature=self._network_signature)
+        new_network.params = self.params
+        return new_network
+
     def predict(self, inputs):
         """Returns the prediction for a given input.
 
