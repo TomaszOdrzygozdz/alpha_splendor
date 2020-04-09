@@ -24,7 +24,7 @@ StochasticMCTSAgent.exploration_weight = 10.0
 StochasticMCTSAgent.n_passes = 10
 StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.QualityNetworkNewLeafRater
 StochasticMCTSAgent.action_selection_mode = 'count'
-StochasticMCTSAgent.sampling_temperature = 0.1
+StochasticMCTSAgent.sampling_temperature = 0.3
 
 # Parameters for mlp:
 # ==============================================================================
