@@ -5,8 +5,6 @@ import functools
 import itertools
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor as Pool
-
 import gin
 
 from alpacka import agents
@@ -88,7 +86,6 @@ class Runner:
         self._epoch = 0
         self._total_episodes = 0
         self.time_stamp = time.time()
-        self._pool = Pool(1)
 
     @staticmethod
     def _infer_network_signature(env_class, agent_class):
@@ -129,26 +126,11 @@ class Runner:
 
     def run_epoch(self):
         """Runs a single epoch."""
-        episodes_future = self._pool.submit(
-            self._batch_stepper.run_episode_batch,
-            params=self._network.params,
+        episodes = self._batch_stepper.run_episode_batch(
+            self._network.params,
             epoch=max(0, self._epoch - self._n_precollect_epochs),
             time_limit=self._episode_time_limit
         )
-
-        if self._epoch > self._n_precollect_epochs:
-            metrics = self._trainer.train_epoch(self._network)
-            metric_logging.log_scalar_metrics(
-                'train',
-                # Training on data from previous epochs.
-                self._epoch - 1,
-                metrics
-            )
-
-        episodes = episodes_future.result()
-        for episode in episodes:
-            self._trainer.add_episode(episode)
-
         self._total_episodes += len(episodes)
         metric_logging.log_scalar_metrics(
             'episode',
@@ -170,13 +152,22 @@ class Runner:
             self._epoch,
             {'time': time_diff}
         )
+        for episode in episodes:
+            self._trainer.add_episode(episode)
 
-        if self._epoch == self._n_precollect_epochs + 1:
+        if self._epoch >= self._n_precollect_epochs:
+            metrics = self._trainer.train_epoch(self._network)
+            metric_logging.log_scalar_metrics(
+                'train',
+                self._epoch,
+                metrics
+            )
+
+        if self._epoch == self._n_precollect_epochs:
             # Save gin operative config into a file. "Operative" means the part
             # that is actually used in the experiment. We need to run an full
             # epoch (data collection + training) first, so gin can figure that
-            # out. Note that training happens one epoch after data
-            # precollection ends (even if precollection epochs is set to 0).
+            # out.
             self._save_gin()
 
         self._epoch += 1
