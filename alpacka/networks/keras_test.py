@@ -114,3 +114,21 @@ def test_keras_mlp_restore_weights(keras_mlp):
         # Test
         for orig, mlp in zip(orig_params, keras_mlp.params):
             assert np.all(orig == mlp)
+
+
+def test_clone_has_the_same_weights(keras_mlp):
+    clone = keras_mlp.clone()
+    np.testing.assert_equal(keras_mlp.params, clone.params)
+
+
+def test_clone_has_independent_weights(keras_mlp):
+    clone = keras_mlp.clone()
+    new_params = keras_mlp.params
+    for p in new_params:
+        p += 1
+    keras_mlp.params = new_params
+
+    # Sadly, numpy doesn't have assert_not_equal.
+    np.testing.assert_raises(
+        AssertionError, np.testing.assert_equal, keras_mlp.params, clone.params
+    )
