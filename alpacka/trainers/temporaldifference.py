@@ -90,7 +90,6 @@ class TDTrainer(base.Trainer):
         n_steps_per_epoch=1000,
         replay_buffer_capacity=1000000,
         replay_buffer_sampling_hierarchy=(),
-        network_fn=None,
         polyak_coeff=None
     ):
         """Initializes TDTrainer.
@@ -105,7 +104,6 @@ class TDTrainer(base.Trainer):
             replay_buffer_capacity (int): Maximum size of the replay buffer.
             replay_buffer_sampling_hierarchy (tuple): Sequence of Episode
                 attribute names, defining the sampling hierarchy.
-            network_fn: function to create the target network
             polyak_coeff: polyak averaging coefficient
         """
         super().__init__(network_signature)
@@ -129,9 +127,8 @@ class TDTrainer(base.Trainer):
         )
         self._sampling_hierarchy = replay_buffer_sampling_hierarchy
         self._polyak_coeff = polyak_coeff
-        if self._polyak_coeff is not None:
-            self._target_network = network_fn()
-            self._target_network_params = None
+        self._target_network_params = None
+        self._target_network = None
 
     def add_episode(self, episode):
         buckets = [
@@ -151,6 +148,7 @@ class TDTrainer(base.Trainer):
             current_params = network.params
             if self._target_network_params is None:
                 self._target_network_params = current_params
+                self._target_network = network.clone()
 
             # TODO(pm): this works when nn parameters are given by
             # a list np.arrays, e.g keras nn. Make it work for otherwise

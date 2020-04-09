@@ -80,7 +80,7 @@ class Runner:
         )
         self._episode_time_limit = episode_time_limit
         self._network = network_fn()
-        self._trainer = trainer_class(network_signature, network_fn=network_fn)
+        self._trainer = trainer_class(network_signature)
         self._n_epochs = n_epochs
         self._n_precollect_epochs = n_precollect_epochs
         self._epoch = 0
