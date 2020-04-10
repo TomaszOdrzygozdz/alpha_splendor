@@ -71,7 +71,7 @@ def test_multiple_targets():
 
     class TestNetwork(core.DummyNetwork):
 
-        def train(self, data_stream):
+        def train(self, data_stream, n_steps):
             np.testing.assert_equal(
                 list(data_stream()),
                 [testing.zero_pytree(

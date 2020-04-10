@@ -57,7 +57,7 @@ def test_keras_mlp_train_epoch_on_boston_housing(keras_mlp, dataset):
             yield (x_train, y_train)
 
     # Run
-    metrics = keras_mlp.train(data_stream)
+    metrics = keras_mlp.train(data_stream, 3)
 
     # Test
     assert 'loss' in metrics

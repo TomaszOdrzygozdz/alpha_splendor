@@ -163,12 +163,13 @@ class KerasNetwork(core.TrainableNetwork):
                     keras.regularizers.l2(weight_decay), layer.kernel
                 ))
 
-    def train(self, data_stream):
+    def train(self, data_stream, n_steps):
         """Performs one epoch of training on data prepared by the Trainer.
 
         Args:
             data_stream: (Trainer-dependent) Python generator of batches to run
                 the updates on.
+            n_steps: (int) Number of training steps in the epoch.
 
         Returns:
             dict: Collected metrics, indexed by name.
@@ -188,7 +189,8 @@ class KerasNetwork(core.TrainableNetwork):
 
         # WA for bug: https://github.com/tensorflow/tensorflow/issues/32912
         history = self._model.fit(
-            dataset, epochs=1, verbose=0, callbacks=self.train_callbacks
+            dataset, epochs=1, verbose=0, steps_per_epoch=n_steps,
+            callbacks=self.train_callbacks
         )
         # history contains epoch-indexed sequences. We run only one epoch, so
         # we take the only element.

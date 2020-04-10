@@ -47,12 +47,13 @@ class Network:
 class TrainableNetwork(Network):
     """Base class for networks that can be trained."""
 
-    def train(self, data_stream):
+    def train(self, data_stream, n_steps):
         """Performs one epoch of training on data prepared by the Trainer.
 
         Args:
             data_stream: (Trainer-dependent) Python generator of batches to run
                 the updates on.
+            n_steps: (int) Number of training steps in the epoch.
 
         Returns:
             dict: Collected metrics, indexed by name.
@@ -63,7 +64,7 @@ class TrainableNetwork(Network):
 class DummyNetwork(TrainableNetwork):
     """Dummy TrainableNetwork for testing."""
 
-    def train(self, data_stream):
+    def train(self, data_stream, n_steps):
         del data_stream
         return {}
 
