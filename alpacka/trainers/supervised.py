@@ -116,4 +116,4 @@ class SupervisedTrainer(base.Trainer):
             for _ in range(self._n_steps_per_epoch):
                 yield self._replay_buffer.sample(self._batch_size)
 
-        return network.train(data_stream)
+        return network.train(data_stream, self._n_steps_per_epoch)
