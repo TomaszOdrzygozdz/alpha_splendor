@@ -6,6 +6,7 @@ import gin
 import numpy as np
 
 from alpacka import data
+from alpacka import metric_logging
 from alpacka.agents import base
 from alpacka.utils import space as space_utils
 
@@ -366,6 +367,21 @@ class DeterministicMCTSAgent(base.OnlineAgent):
             input=space_utils.signature(observation_space),
             output=data.TensorSignature(shape=(1,)),
         )
+
+    @staticmethod
+    def compute_metrics(episodes):
+        metrics = {}
+        agent_info_batch = data.nested_concatenate(
+            [episode.transition_batch.agent_info for episode in episodes])
+
+        if 'value' in agent_info_batch:
+            metrics.update(metric_logging.compute_scalar_statistics(
+                agent_info_batch['value'],
+                prefix='simulation_value',
+                with_min_and_max=True
+            ))
+
+        return metrics
 
 
 def td_backup(node, action, value, gamma):
