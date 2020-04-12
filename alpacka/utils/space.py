@@ -19,9 +19,12 @@ def element_iter(action_space):
 
 
 def signature(space):
-    """Returns a TensorSignature of elements of the given space."""
-    return data.TensorSignature(shape=space.shape, dtype=space.dtype)
-
+    """Returns a SpaceSignature of elements of the given space."""
+    if isinstance(space, Tuple):
+        return [signature(subspace) for subspace in space]
+    else:
+        return data.TensorSignature(shape=space.shape, dtype=space.dtype)
+        
 
 def max_size(space):
     """Returns the maximum number of elements in the space."""
