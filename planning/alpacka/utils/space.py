@@ -20,7 +20,7 @@ def element_iter(action_space):
 def signature(space):
     """Returns a SpaceSignature of elements of the given space."""
     if isinstance(space, gym.spaces.Tuple):
-        return [signature(subspace) for subspace in space]
+        return tuple(signature(subspace) for subspace in space)
     else:
         return data.TensorSignature(shape=space.shape, dtype=space.dtype)
         

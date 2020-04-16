@@ -1,12 +1,7 @@
-from gym_open_ai.spaces import Space
-from typing import Dict
-
-from splendor.envs.cards_data.data_loader import name_to_card_dict, name_to_noble_dict
-from splendor.envs.mechanics.players_hand import PlayersHand
-from splendor.envs.mechanics.state import State
+from gym import Space
 
 
-class SplendorObservationSpace(Space):
+class PureObservationSpace(Space):
     """This class contains all information we want to share with the agents playing Splendor. The difference between
     SplendorObservationSpace and State is that State contains all information about the current_state of game (including list
     of cards that are not yet revealed and class SplendorObservationSpace contains only some part of it that is
@@ -29,3 +24,4 @@ class SplendorObservationSpace(Space):
                'a) cards_possessed_names - set of names of cards possesed by the players hand \n'\
                'b) cards_reserved_names - set of names of cards reserved by the players hand \n' \
                'c) gems_possessed - collection of gems possessed by the players hand'
+

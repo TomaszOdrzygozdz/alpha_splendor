@@ -18,25 +18,25 @@ class Action():
 
     @abstractmethod
     def __eq__(self, other):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def __repr__(self):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def execute(self,
                 state: State) -> None:
         """Executes action on the given current_state."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def to_dict(self):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def short_description(self):
-        pass
+        raise NotImplementedError
 
     def give_nobles(self, state: State) -> None:
         """Checks if the active player deserves to obtain noble card (or cards)."""

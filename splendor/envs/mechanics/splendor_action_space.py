@@ -39,7 +39,7 @@ class SplendorActionSpace(Space):
         """Chcecks if a given action belongs to the space"""
         return x in self.list_of_actions
 
-    def sample(self, mode: str='from all', list_of_preferencies=None):
+    def sample(self, mode: str='from_all', list_of_preferencies=None):
         """Samples a legal action at random.
          Parameters:
           _ _ _ _ _
@@ -60,4 +60,3 @@ class SplendorActionSpace(Space):
                     len(self.actions_by_type['buy']), len(self.actions_by_type['reserve']))
     def to_dict(self):
         return [x.to_dict() for x in self.list_of_actions]
-
