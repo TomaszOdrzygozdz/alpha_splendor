@@ -8,6 +8,7 @@ import numpy as np
 from alpacka import data
 from alpacka import metric_logging
 from alpacka.agents import base
+from alpacka.data import nested_stack
 from alpacka.utils import space as space_utils
 
 
@@ -275,7 +276,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
             leaf.state
         )
 
-        value_batch = yield np.array(obs)
+        value_batch = yield nested_stack(obs)
 
         for idx, action in enumerate(
             space_utils.element_iter(self._action_space)
@@ -329,7 +330,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         # 'reset' mcts internal variables: _state2node and _model
         self._state2node = {}
         state = self._model.clone_state()
-        (value,) = yield np.array([observation])
+        (value,) = yield nested_stack([observation])
         # Initialize root.
         graph_node = self._initialize_graph_node(
             initial_value=value, state=state, done=False, solved=False

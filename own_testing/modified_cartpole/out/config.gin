@@ -1,8 +1,3 @@
-# Parameters for CartPole:
-# ==============================================================================
-CartPole.reward_scale = 1.0
-CartPole.solved_at = 150
-
 # Parameters for DeterministicMCTSAgent:
 # ==============================================================================
 DeterministicMCTSAgent.avoid_loops = True
@@ -18,7 +13,8 @@ DeterministicMCTSAgent.value_traits_class = \
 KerasNetwork.loss = 'mean_squared_error'
 KerasNetwork.loss_weights = None
 KerasNetwork.metrics = ['mae', 'mse']
-KerasNetwork.model_fn = @alpacka.networks.keras.mlp
+KerasNetwork.model_fn = \
+    @own_testing.modified_cartpole.modified_cartpole_env.multi_input_network
 KerasNetwork.optimizer = 'adam'
 KerasNetwork.train_callbacks = None
 KerasNetwork.weight_decay = 0.0
@@ -27,18 +23,24 @@ KerasNetwork.weight_decay = 0.0
 # ==============================================================================
 # None.
 
-# Parameters for mlp:
+# Parameters for multi_input_network:
 # ==============================================================================
-mlp.activation = 'relu'
-mlp.hidden_sizes = (64,)
-mlp.output_activation = None
-mlp.output_zero_init = True
+multi_input_network.first_hidden_layer = 20
+multi_input_network.output_activation = None
+multi_input_network.output_zero_init = True
+multi_input_network.second_hidden_layer = 20
+
+# Parameters for MultiObservationCartpole:
+# ==============================================================================
+MultiObservationCartpole.reward_scale = 1.0
+MultiObservationCartpole.solved_at = 500
 
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
-Runner.env_class = @alpacka.envs.CartPole
+Runner.env_class = \
+    @own_testing.modified_cartpole.modified_cartpole_env.MultiObservationCartpole
 Runner.env_kwargs = None
 Runner.episode_time_limit = 500
 Runner.n_envs = 1

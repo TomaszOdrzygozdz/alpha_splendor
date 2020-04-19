@@ -3,43 +3,35 @@
 DeterministicMCTSAgent.avoid_loops = True
 DeterministicMCTSAgent.gamma = 0.99
 DeterministicMCTSAgent.n_passes = 10
-DeterministicMCTSAgent.value_accumulator_class = \
-    @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
-DeterministicMCTSAgent.value_traits_class = \
-    @alpacka.agents.deterministic_mcts.ScalarValueTraits
+DeterministicMCTSAgent.value_traits_class = @alpacka.agents.deterministic_mcts.ScalarValueTraits
+DeterministicMCTSAgent.value_accumulator_class = @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
 
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = 'mean_squared_error'
 KerasNetwork.loss_weights = None
 KerasNetwork.metrics = ['mae', 'mse']
-KerasNetwork.model_fn = @alpacka.networks.keras.modified_mlp
+KerasNetwork.model_fn = @own_testing.modified_cartpole.modified_cartpole_env.multi_input_network
 KerasNetwork.optimizer = 'adam'
-KerasNetwork.train_callbacks = None
 KerasNetwork.weight_decay = 0.0
+KerasNetwork.train_callbacks = None
+
+# Parameters for multi_input_network
+# ==============================================================================
+multi_input_network.first_hidden_layer = 20
+multi_input_network.second_hidden_layer = 20
+multi_input_network.output_activation = None
+multi_input_network.output_zero_init = True
 
 # Parameters for LocalBatchStepper:
 # ==============================================================================
 # None.
 
-# Parameters for modified_mlp:
-# ==============================================================================
-modified_mlp.activation = 'relu'
-modified_mlp.hidden_sizes = (64,)
-modified_mlp.output_activation = None
-modified_mlp.output_zero_init = True
-
-# Parameters for ModifiedCartPole:
-# ==============================================================================
-ModifiedCartPole.reward_scale = 1.0
-ModifiedCartPole.solved_at = 500
-
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
-Runner.env_class = @alpacka.envs.ModifiedCartPole
-Runner.env_kwargs = None
+Runner.env_class = @own_testing.modified_cartpole.modified_cartpole_env.MultiObservationCartpole
 Runner.episode_time_limit = 500
 Runner.n_envs = 1
 Runner.n_epochs = 1000
@@ -54,6 +46,10 @@ Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 # Parameters for ScalarValueTraits:
 # ==============================================================================
 ScalarValueTraits.dead_end_value = -2.0
+
+# Parameters for CartPole:
+# ==============================================================================
+CartPole.solved_at = 150
 
 # Parameters for SupervisedTrainer:
 # ==============================================================================

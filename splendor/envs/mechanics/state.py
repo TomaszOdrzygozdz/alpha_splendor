@@ -65,6 +65,10 @@ class State():
         """Return the hans of the previous player"""
         return self.list_of_players_hands[(self.active_player_id - 1) % len(self.list_of_players_hands)]
 
+    def set_names(self, names_tuple):
+        for idx, name in enumerate(names_tuple):
+            self.list_of_players_hands[idx].name = name
+
     def to_dict(self) -> Dict:
         return {'active_player_hand': self.active_players_hand().to_dict(),
                 'other_player_hand': self.previous_players_hand().to_dict(),

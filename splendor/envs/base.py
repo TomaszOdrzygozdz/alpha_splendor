@@ -8,7 +8,7 @@ from splendor.envs.mechanics.state import State
 from splendor.envs.mechanics.state_as_dict import StateAsDict
 from splendor.envs.utils.state_utils import statistics
 
-
+@gin.configurable
 class SplendorEnv(Env):
     def __init__(self,
             points_to_win = 15,
@@ -100,14 +100,22 @@ class SplendorEnv(Env):
 
     def step(self, action):
         self._step_env(action)
-        return self._observation(), \
-               self.reward, self.is_done, self.info
+        return self._observation(), self.reward, self.is_done, self.info
 
     def reset(self):
         self._reset_env()
         return self._observation()
 
-class DualSplendorEnv(SplendorEnv):
+class OneSideSplendorEnv(SplendorEnv):
     def __init__(self):
         super().__init__()
+        self.internal_state.set_names(('Real', 'Internal'))
 
+    def step(self, action):
+        self._step_env(action)
+        if self.is_done:
+            return self._observation(), self.reward, self.is_done, self.info
+        else:
+            action = self.action_space.sample() if len(self.action_space) > 0 else None
+            self._step_env(action)
+            return self._observation(), self.reward, self.is_done, self.info

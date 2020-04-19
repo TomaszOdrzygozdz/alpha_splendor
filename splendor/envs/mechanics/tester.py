@@ -12,7 +12,7 @@ f = SplendorGUI()
 f.draw_board(s.board, 200, 10, s)
 f.keep_window_open()
 
-#testing action generator
+#own_testing action generator
 pla = PlayersHand()
 pla.gems_possessed.gems_dict[GemColor.BLUE] = 4
 pla.gems_possessed.gems_dict[GemColor.GREEN] = 4

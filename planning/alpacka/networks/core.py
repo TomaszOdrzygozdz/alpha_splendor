@@ -62,7 +62,7 @@ class TrainableNetwork(Network):
 
 
 class DummyNetwork(TrainableNetwork):
-    """Dummy TrainableNetwork for testing."""
+    """Dummy TrainableNetwork for own_testing."""
 
     def train(self, data_stream, n_steps):
         del data_stream

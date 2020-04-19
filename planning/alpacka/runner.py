@@ -1,5 +1,11 @@
 """Entrypoint of the experiment."""
 
+### Add system paths and imports:
+import sys
+sys.path.append('/home/tomasz/ML_Research/alpha_splendor')
+import alpacka.runner_imports
+###
+
 import argparse
 import functools
 import itertools
@@ -55,6 +61,7 @@ class Runner:
             n_precollect_epochs (int): Number of initial epochs to run without
                 training (data precollection).
         """
+
         self._output_dir = os.path.expanduser(output_dir)
         os.makedirs(self._output_dir, exist_ok=True)
 
@@ -193,6 +200,10 @@ def _parse_args():
         help='Gin config files.'
     )
     parser.add_argument(
+        '--project_root_path', action='append',
+        help='Gin config files.'
+    )
+    parser.add_argument(
         '--config', action='append',
         help='Gin config overrides.'
     )
@@ -237,5 +248,5 @@ if __name__ == '__main__':
         metric_logging.register_logger(tensorboard_logger)
 
     gin.parse_config_files_and_bindings(args.config_file, gin_bindings)
-    runner = Runner(args.output_dir)
+    runner = Runner(output_dir=args.output_dir)
     runner.run()

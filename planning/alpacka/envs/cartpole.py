@@ -30,7 +30,6 @@ class CartPole(classic_control.CartPoleEnv, base.ModelEnv):
 
         self.solved_at = solved_at
         self.reward_scale = reward_scale
-
         self._step = None
 
     def reset(self):
