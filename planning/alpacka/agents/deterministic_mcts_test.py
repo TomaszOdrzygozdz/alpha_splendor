@@ -17,6 +17,8 @@ def test_integration_with_cartpole():
         agent.solve(env), network_sig)
     assert episode.transition_batch.observation.shape[0]  # pylint: disable=no-member
 
+
+
 #TODO finish this test
 def test_networks_with_multiple_inputs():
     def multi_input_network(network_signature, output_activation, output_zero_init):
@@ -27,3 +29,4 @@ def test_networks_with_multiple_inputs():
         )
 
         return keras.Model(inputs=inputs, outputs=outputs)
+

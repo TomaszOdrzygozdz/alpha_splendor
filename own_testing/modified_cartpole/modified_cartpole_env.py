@@ -30,7 +30,7 @@ class CartpoleActionSpace():
         self.list_of_actions = ['left','right']
 
     def __len__(self):
-        return 2
+        return len(self.list_of_actions)
 
     def __iter__(self):
         return self.list_of_actions.__iter__()

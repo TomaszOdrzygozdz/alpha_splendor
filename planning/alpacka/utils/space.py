@@ -1,7 +1,6 @@
 """Utilities for gym spaces."""
 
 import gym
-
 from alpacka import data
 
 
