@@ -1,3 +1,8 @@
+Experiment.name = 'Cartpole Stochastic MCTS Cartpole'
+Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
+Experiment.tags = ['hello-neptunpaca']
+Experiment.description = 'Cartpole Stochastic MCTS Cartpole'
+
 # Parameters for CartPole:
 # ==============================================================================
 CartPole.solved_at = 150
@@ -55,10 +60,7 @@ Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
 # Parameters for SupervisedTrainer:
 # ==============================================================================
-SupervisedTrainer.target = (
-    @alpacka.trainers.supervised.target_qualities,
-    @alpacka.trainers.supervised.target_action_histogram_smooth,
-)
+SupervisedTrainer.target = (@alpacka.trainers.supervised.target_qualities, @alpacka.trainers.supervised.target_action_histogram_smooth)
 SupervisedTrainer.batch_size = 64
 SupervisedTrainer.n_steps_per_epoch = 100
 SupervisedTrainer.replay_buffer_capacity = 10000

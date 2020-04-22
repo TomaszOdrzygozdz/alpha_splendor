@@ -1,4 +1,5 @@
-from keras.layers import Lambda
+import tensorflow as tf
+from tensorflow.keras.layers import Lambda
 
 
 def card_noble_mask(inputs):

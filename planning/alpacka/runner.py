@@ -1,11 +1,5 @@
 """Entrypoint of the experiment."""
 
-### Add system paths and imports:
-import sys
-sys.path.append('/home/tomasz/ML_Research/alpha_splendor')
-import alpacka.runner_imports
-###
-
 import argparse
 import functools
 import itertools
@@ -20,7 +14,6 @@ from alpacka import metric_logging
 from alpacka import networks
 from alpacka import trainers
 from alpacka.utils import gin as gin_utils
-from alpacka.utils.mrunner_client import NeptuneAPITokenException
 
 
 @gin.configurable
@@ -215,6 +208,10 @@ def _parse_args():
         'a mrunner specification file.'
     )
     parser.add_argument(
+        '--neptune', action='store_true',
+        help='Adds logging metrics to Neptune'
+    )
+    parser.add_argument(
         '--tensorboard', action='store_true',
         help='Enable TensorBoard logging: logdir=<output_dir>/tb_%m-%dT%H%M%S.'
     )
@@ -225,6 +222,7 @@ if __name__ == '__main__':
     args = _parse_args()
 
     gin_bindings = args.config
+    gin.parse_config_files_and_bindings(args.config_file, gin_bindings)
 
     if args.mrunner:
         from alpacka.utils import mrunner_client  # Lazy import
@@ -237,7 +235,7 @@ if __name__ == '__main__':
             neptune_logger = mrunner_client.configure_neptune(specification)
             metric_logging.register_logger(neptune_logger)
 
-        except NeptuneAPITokenException:
+        except:
             print('HINT: To run with Neptune logging please set your '
                   'NEPTUNE_API_TOKEN environment variable')
 
@@ -247,6 +245,6 @@ if __name__ == '__main__':
         tensorboard_logger = tensorboard.TensorBoardLogger(args.output_dir)
         metric_logging.register_logger(tensorboard_logger)
 
-    gin.parse_config_files_and_bindings(args.config_file, gin_bindings)
+
     runner = Runner(output_dir=args.output_dir)
     runner.run()

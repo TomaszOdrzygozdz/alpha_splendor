@@ -3,6 +3,14 @@
 CartPole.reward_scale = 1.0
 CartPole.solved_at = 150
 
+# Parameters for Experiment:
+# ==============================================================================
+Experiment.description = 'Cartpole Stochastic MCTS Cartpole'
+Experiment.extra_params = None
+Experiment.name = 'Cartpole Stochastic MCTS Cartpole'
+Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
+Experiment.tags = ['hello-neptunpaca']
+
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = ('mean_squared_error', 'categorical_crossentropy')

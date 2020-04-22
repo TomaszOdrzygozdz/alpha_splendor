@@ -28,3 +28,8 @@ class PureObservationGenerator(ObservationGenerator):
             return StochasticObservation(state)
         else:
             raise ValueError('State to obsrvation mode not recognized.')
+
+class TensorizedObservationGenerator(ObservationGenerator):
+    pass
+
+

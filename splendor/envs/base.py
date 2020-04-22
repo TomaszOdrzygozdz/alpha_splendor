@@ -107,8 +107,14 @@ class SplendorEnv(Env):
         return self._observation()
 
 class OneSideSplendorEnv(SplendorEnv):
-    def __init__(self):
-        super().__init__()
+    def __init__(self,
+                 points_to_win=15,
+                 max_number_of_steps=120,
+                 allow_reservations=True,
+                 observation_space_generator: ObservationGenerator = PureObservationGenerator(),
+                 reward_evaluator: RewardEvaluator = OnlyVictory()
+                 ):
+        super().__init__(points_to_win, max_number_of_steps, allow_reservations, observation_space_generator, reward_evaluator)
         self.internal_state.set_names(('Real', 'Internal'))
 
     def step(self, action):

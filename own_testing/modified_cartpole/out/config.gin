@@ -8,6 +8,14 @@ DeterministicMCTSAgent.value_accumulator_class = \
 DeterministicMCTSAgent.value_traits_class = \
     @alpacka.agents.deterministic_mcts.ScalarValueTraits
 
+# Parameters for Experiment:
+# ==============================================================================
+Experiment.description = 'own action space'
+Experiment.extra_params = None
+Experiment.name = 'Modified Cartpole, Deterministic MCTS'
+Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
+Experiment.tags = ['modified-cartpole']
+
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = 'mean_squared_error'

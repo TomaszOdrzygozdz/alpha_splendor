@@ -1,3 +1,10 @@
+# Parameters for Neptune:
+# ==============================================================================
+Experiment.name = 'Modified Cartpole, Deterministic MCTS'
+Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
+Experiment.tags = ['modified-cartpole']
+Experiment.description = 'own action space'
+
 # Parameters for DeterministicMCTSAgent:
 # ==============================================================================
 DeterministicMCTSAgent.avoid_loops = True
