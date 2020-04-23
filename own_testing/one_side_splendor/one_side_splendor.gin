@@ -1,47 +1,54 @@
+# Parameters for Neptune:
+# ==============================================================================
+Experiment.name = 'One side Splendor, Deterministic MCTS'
+Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
+Experiment.tags = ['one-side-splendor']
+Experiment.description = 'own action space'
+
 # Parameters for DeterministicMCTSAgent:
 # ==============================================================================
 DeterministicMCTSAgent.avoid_loops = True
 DeterministicMCTSAgent.gamma = 0.99
 DeterministicMCTSAgent.n_passes = 10
-DeterministicMCTSAgent.value_accumulator_class = \
-    @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
-DeterministicMCTSAgent.value_traits_class = \
-    @alpacka.agents.deterministic_mcts.ScalarValueTraits
+DeterministicMCTSAgent.value_traits_class = @alpacka.agents.deterministic_mcts.ScalarValueTraits
+DeterministicMCTSAgent.value_accumulator_class = @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
 
 # Parameters for KerasNetwork:
 # ==============================================================================
 KerasNetwork.loss = 'mean_squared_error'
 KerasNetwork.loss_weights = None
 KerasNetwork.metrics = ['mae', 'mse']
-KerasNetwork.model_fn = \
-    @own_testing.modified_cartpole.modified_cartpole_env.multi_input_network
+KerasNetwork.model_fn = @splendor.networks.architectures.average_pooling_network.splendor_state_evaluator
 KerasNetwork.optimizer = 'adam'
-KerasNetwork.train_callbacks = None
 KerasNetwork.weight_decay = 0.0
+KerasNetwork.train_callbacks = None
+
+# Parameters for splendor_state_evaluator
+# ==============================================================================
+splendor_state_evaluator.gems_encoder_dim = 32
+splendor_state_evaluator.price_encoder_dim = 32
+splendor_state_evaluator.profit_encoder_dim = 32
+splendor_state_evaluator.cards_points_dim = 32
+splendor_state_evaluator.cards_dense1_dim = 32
+splendor_state_evaluator.cards_dense2_dim = 32
+splendor_state_evaluator.board_nobles_dense1_dim = 64
+splendor_state_evaluator.board_nobles_dense2_dim = 64
+splendor_state_evaluator.full_board_dense1_dim = 128
+splendor_state_evaluator.full_board_dense2_dim = 128
+splendor_state_evaluator.player_points_dim = 128
+splendor_state_evaluator.player_nobles_dim = 128
+splendor_state_evaluator.full_player_dense1_dim = 256
+splendor_state_evaluator.full_player_dense2_dim = 256
 
 # Parameters for LocalBatchStepper:
 # ==============================================================================
 # None.
 
-# Parameters for multi_input_network:
-# ==============================================================================
-multi_input_network.first_hidden_layer = 20
-multi_input_network.output_activation = None
-multi_input_network.output_zero_init = True
-multi_input_network.second_hidden_layer = 20
-
-# Parameters for MultiObservationCartpole:
-# ==============================================================================
-MultiObservationCartpole.reward_scale = 1.0
-MultiObservationCartpole.solved_at = 500
-
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
 Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
-Runner.env_class = \
-    @own_testing.modified_cartpole.modified_cartpole_env.MultiObservationCartpole
-Runner.env_kwargs = None
+Runner.env_class = @splendor.envs.core.OneSideSplendorEnv
 Runner.episode_time_limit = 500
 Runner.n_envs = 1
 Runner.n_epochs = 1000
@@ -56,6 +63,10 @@ Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 # Parameters for ScalarValueTraits:
 # ==============================================================================
 ScalarValueTraits.dead_end_value = -2.0
+
+# Parameters for CartPole:
+# ==============================================================================
+
 
 # Parameters for SupervisedTrainer:
 # ==============================================================================

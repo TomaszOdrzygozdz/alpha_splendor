@@ -73,10 +73,6 @@ class Vectorizer:
             list_of_tensors.append(np.array(x).reshape(1,3))
         list_of_tensors.append(np.array(cards_mask).reshape(1,12))
         list_of_tensors.append(np.array(nobles_mask).reshape(1, 3))
-
-        #list_of_args = list(self.gems_to_input(board.gems_on_board)) + list(cards_on_board) + list(nobles_on_board) + \
-          #             [cards_mask] + [nobles_mask]
-        #return BoardTuple(*list_of_args)
         return list_of_tensors
 
     def players_hand_to_input(self, players_hand: PlayersHand):
@@ -102,23 +98,5 @@ class Vectorizer:
 
     def create_observation_space(self):
         example_observation = self.state_to_input(State())
-        return Tuple(tuple( Box(shape=obs_tensor.shape, low=-float('inf'), high=float('inf'),
+        return Tuple(tuple( Box(shape=obs_tensor.shape[1:], low=-float('inf'), high=float('inf'),
                                 dtype=obs_tensor.dtype) for obs_tensor in example_observation))
-
-    # def many_states_to_input(self, list_of_states: List[State]):
-    #     input_len = 62
-    #     output_list = [[] for _ in range(input_len)]
-    #     for state in list_of_states:
-    #         state_transfored = self.state_to_input(state)
-    #         for i in range(input_len):
-    #             output_list[i].append(state_transfored[i])
-    #
-    #     output_list_of_tensors = []
-    #     for i in range(input_len):
-    #         concatated = np.concatenate(output_list[i], axis=0)
-    #         output_list_of_tensors.append(concatated)
-    #
-    #     return output_list_of_tensors
-
-x = Vectorizer()
-print(x.create_observation_space())

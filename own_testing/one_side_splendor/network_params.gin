@@ -1,0 +1,14 @@
+splendor_state_evaluator.gems_encoder_dim = 32
+splendor_state_evaluator.price_encoder_dim = 32
+splendor_state_evaluator.profit_encoder_dim = 32
+splendor_state_evaluator.cards_points_dim = 32
+splendor_state_evaluator.cards_dense1_dim = 32
+splendor_state_evaluator.cards_dense2_dim = 32
+splendor_state_evaluator.board_nobles_dense1_dim = 64
+splendor_state_evaluator.board_nobles_dense2_dim = 64
+splendor_state_evaluator.full_board_dense1_dim = 128
+splendor_state_evaluator.full_board_dense2_dim = 128
+splendor_state_evaluator.player_points_dim = 128
+splendor_state_evaluator.player_nobles_dim = 128
+splendor_state_evaluator.full_player_dense1_dim = 256
+splendor_state_evaluator.full_player_dense2_dim = 256

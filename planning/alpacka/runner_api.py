@@ -1,3 +1,5 @@
+from silence_tensorflow import silence_tensorflow
+silence_tensorflow()
 import argparse
 import sys
 import gin
@@ -5,7 +7,6 @@ import tkinter
 import webbrowser
 from tkinter import messagebox
 
-import neptune
 from alpacka import metric_logging
 from alpacka.runner import Runner
 from alpacka.system_paths import EXTRA_SYSTEM_PATHS
@@ -40,6 +41,10 @@ def _parse_args():
     parser.add_argument(
         '--additional_import', action='store_true',
         help='Importing from outside Alpaca'
+    )
+    parser.add_argument(
+        '--open_link', action='store_true',
+        help='Open Neptune experiment in web browser'
     )
     return parser.parse_args()
 
@@ -78,6 +83,8 @@ if __name__ == '__main__':
         neptune_logger, neptune_link = configure_neptune(experiment=experiment)
         metric_logging.register_logger(neptune_logger)
         _show_neptune_link(neptune_link)
+        if args.open_link:
+            webbrowser.open(neptune_link)
 
     runner = Runner(output_dir=args.output_dir)
     runner.run()

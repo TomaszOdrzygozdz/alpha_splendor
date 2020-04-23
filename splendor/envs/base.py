@@ -1,7 +1,8 @@
 from gym import Env
 import gin
 
-from splendor.envs.mechanics.observation_generator import ObservationGenerator, PureObservationGenerator
+from splendor.envs.mechanics.observation_generator import ObservationGenerator, PureObservationGenerator, \
+    VectorizedObservationGenerator
 from splendor.envs.mechanics.reward_evaluator import RewardEvaluator, OnlyVictory
 from splendor.envs.mechanics.splendor_action_space import SplendorActionSpace
 from splendor.envs.mechanics.state import State
@@ -9,13 +10,20 @@ from splendor.envs.mechanics.state_as_dict import StateAsDict
 from splendor.envs.utils.state_utils import statistics
 
 @gin.configurable
-class SplendorEnv(Env):
+class SplendorEnv(Env, ):
     def __init__(self,
-            points_to_win = 15,
-            max_number_of_steps = 120,
-            allow_reservations = True,
-            observation_space_generator: ObservationGenerator = PureObservationGenerator(),
-            reward_evaluator: RewardEvaluator = OnlyVictory()):
+                 points_to_win = 15,
+                 max_number_of_steps = 120,
+                 allow_reservations = True,
+                 observation_space_generator: ObservationGenerator = None,
+                 reward_evaluator: RewardEvaluator = OnlyVictory(),
+                 observation_mode: str = 'vectorized'
+                 ):
+
+        if observation_space_generator is None:
+            observation_generators = {'pure' : PureObservationGenerator(), 'vectorized' : VectorizedObservationGenerator()}
+            assert observation_mode in observation_generators, 'Unknown observation mode'
+            observation_space_generator = observation_generators[observation_mode]
 
         self.points_to_win = points_to_win
         self.max_number_of_steps = max_number_of_steps
@@ -105,23 +113,3 @@ class SplendorEnv(Env):
     def reset(self):
         self._reset_env()
         return self._observation()
-
-class OneSideSplendorEnv(SplendorEnv):
-    def __init__(self,
-                 points_to_win=15,
-                 max_number_of_steps=120,
-                 allow_reservations=True,
-                 observation_space_generator: ObservationGenerator = PureObservationGenerator(),
-                 reward_evaluator: RewardEvaluator = OnlyVictory()
-                 ):
-        super().__init__(points_to_win, max_number_of_steps, allow_reservations, observation_space_generator, reward_evaluator)
-        self.internal_state.set_names(('Real', 'Internal'))
-
-    def step(self, action):
-        self._step_env(action)
-        if self.is_done:
-            return self._observation(), self.reward, self.is_done, self.info
-        else:
-            action = self.action_space.sample() if len(self.action_space) > 0 else None
-            self._step_env(action)
-            return self._observation(), self.reward, self.is_done, self.info

@@ -34,8 +34,9 @@ class CartpoleActionSpace():
     def __iter__(self):
         return self.list_of_actions.__iter__()
 
+
     def contains(self, action):
-        return True if action in ['left', 'right'] else False
+        return True if action in self.list_of_actions else False
 
 @gin.configurable
 class MultiObservationCartpole(gym.Env):
@@ -63,6 +64,7 @@ class MultiObservationCartpole(gym.Env):
         observation = (original_observation, extra_part)
         info['solved'] = self._step >= self.solved_at
         self._step += 1
+        self.last_return = (observation, reward * self.reward_scale, done, info)
         return (observation, reward * self.reward_scale, done, info)
 
     def clone_state(self):

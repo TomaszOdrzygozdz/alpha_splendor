@@ -212,6 +212,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
             )
         ])
         self._model.restore_state(old_state)
+
         return results
 
     def run_mcts_pass(self):
@@ -348,7 +349,6 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         states_to_avoid = {self._root.state} if self._avoid_loops else set()
         # INFO: possible sampling for exploration
         self._root, action = self._select_child(self._root, states_to_avoid)
-
         return (action, info)
 
     @staticmethod

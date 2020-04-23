@@ -3,6 +3,7 @@ from gym import Space
 from splendor.envs.mechanics.abstract_observation import DeterministicObservation, StochasticObservation
 from splendor.envs.mechanics.pure_observation_space import PureObservationSpace
 from splendor.envs.mechanics.state import State
+from splendor.networks.utils.vectorizer import Vectorizer
 
 
 class ObservationGenerator:
@@ -29,7 +30,11 @@ class PureObservationGenerator(ObservationGenerator):
         else:
             raise ValueError('State to obsrvation mode not recognized.')
 
-class TensorizedObservationGenerator(ObservationGenerator):
-    pass
+class VectorizedObservationGenerator(ObservationGenerator):
+    def __init__(self):
+        super().__init__()
+        self.vectorizer = Vectorizer()
+        self.observation_space = self.vectorizer.create_observation_space()
 
-
+    def state_to_observation(self, state : State):
+        return self.vectorizer.state_to_input(state)

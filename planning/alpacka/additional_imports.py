@@ -1,1 +1,3 @@
-import own_testing.modified_cartpole.modified_cartpole_env
+from splendor.networks.architectures.average_pooling_network import splendor_state_evaluator
+from splendor.envs.core import OneSideSplendorEnv
+from splendor.envs.core import *
