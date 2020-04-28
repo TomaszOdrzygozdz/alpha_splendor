@@ -203,7 +203,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
             state = self._model.clone_state()
             solved = 'solved' in info and info['solved']
             self._model.restore_state(parent_state)
-            return (observation, reward, done, solved, state)
+            return (action, observation, reward, done, solved, state)
 
         results = zip(*[
             step_and_rewind(action)
@@ -212,7 +212,6 @@ class DeterministicMCTSAgent(base.OnlineAgent):
             )
         ])
         self._model.restore_state(old_state)
-
         return results
 
     def run_mcts_pass(self):
@@ -273,15 +272,14 @@ class DeterministicMCTSAgent(base.OnlineAgent):
 
         # neighbours are ordered in the order of actions:
         # 0, 1, ..., _model.num_actions
-        obs, rewards, dones, solved, states = self._children_of_state(
+
+        acts, obs, rewards, dones, solved, states = self._children_of_state(
             leaf.state
         )
 
         value_batch = yield nested_stack(obs)
 
-        for idx, action in enumerate(
-            space_utils.element_iter(self._action_space)
-        ):
+        for idx, action in enumerate(acts):
             leaf.rewards[action] = rewards[idx]
             new_node = self._state2node.get(states[idx], None)
             if new_node is None:
@@ -314,6 +312,17 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         values_and_actions = self._rate_children(node, states_to_avoid)
         if not values_and_actions:
             return None, None
+        # print(f' \n mcts/_select_child  values_and_actions = {values_and_actions} \n')
+        try:
+            (max_value, _) = max(values_and_actions)
+        except:
+            only_values = [bubu[0] for bubu in values_and_actions]
+            print(only_values)
+            mmmaxxx = max(only_values)
+            print(f'zipping = {list(zip(*values_and_actions))[0]}')
+            print(f'mmaxx = {mmmaxxx}')
+            print(f'values_and_actions = {values_and_actions}')
+
         (max_value, _) = max(values_and_actions)
         argmax = [
             action for value, action in values_and_actions if value == max_value
@@ -339,6 +348,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         self._root = TreeNode(graph_node)
 
     def act(self, observation):
+
         # perform MCTS passes.
         # each pass = tree traversal + leaf evaluation + backprop
         for _ in range(self._n_passes):
@@ -349,6 +359,8 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         states_to_avoid = {self._root.state} if self._avoid_loops else set()
         # INFO: possible sampling for exploration
         self._root, action = self._select_child(self._root, states_to_avoid)
+        # if action not in self._model.action_space.list_of_actions:
+        #     print(f'act(), action = {action}, root actions = {self._root.} ')
         return (action, info)
 
     @staticmethod
@@ -386,6 +398,13 @@ class DeterministicMCTSAgent(base.OnlineAgent):
 
 
 def td_backup(node, action, value, gamma):
+    #TODO: introduced function to_number. Not elegant solution, but there was mixing arrays with raw numbers
+    # (values are arrays, and rewards are numbers, this was causing errors)
+    def to_number(number_or_array):
+        try:
+            return number_or_array[0]
+        except:
+            return number_or_array
     if action is None:
-        return value
-    return node.rewards[action] + gamma * value
+        return to_number(value)
+    return to_number(node.rewards[action] + gamma * value)

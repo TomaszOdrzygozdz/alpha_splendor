@@ -33,6 +33,13 @@ class State():
         self.board = Board(all_cards, all_nobles, gems_on_board)
         self.active_player_id = 0
 
+        self.who_took_last_action = None #int describing id of the player or None
+        self.winner = None #int describing id of the player or None
+        self.is_done = False
+        self.is_done = False
+        self.info = {}
+        self.steps_taken_so_far = 0
+
         if prepare_state:
             self.prepare()
 

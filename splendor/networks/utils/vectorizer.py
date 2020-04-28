@@ -1,11 +1,14 @@
 import numpy as np
+from alpacka.data import nested_stack
 from gym.spaces import Tuple, Box
 
+from splendor.envs.graphics.splendor_gui import SplendorGUI
 from splendor.envs.mechanics.board import Board
 from splendor.envs.mechanics.enums import GemColor
 from splendor.envs.mechanics.gems_collection import GemsCollection
 from splendor.envs.mechanics.players_hand import PlayersHand
 from splendor.envs.mechanics.state import State
+from splendor.envs.mechanics.state_as_dict import StateAsDict
 from splendor.networks.utils.state_nametuples import FALSE_CARD, FALSE_NOBLE, CardTuple, NobleTuple, PriceTuple, \
     GemsTuple
 
@@ -78,7 +81,6 @@ class Vectorizer:
     def players_hand_to_input(self, players_hand: PlayersHand):
         reserved_cards_list = CardTuple([], [], [], [], [], [], [])
         reserved_cards_mask = self.append_tuples(reserved_cards_list, [self.card_to_input(card) for card in players_hand.cards_reserved], 3, FALSE_CARD)
-        victory_points = players_hand.number_of_my_points()
         list_of_tensors = []
         for x in self.gems_to_input(players_hand.gems_possessed):
             list_of_tensors.append(np.array(x).reshape(1, 1))
@@ -93,10 +95,15 @@ class Vectorizer:
         return list_of_tensors
 
     def state_to_input(self, state: State):
+        pre_input = self.state_to_tensors(state)
+        input = [tensor[0] for tensor in pre_input]
+        return tuple(input)
+
+    def state_to_tensors(self, state: State):
         return tuple(self.board_to_input(state.board) + self.players_hand_to_input(state.active_players_hand()) + \
                self.players_hand_to_input(state.previous_players_hand()))
 
     def create_observation_space(self):
-        example_observation = self.state_to_input(State())
+        example_observation = self.state_to_tensors(State())
         return Tuple(tuple( Box(shape=obs_tensor.shape[1:], low=-float('inf'), high=float('inf'),
                                 dtype=obs_tensor.dtype) for obs_tensor in example_observation))

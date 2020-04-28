@@ -45,7 +45,8 @@ class SplendorActionSpace(Space):
           _ _ _ _ _
           mode: Determines how action will be samples. Possible values are: from all - chooses action at random from
            all legal actions, by_types - first chooses at random type of action and then chooses action of this type"""
-        assert len(self.list_of_actions) > 0, 'No actions to sample. Make sure actions space was updated.'
+        if len(self.list_of_actions) == 0:
+            return None
         if mode == 'from_all':
             return random.choice(self.list_of_actions)
         if mode == 'by_types':

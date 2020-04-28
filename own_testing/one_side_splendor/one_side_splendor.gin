@@ -51,8 +51,8 @@ Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @splendor.envs.core.OneSideSplendorEnv
 Runner.episode_time_limit = 500
 Runner.n_envs = 1
-Runner.n_epochs = 1000
-Runner.n_precollect_epochs = 100
+Runner.n_epochs = 120
+Runner.n_precollect_epochs = 2
 Runner.network_class = @alpacka.networks.KerasNetwork
 Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
@@ -62,7 +62,7 @@ Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
 # Parameters for ScalarValueTraits:
 # ==============================================================================
-ScalarValueTraits.dead_end_value = -2.0
+ScalarValueTraits.dead_end_value = 0
 
 # Parameters for CartPole:
 # ==============================================================================

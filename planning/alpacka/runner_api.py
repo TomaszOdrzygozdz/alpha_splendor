@@ -76,7 +76,8 @@ if __name__ == '__main__':
         _additional_import()
 
     gin.parse_config_files_and_bindings(args.config_file, None)
-    use_neptune = _ask_for_neptune()
+    #use_neptune = _ask_for_neptune()
+    use_neptune = False
     if use_neptune:
         experiment = Experiment()
         experiment.parse_params_from_gin_config(args.config_file)

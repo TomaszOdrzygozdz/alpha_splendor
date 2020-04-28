@@ -31,29 +31,22 @@ class SplendorEnv(Env, ):
         self.observation_space_generator = observation_space_generator
         self.reward_evaluator = reward_evaluator
 
-        self.steps_taken_so_far = 0
         self.action_space = SplendorActionSpace(self.allow_reservations)
         self.observation_space = self.observation_space_generator.return_observation_space()
 
-        self.who_took_last_action = None #int describing id of the player or None
-        self.winner = None #int describing id of the player or None
-        self.is_done = False
-        self.info = {}
         self.internal_state = State()
 
     def clone_state(self):
         return StateAsDict(self.internal_state).to_state()
 
-    def restore_state(self, arg):
-        if hasattr(arg, 'type'):
-            if arg.type == 'dict':
-                self.internal_state = arg.to_state()
-            if arg.type == 'state':
-                self.internal_state = arg
-        else:
-            raise ValueError(f'You must provide State or StateAsDict, received {type(arg)}')
+    def restore_state(self, state):
+        copy_of_state = StateAsDict(state).to_state()
+        self.internal_state = copy_of_state
+        self.action_space.update(self.internal_state)
 
     def _check_if_done(self):
+        if len(self.action_space) == 0:
+            return True
         for player in self.internal_state.list_of_players_hands:
             if player.number_of_my_points() >= self.points_to_win:
                 return True
@@ -61,47 +54,50 @@ class SplendorEnv(Env, ):
 
     def _reset_env(self):
         """Resets the environment"""
-        self.is_done = False
-        self.winner = False
-        self.info = {}
-        self.who_took_last_action = None
-        self.steps_taken_so_far = 0
+        self.internal_state = State()
         self.action_space.update(self.internal_state)
 
+    def show_my_state(self):
+        return (StateAsDict(self.internal_state))
 
     def _step_env(self, action):
         """Performs the internal step on the environment"""
-        assert not self.is_done, 'Cannot take step on ended episode.'
+        if self.internal_state.is_done:
+            print(f'internal_state_of_env = {StateAsDict(self.internal_state)}')
+        assert not self.internal_state.is_done, 'Cannot take step on ended episode.'
+        if action not in self.action_space.list_of_actions:
+            print(f'Tried to take action {action}, while the action space consists of {self.action_space.list_of_actions} and \n'
+                  f'while the state in MY_STATE = {StateAsDict(self.internal_state)}')
+        assert action in self.action_space.list_of_actions or action is None, 'Wrong action'
 
-        if self.steps_taken_so_far > self.max_number_of_steps:
-            self.is_done = True
+        if self.internal_state.steps_taken_so_far > self.max_number_of_steps:
+            self.internal_state.is_done = True
 
         else:
             if action is None:
-                self.is_done = True
-                self.winner = self.internal_state.other_players_hand().name
-                self.info['None_action'] = True
+                self.internal_state.is_done = True
+                self.internal_state.winner = self.internal_state.other_players_hand().name
+                self.internal_state.info['None_action'] = True
             else:
-                self.who_took_last_action = self.internal_state.active_players_hand().name
+                self.internal_state.who_took_last_action = self.internal_state.active_players_hand().name
                 action.execute(self.internal_state)
                 self.action_space.update(self.internal_state)
-                self.is_done = self._check_if_done()
-                if self.is_done:
-                    self.winner = self.who_took_last_action
-                    self.info['None_action'] = False
-                    self.info['episode_length'] = self.steps_taken_so_far+1
+                self.internal_state.is_done = self._check_if_done()
+                if self.internal_state.is_done:
+                    self.internal_state.winner = self.internal_state.who_took_last_action
+                    self.internal_state.info['None_action'] = False
+                    self.internal_state.info['episode_length'] = self.internal_state.steps_taken_so_far+1
                     #assert self.internal_state.list_of_players_hands[self.winner].number_of_my_points() >= self.points_to_win
 
-            self.reward = self.reward_evaluator.evaluate(action, self.internal_state, self.is_done,
-                                                              self.who_took_last_action)
+            self.reward = self.reward_evaluator.evaluate(action, self.internal_state)
 
-            if self.is_done:
-                self.info['winner'] = self.winner
-                self.info['who_took_last_action'] = self.who_took_last_action
-            self.info['active'] = self.internal_state.active_player_id
-            self.info['step'] = self.steps_taken_so_far
-            self.info['stats'] =  statistics(self.internal_state)
-            self.steps_taken_so_far += 1
+            if self.internal_state.is_done:
+                self.internal_state.info['winner'] = self.internal_state.winner
+                self.internal_state.info['who_took_last_action'] = self.internal_state.who_took_last_action
+            self.internal_state.info['active'] = self.internal_state.active_player_id
+            self.internal_state.info['step'] = self.internal_state.steps_taken_so_far
+            self.internal_state.info['stats'] =  statistics(self.internal_state)
+            self.internal_state.steps_taken_so_far += 1
 
     def _observation(self):
         return self.observation_space_generator.state_to_observation(self.internal_state)

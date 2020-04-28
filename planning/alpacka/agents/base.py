@@ -112,7 +112,7 @@ class OnlineAgent(Agent):
     def __init__(self, callback_classes=(), **kwargs):
         super().__init__(**kwargs)
 
-        self._action_space = None
+        #self._action_space = None
         self._epoch = None
         self._callbacks = [
             callback_class() for callback_class in callback_classes
@@ -130,7 +130,7 @@ class OnlineAgent(Agent):
                 env.reset().
         """
         del observation
-        self._action_space = env.action_space
+        #self._action_space = env.action_space
 
     def act(self, observation):
         """Determines the next action to be performed.

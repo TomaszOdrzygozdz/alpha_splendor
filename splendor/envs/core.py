@@ -21,9 +21,9 @@ class OneSideSplendorEnv(SplendorEnv):
 
     def step(self, action):
         self._step_env(action)
-        if self.is_done:
-            return self._observation(), self.reward, self.is_done, self.info
+        if self.internal_state.is_done:
+            return self._observation(), self.reward, self.internal_state.is_done, self.internal_state.info
         else:
-            action = self.action_space.sample() if len(self.action_space) > 0 else None
+            action = self.action_space.list_of_actions[0] if len(self.action_space) > 0 else None
             self._step_env(action)
-            return self._observation(), self.reward, self.is_done, self.info
+            return self._observation(), self.reward, self.internal_state.is_done, self.internal_state.info

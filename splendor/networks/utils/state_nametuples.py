@@ -16,5 +16,5 @@ PlayerTuple = namedtuple('player',  tuple_to_str(GemsTuple._fields, 'player_gems
                          tuple_to_str(PriceTuple._fields, ' discount') + tuple_to_str(CardTuple._fields, 'res_cards_')
                          + ' points nobles')
 
-FALSE_CARD = CardTuple(*[np.array([0]) for x in range(7)])
-FALSE_NOBLE = NobleTuple(*[np.array([0]) for x in range(5)])
+FALSE_CARD = CardTuple(*[0 for x in range(7)])
+FALSE_NOBLE = NobleTuple(*[0 for x in range(5)])

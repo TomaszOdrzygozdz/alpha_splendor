@@ -200,7 +200,7 @@ def splendor_state_evaluator(
     active_player_input = PlayersInputGenerator('active_').inputs
     other_player_input = PlayersInputGenerator('other_').inputs
     board_input = board_encoder.inputs
-    inputs = board_input + active_player_input + other_player_input
+    inputs = tuple(board_input + active_player_input + other_player_input)
     board_encoded = board_encoder(board_input)
     active_player_encoded = player_encoder(active_player_input)
     other_player_encoded = player_encoder(other_player_input)

@@ -205,7 +205,6 @@ class KerasNetwork(core.TrainableNetwork):
         Returns:
             Agent-dependent: Network predictions.
         """
-
         return data.nested_map(
             lambda x: x.numpy(), self._model.predict_on_batch(inputs)
         )
