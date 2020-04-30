@@ -5,15 +5,20 @@ from splendor.envs.mechanics.state_as_dict import StateAsDict
 env = OneSideSplendorEnv()
 env.reset()
 
-gui = SplendorGUI()
+#gui = SplendorGUI()
 
-is_done = False
-for _ in range(10):
-    while not is_done:
-        print('.', end='')
-        gui.draw_state(env.internal_state)
-        action = gui.read_action()
-        obs, rew, is_done, info = env.step(action)
-    print(env.internal_state.winner)
-    env.reset()
+def test():
     is_done = False
+    for _ in range(20):
+        while not is_done:
+            print('.', end='')
+            #gui.draw_state(env.internal_state)
+            #action = gui.read_action()
+            action=env.action_space.sample()
+            obs, rew, is_done, info = env.step(action)
+        print(env.internal_state.winner)
+        env.reset()
+        is_done = False
+
+import cProfile
+cProfile.run('test()', filename='tutek.prof')

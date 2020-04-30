@@ -312,18 +312,7 @@ class DeterministicMCTSAgent(base.OnlineAgent):
         values_and_actions = self._rate_children(node, states_to_avoid)
         if not values_and_actions:
             return None, None
-        # print(f' \n mcts/_select_child  values_and_actions = {values_and_actions} \n')
-        try:
-            (max_value, _) = max(values_and_actions)
-        except:
-            only_values = [bubu[0] for bubu in values_and_actions]
-            print(only_values)
-            mmmaxxx = max(only_values)
-            print(f'zipping = {list(zip(*values_and_actions))[0]}')
-            print(f'mmaxx = {mmmaxxx}')
-            print(f'values_and_actions = {values_and_actions}')
-
-        (max_value, _) = max(values_and_actions)
+        max_value = max(list(zip(*values_and_actions))[0])
         argmax = [
             action for value, action in values_and_actions if value == max_value
         ]

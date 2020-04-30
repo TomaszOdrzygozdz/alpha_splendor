@@ -1,15 +1,9 @@
+import alpacka.tracing
+
 # Parameters for CartPole:
 # ==============================================================================
 CartPole.reward_scale = 1.0
 CartPole.solved_at = 150
-
-# Parameters for Experiment:
-# ==============================================================================
-Experiment.description = 'Cartpole Stochastic MCTS Cartpole'
-Experiment.extra_params = None
-Experiment.name = 'Cartpole Stochastic MCTS Cartpole'
-Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
-Experiment.tags = ['hello-neptunpaca']
 
 # Parameters for KerasNetwork:
 # ==============================================================================
@@ -56,6 +50,7 @@ Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 # Parameters for StochasticMCTSAgent:
 # ==============================================================================
 StochasticMCTSAgent.action_selection_mode = 'count'
+StochasticMCTSAgent.callback_classes = (@alpacka.tracing.TraceCallback,)
 StochasticMCTSAgent.discount = 0.99
 StochasticMCTSAgent.exploration_bonus_fn = \
     @alpacka.agents.stochastic_mcts.puct_exploration_bonus
@@ -82,3 +77,8 @@ SupervisedTrainer.target = \
 # Parameters for target_qualities:
 # ==============================================================================
 # None.
+
+# Parameters for TraceCallback:
+# ==============================================================================
+TraceCallback.output_dir = './traces_cartpole/'
+TraceCallback.sample_rate = 0.01

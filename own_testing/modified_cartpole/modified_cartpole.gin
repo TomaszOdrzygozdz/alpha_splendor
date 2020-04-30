@@ -5,6 +5,7 @@ Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
 Experiment.tags = ['modified-cartpole']
 Experiment.description = 'own action space'
 
+
 # Parameters for DeterministicMCTSAgent:
 # ==============================================================================
 DeterministicMCTSAgent.avoid_loops = True
@@ -12,6 +13,7 @@ DeterministicMCTSAgent.gamma = 0.99
 DeterministicMCTSAgent.n_passes = 10
 DeterministicMCTSAgent.value_traits_class = @alpacka.agents.deterministic_mcts.ScalarValueTraits
 DeterministicMCTSAgent.value_accumulator_class = @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
+DeterministicMCTSAgent.callback_classes = (@alpacka.mcts_rendering.MCTSTreeCallback,)
 
 # Parameters for KerasNetwork:
 # ==============================================================================
@@ -41,8 +43,8 @@ Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.env_class = @own_testing.modified_cartpole.modified_cartpole_env.MultiObservationCartpole
 Runner.episode_time_limit = 500
 Runner.n_envs = 1
-Runner.n_epochs = 1000
-Runner.n_precollect_epochs = 100
+Runner.n_epochs = 10
+Runner.n_precollect_epochs = 2
 Runner.network_class = @alpacka.networks.KerasNetwork
 Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 

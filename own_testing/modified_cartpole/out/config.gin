@@ -1,6 +1,9 @@
+import alpacka.tracing
+
 # Parameters for DeterministicMCTSAgent:
 # ==============================================================================
 DeterministicMCTSAgent.avoid_loops = True
+DeterministicMCTSAgent.callback_classes = (@alpacka.tracing.TraceCallback,)
 DeterministicMCTSAgent.gamma = 0.99
 DeterministicMCTSAgent.n_passes = 10
 DeterministicMCTSAgent.value_accumulator_class = \
@@ -68,3 +71,8 @@ SupervisedTrainer.target = @alpacka.trainers.supervised.target_value
 # Parameters for target_value:
 # ==============================================================================
 # None.
+
+# Parameters for TraceCallback:
+# ==============================================================================
+TraceCallback.output_dir = './traces'
+TraceCallback.sample_rate = 0.01

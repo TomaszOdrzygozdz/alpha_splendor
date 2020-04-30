@@ -12,6 +12,7 @@ DeterministicMCTSAgent.gamma = 0.99
 DeterministicMCTSAgent.n_passes = 10
 DeterministicMCTSAgent.value_traits_class = @alpacka.agents.deterministic_mcts.ScalarValueTraits
 DeterministicMCTSAgent.value_accumulator_class = @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
+DeterministicMCTSAgent.callback_classes = (@alpacka.mcts_rendering.MCTSTreeCallback,)
 
 # Parameters for KerasNetwork:
 # ==============================================================================

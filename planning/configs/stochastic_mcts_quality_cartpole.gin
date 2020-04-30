@@ -1,3 +1,5 @@
+import alpacka.tracing
+
 Experiment.name = 'Cartpole Stochastic MCTS Cartpole'
 Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
 Experiment.tags = ['hello-neptunpaca']
@@ -30,6 +32,12 @@ StochasticMCTSAgent.n_passes = 10
 StochasticMCTSAgent.new_leaf_rater_class = @alpacka.agents.stochastic_mcts.QualityNetworkNewLeafRater
 StochasticMCTSAgent.action_selection_mode = 'count'
 StochasticMCTSAgent.sampling_temperature = 0.3
+StochasticMCTSAgent.callback_classes = (@alpacka.tracing.TraceCallback,)
+
+# Parameters for TraceCallback:
+# ==============================================================================
+TraceCallback.output_dir = './traces_cartpole/'
+TraceCallback.sample_rate = 0.01
 
 # Parameters for mlp:
 # ==============================================================================
