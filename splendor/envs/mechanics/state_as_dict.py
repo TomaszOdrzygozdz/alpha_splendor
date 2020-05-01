@@ -65,6 +65,12 @@ class StateAsDict:
         else:
             state.board.deck.shuffle()
 
+        state.is_done = self.state_as_dict['is_done']
+        state.info = self.state_as_dict['info']
+        state.winner = self.state_as_dict['winner']
+        state.steps_taken_so_far = self.state_as_dict['steps_taken_so_far']
+        self.info = self.state_as_dict['info']
+
         return state
 
     def __repr__(self):

@@ -1,11 +1,7 @@
-import atexit
-import time
-def pupu():
-    print('ufer')
-
-try:
-    while True:
-        time.sleep(2)
-
-except KeyboardInterrupt:
-    pupu()
+# from splendor.envs.core import OneSideSplendorEnv
+# from splendor.splendor_agents.greedy_heuristic import GreedyHeuristicAgent
+#
+# env = OneSideSplendorEnv(GreedyHeuristicAgent())
+#
+# is_done = False
+# while not is_done:

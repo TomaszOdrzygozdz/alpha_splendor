@@ -36,7 +36,6 @@ class State():
         self.who_took_last_action = None #int describing id of the player or None
         self.winner = None #int describing id of the player or None
         self.is_done = False
-        self.is_done = False
         self.info = {}
         self.steps_taken_so_far = 0
 
@@ -80,4 +79,8 @@ class State():
         return {'active_player_hand': self.active_players_hand().to_dict(),
                 'other_player_hand': self.previous_players_hand().to_dict(),
                 'board': self.board.to_dict(),
-                'active_player_id': self.active_player_id}
+                'active_player_id': self.active_player_id,
+                'is_done' : self.is_done,
+                'winner' : self.winner,
+                'steps_taken_so_far': self.steps_taken_so_far,
+                'info' : self.info}

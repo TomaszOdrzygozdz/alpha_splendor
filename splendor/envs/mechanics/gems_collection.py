@@ -110,7 +110,7 @@ class GemsCollection():
         gems_str = ''
         for color in self.gems_dict:
             color_str = str(color).replace('GemColor.','')
-            gems_str += f'{color_str} = {self.gems_dict[color]}  '
+            gems_str += f'{color_str} = {self.gems_dict[color]}    '
         return gems_str
 
     def non_empty_stacks(self) -> Set[GemColor]:

@@ -18,7 +18,7 @@ class MCTSTreeCallback(agents.AgentCallback):
     def __init__(self,
                  output_dir='/home/tomasz/ML_Research/alpha_splendor/own_testing/one_side_splendor/renders_new',
                  decimals = 3,
-                 show_unvisited_nodes=False):
+                 show_unvisited_nodes=True):
         self._original_root = None
         self.value_decimals = decimals
         self.level_separation = 3
@@ -29,24 +29,39 @@ class MCTSTreeCallback(agents.AgentCallback):
         self._links = {}
         self._step_number = 0
         self._episode_num = 0
+        self._real_vertices = set()
         self.renderer = SplendorToHtmlRenderer()
+
 
     def on_real_step(self, agent_info, action, observation, reward, done):
         current_root = agent_info['node']
+        self._real_vertices.add(current_root)
+        self._real_vertices.add(current_root.children[action])
         if self._original_root is None:
             self._original_root = current_root
 
         nodes, edges, states = self.parse_tree(current_root)
         file_name = f'episode_{self._episode_num}/step_{self._step_number}'
         self.create_one_step_html(nodes, edges, states, file_name)
+        nodes, edges, states = self.parse_tree(self._original_root)
+        self.create_one_step_html(nodes, edges, states, f'episode_{self._episode_num}/all')
         self._links[self._step_number] = file_name
         self._step_number += 1
         self.create_summary_html(f'episode_{self._episode_num}')
-        if self._step_number >= 3:
-            assert False
+
+    def on_episode_end(self):
+        nodes, edges, states = self.parse_tree(self._original_root)
+        self.create_one_step_html(nodes, edges, states, f'episode_{self._episode_num}/all')
+        self._original_root = None
+        self._episode_num += 1
+        self._links = {}
+        self._step_number = 0
+        self._episode_num = 0
+        self._real_vertices = set()
+        assert False
 
     def parse_node(self, id, value, count, level,  real_step = False):
-        color = self.real_node_color if real_step else self.color_of_simulated_node
+        color = self.color_of_real_node if real_step else self.color_of_simulated_node
         try:
             shortened_value = np.round(value, self.value_decimals)[0]
         except:
@@ -71,7 +86,7 @@ class MCTSTreeCallback(agents.AgentCallback):
         while len(queue) > 0:
             node_to_eval = queue.pop(0)
             nodes_id[node_to_eval] = idx
-            if node_to_eval.value_acc.count() > 0 or self.show_unvisited_nodes == False:
+            if node_to_eval.value_acc.count() > 0 or self.show_unvisited_nodes == True:
                 for action in node_to_eval.children:
                     child = node_to_eval.children[action]
                     queue.append(child)
@@ -87,18 +102,12 @@ class MCTSTreeCallback(agents.AgentCallback):
             parsed_nodes.append(self.parse_node(nodes_id[node_to_eval],
                                                 node_to_eval.value_acc.get(),
                                                 node_to_eval.value_acc.count(),
-                                                self.level_separation*nodes_lvl[node_to_eval]))
+                                                self.level_separation*nodes_lvl[node_to_eval],
+                                                node_to_eval in self._real_vertices))
             parsed_states.append(f'"{self.renderer.render_state(node_to_eval.node.state)}"')
             idx += 1
 
         return parsed_nodes, parsed_edges, parsed_states
-
-
-    def state_representation(self, state: State):
-        state_str = ''
-        state_str  += f'<br> <font color=red size=10> Active player: {state.active_players_hand().name} <br>'
-        state_str += f'<br> <font color=red size=10> Active player: {state.active_players_hand().name} <br>'
-        return state_str
 
 
     def create_one_step_html(self, parsed_nodes, parsed_edges, parsed_states, file_name):
@@ -124,12 +133,13 @@ class MCTSTreeCallback(agents.AgentCallback):
             postamble = file.read()
 
         def parse_links():
-            links_as_str = f'<a href="episode/{self._episode_num}" target="mcts_tree_window"> ALL  </a>'
+            links_as_str = f'<a href="episode_{self._episode_num}/all.html" target="mcts_tree_window">  ALL   </a>'
             for idx in self._links:
-                links_as_str += f'\n <a href="{self._links[idx]}.html" target="mcts_tree_window">  {idx}  </a> \n'
+                links_as_str += f'\n <a href="{self._links[idx]}.html" target="mcts_tree_window"> | {idx}  </a> \n'
             links_as_str += '<br>'
+            links_as_str += f'<iframe src="episode_{self._episode_num}/step_0.html" height="2000" width="1800" name="mcts_tree_window" ' \
+                            'id="mcts_tree_window"></iframe>'
             return links_as_str
-
         combined = preamble + parse_links() +  postamble + '</body></html>'
         text_file = open(os.path.join(self.output_dir, file_name + '.html'), "w")
         text_file.write(combined)
@@ -148,6 +158,15 @@ class SplendorToHtmlRenderer:
             board_html += f'{noble} <br>'
         return board_html
 
+    def additional_state_info(self, state : State):
+        info_html = '<br><hr><br>'
+        info_html += '<font size=5> Additional info: </font><br>'
+        info_html += f'is_done = {state.is_done} <br>'
+        info_html += f'winner = {state.winner} <br>'
+        info_html += f'info = {state.info} <br>'
+        info_html += f'step_taken_so_far = {state.steps_taken_so_far} <br> <hr>'
+        return info_html
+
     def player_summary(self, state: State):
         def player_summary(info: str, player: PlayersHand, color : str):
             header_html = '<br>'
@@ -156,6 +175,7 @@ class SplendorToHtmlRenderer:
             header_html += f'<font color={color} size=4> Cards: {len(player.cards_possessed)} </font>'
             header_html += f'<font color={color} size=4> Reserved: {len(player.cards_reserved)} </font>'
             header_html += f'<font color={color} size=4> Nobles: {len(player.nobles_possessed)} </font> <br>'
+            header_html += f'<font color={color} size=4> Gems: <b> {player.gems_possessed} </b> </font> <br>'
             header_html += f'<font color={color} size=4> Discount: {player.discount()} </font> <br>'
             if len(player.cards_reserved)>0:
                 for card in player.cards_reserved:
@@ -168,5 +188,4 @@ class SplendorToHtmlRenderer:
 
 
     def render_state(self, state):
-
-        return self.player_summary(state) + self.board_to_html(state.board)
+        return self.player_summary(state) + self.board_to_html(state.board) + self.additional_state_info(state)

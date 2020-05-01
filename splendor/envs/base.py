@@ -33,8 +33,8 @@ class SplendorEnv(Env, ):
 
         self.action_space = SplendorActionSpace(self.allow_reservations)
         self.observation_space = self.observation_space_generator.return_observation_space()
-
         self.internal_state = State()
+        self.names = None
 
     def clone_state(self):
         return StateAsDict(self.internal_state).to_state()
@@ -46,24 +46,27 @@ class SplendorEnv(Env, ):
 
     def _check_if_done(self):
         if len(self.action_space) == 0:
-            return True
+            return True, 'Empty action space'
         for player in self.internal_state.list_of_players_hands:
             if player.number_of_my_points() >= self.points_to_win:
-                return True
-        return False
+                return True, 'Win by points'
+        return False, ''
 
     def _reset_env(self):
         """Resets the environment"""
         self.internal_state = State()
         self.action_space.update(self.internal_state)
+        if self.names is not None:
+            self.internal_state.set_names(self.names)
+
+    def set_names(self, names):
+        self.internal_state.set_names(names)
 
     def show_my_state(self):
         return (StateAsDict(self.internal_state))
 
     def _step_env(self, action):
         """Performs the internal step on the environment"""
-        if self.internal_state.is_done:
-            print(f'internal_state_of_env = {StateAsDict(self.internal_state)}')
         assert not self.internal_state.is_done, 'Cannot take step on ended episode.'
         if action not in self.action_space.list_of_actions:
             print(f'Tried to take action {action}, while the action space consists of {self.action_space.list_of_actions} and \n'
@@ -78,15 +81,17 @@ class SplendorEnv(Env, ):
                 self.internal_state.is_done = True
                 self.internal_state.winner = self.internal_state.other_players_hand().name
                 self.internal_state.info['None_action'] = True
+                self.internal_state.info['Done reason'] = 'Action None'
             else:
                 self.internal_state.who_took_last_action = self.internal_state.active_players_hand().name
                 action.execute(self.internal_state)
                 self.action_space.update(self.internal_state)
-                self.internal_state.is_done = self._check_if_done()
+                self.internal_state.is_done, reason = self._check_if_done()
                 if self.internal_state.is_done:
                     self.internal_state.winner = self.internal_state.who_took_last_action
                     self.internal_state.info['None_action'] = False
                     self.internal_state.info['episode_length'] = self.internal_state.steps_taken_so_far+1
+                    self.internal_state.info['Done reason'] = reason
                     #assert self.internal_state.list_of_players_hands[self.winner].number_of_my_points() >= self.points_to_win
 
             self.reward = self.reward_evaluator.evaluate(action, self.internal_state)
@@ -104,7 +109,7 @@ class SplendorEnv(Env, ):
 
     def step(self, action):
         self._step_env(action)
-        return self._observation(), self.reward, self.is_done, self.info
+        return self._observation(), self.reward, self.internal_state.is_done, self.internal_state.info
 
     def reset(self):
         self._reset_env()
