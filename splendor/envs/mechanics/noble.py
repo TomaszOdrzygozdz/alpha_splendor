@@ -25,5 +25,8 @@ class Noble(PreCard):
         #way faster comparison:
         return self.name == other.name
 
+    def __repr__(self):
+        return 'Noble(name: {}, id: {}, price: {}, )'.format(self.name, self.id, self.price)
+
     def __hash__(self):
         return self.id

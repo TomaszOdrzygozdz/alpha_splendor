@@ -107,7 +107,11 @@ class GemsCollection():
         return reduce(lambda x, y: x and y, list_of_conditions)
 
     def __repr__(self):
-        return self.gems_dict.__repr__().replace('GemColor.','')
+        gems_str = ''
+        for color in self.gems_dict:
+            color_str = str(color).replace('GemColor.','')
+            gems_str += f'{color_str} = {self.gems_dict[color]}  '
+        return gems_str
 
     def non_empty_stacks(self) -> Set[GemColor]:
         return {gem_color for gem_color in GemColor if self.gems_dict[gem_color] > 0}
