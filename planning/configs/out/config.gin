@@ -1,84 +1,92 @@
-import alpacka.tracing
+# Parameters for ActorCriticAgent:
+# ==============================================================================
+# None.
 
 # Parameters for CartPole:
 # ==============================================================================
-CartPole.reward_scale = 1.0
-CartPole.solved_at = 150
+CartPole.reward_scale = 0.005
+CartPole.solved_at = 190
+
+# Parameters for EpsilonGreedyAgent:
+# ==============================================================================
+EpsilonGreedyAgent.epsilon = 0.4
+EpsilonGreedyAgent.linear_annealing_kwargs = None
+EpsilonGreedyAgent.with_critic = True
 
 # Parameters for KerasNetwork:
 # ==============================================================================
-KerasNetwork.loss = ('mean_squared_error', 'categorical_crossentropy')
-KerasNetwork.loss_weights = [1.0, 10.0]
-KerasNetwork.metrics = [['mae', 'mse'], ['categorical_crossentropy']]
+KerasNetwork.loss = \
+    ('mean_squared_error', @tf.nn.softmax_cross_entropy_with_logits)
+KerasNetwork.loss_weights = None
+KerasNetwork.metrics = [['mae'], []]
 KerasNetwork.model_fn = @alpacka.networks.keras.mlp
-KerasNetwork.optimizer = 'adam'
+KerasNetwork.optimizer = @tf.keras.optimizers.RMSprop()
 KerasNetwork.train_callbacks = None
 KerasNetwork.weight_decay = 0.0
-
-# Parameters for LocalBatchStepper:
-# ==============================================================================
-# None.
 
 # Parameters for mlp:
 # ==============================================================================
 mlp.activation = 'relu'
-mlp.hidden_sizes = (64,)
-mlp.output_activation = (None, 'softmax')
-mlp.output_zero_init = True
+mlp.hidden_sizes = (16,)
+mlp.output_activation = (None, None)
+mlp.output_zero_init = False
 
-# Parameters for puct_exploration_bonus:
+# Parameters for RayBatchStepper:
 # ==============================================================================
 # None.
 
-# Parameters for QualityNetworkNewLeafRater:
+# Parameters for RMSprop:
 # ==============================================================================
-QualityNetworkNewLeafRater.use_policy = True
+RMSprop.centered = False
+RMSprop.epsilon = 1e-07
+RMSprop.learning_rate = 0.001
+RMSprop.momentum = 0.0
+RMSprop.name = 'RMSprop'
+RMSprop.rho = 0.9
 
 # Parameters for Runner:
 # ==============================================================================
-Runner.agent_class = @alpacka.agents.StochasticMCTSAgent
-Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+Runner.agent_class = @alpacka.agents.ShootingAgent
+Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
 Runner.env_class = @alpacka.envs.CartPole
 Runner.env_kwargs = None
-Runner.episode_time_limit = 500
-Runner.n_envs = 1
+Runner.episode_time_limit = 200
+Runner.n_envs = 4
 Runner.n_epochs = None
-Runner.n_precollect_epochs = 100
+Runner.n_precollect_epochs = 5
 Runner.network_class = @alpacka.networks.KerasNetwork
 Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
-# Parameters for StochasticMCTSAgent:
+# Parameters for ShootingAgent:
 # ==============================================================================
-StochasticMCTSAgent.action_selection_mode = 'count'
-StochasticMCTSAgent.callback_classes = (@alpacka.tracing.TraceCallback,)
-StochasticMCTSAgent.discount = 0.99
-StochasticMCTSAgent.exploration_bonus_fn = \
-    @alpacka.agents.stochastic_mcts.puct_exploration_bonus
-StochasticMCTSAgent.exploration_weight = 10.0
-StochasticMCTSAgent.n_passes = 10
-StochasticMCTSAgent.new_leaf_rater_class = \
-    @alpacka.agents.stochastic_mcts.QualityNetworkNewLeafRater
-StochasticMCTSAgent.sampling_temperature = 0.3
+ShootingAgent.agent_class = @alpacka.agents.EpsilonGreedyAgent
+ShootingAgent.aggregate_fn = @np.mean
+ShootingAgent.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+ShootingAgent.estimate_fn = \
+    @alpacka.agents.mc_simulation.bootstrap_return_with_value
+ShootingAgent.n_envs = 1
+ShootingAgent.n_rollouts = 5
+ShootingAgent.rollout_time_limit = 20
+
+# Parameters for softmax_cross_entropy_with_logits:
+# ==============================================================================
+softmax_cross_entropy_with_logits.axis = -1
+softmax_cross_entropy_with_logits.name = None
 
 # Parameters for SupervisedTrainer:
 # ==============================================================================
 SupervisedTrainer.batch_size = 64
-SupervisedTrainer.n_steps_per_epoch = 100
-SupervisedTrainer.replay_buffer_capacity = 10000
-SupervisedTrainer.replay_buffer_sampling_hierarchy = ['solved']
+SupervisedTrainer.n_steps_per_epoch = 10
+SupervisedTrainer.replay_buffer_capacity = 100000
+SupervisedTrainer.replay_buffer_sampling_hierarchy = []
 SupervisedTrainer.target = \
-    (@alpacka.trainers.supervised.target_qualities,
-     @alpacka.trainers.supervised.target_action_histogram_smooth)
+    (@alpacka.trainers.supervised.target_return,
+     @alpacka.trainers.supervised.target_action_histogram)
 
-# Parameters for target_action_histogram_smooth:
+# Parameters for target_action_histogram:
 # ==============================================================================
 # None.
 
-# Parameters for target_qualities:
+# Parameters for target_return:
 # ==============================================================================
 # None.
-
-# Parameters for TraceCallback:
-# ==============================================================================
-TraceCallback.output_dir = './traces_cartpole/'
-TraceCallback.sample_rate = 0.01

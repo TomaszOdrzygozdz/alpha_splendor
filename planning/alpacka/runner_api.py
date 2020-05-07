@@ -1,5 +1,8 @@
 from silence_tensorflow import silence_tensorflow
 silence_tensorflow()
+#import tensorflow as tf
+#tf.config.threading.set_intra_op_parallelism_threads(1)
+
 import argparse
 import sys
 import gin
@@ -39,10 +42,6 @@ def _parse_args():
         help='Adding extra paths to sys.paths'
     )
     parser.add_argument(
-        '--additional_import', action='store_true',
-        help='Importing from outside Alpaca'
-    )
-    parser.add_argument(
         '--open_link', action='store_true',
         help='Open Neptune experiment in web browser'
     )
@@ -62,22 +61,14 @@ def _add_extra_sys_paths():
     for extra_path in EXTRA_SYSTEM_PATHS:
         sys.path.append(extra_path)
 
-def _additional_import():
-    import alpacka.additional_imports
-
 if __name__ == '__main__':
     args = _parse_args()
-
     if args.extra_paths:
         print('Adding extra system paths.')
         _add_extra_sys_paths()
-    if args.additional_import:
-        print('Importing from outside Alpaca.')
-        _additional_import()
 
     gin.parse_config_files_and_bindings(args.config_file, None)
-    #use_neptune = _ask_for_neptune()
-    use_neptune = False
+    use_neptune = _ask_for_neptune()
     if use_neptune:
         experiment = Experiment()
         experiment.parse_params_from_gin_config(args.config_file)

@@ -1,3 +1,5 @@
+import gin
+
 from alpacka.tracing import State
 
 from splendor.envs.base import SplendorEnv
@@ -6,7 +8,7 @@ from splendor.envs.mechanics.state_as_dict import StateAsDict
 from splendor.splendor_agents.base import DeterministicSplendorAgent
 from splendor.splendor_agents.utils.value_function import SplendorValueFunction
 
-
+@gin.configurable
 class GreedyHeuristicAgent(DeterministicSplendorAgent):
     def __init__(self):
         super().__init__('Greedy heuristic')

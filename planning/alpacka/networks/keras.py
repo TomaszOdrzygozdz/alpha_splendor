@@ -51,6 +51,29 @@ def _make_output_heads(hidden, output_signature, output_activation, zero_init):
         init_head, (output_signature, output_activation)
     )
 
+# @gin.configurable
+# def splendor_state_evaluator_network(
+#         network_signature,
+#         gems_encoder_dim: int = None,
+#         price_encoder_dim: int = None,
+#         profit_encoder_dim: int = None,
+#         cards_points_dim: int = None,
+#         cards_dense1_dim: int = None,
+#         cards_dense2_dim: int = None,
+#         board_nobles_dense1_dim: int = None,
+#         board_nobles_dense2_dim: int = None,
+#         full_board_dense1_dim: int = None,
+#         full_board_dense2_dim: int = None,
+#         player_points_dim: int = None,
+#         player_nobles_dim: int = None,
+#         full_player_dense1_dim: int = None,
+#         full_player_dense2_dim: int = None
+# ):
+#     return splendor_state_evaluator(network_signature, gems_encoder_dim, price_encoder_dim, profit_encoder_dim,
+#                                     cards_points_dim, cards_dense1_dim, cards_dense2_dim, board_nobles_dense1_dim,
+#                                     board_nobles_dense2_dim, full_board_dense1_dim, full_board_dense2_dim,
+#                                     player_points_dim, player_nobles_dim, full_player_dense1_dim,
+#                                     full_player_dense2_dim)
 
 @gin.configurable
 def mlp(

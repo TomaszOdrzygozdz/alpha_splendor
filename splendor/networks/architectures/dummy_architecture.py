@@ -22,6 +22,8 @@ class GemsEncoder:
     def __call__(self, list_of_gems):
         return self.layer(list_of_gems)
 
+GemsEncoder(3)
+
 class PriceEncoder:
     def __init__(self, output_dim):
         self.inputs = [Input(batch_shape=(None, None, 1), name='gem_{}'.format(color).replace('GemColor.', '')) for
@@ -148,7 +150,7 @@ class PlayerEncoder:
     def __call__(self, player_input):
         return self.layer(player_input)
 
-@gin.configurable
+
 def splendor_state_evaluator(
         network_signature,
         gems_encoder_dim: int = None,

@@ -1,3 +1,10 @@
+import splendor.envs.core
+import splendor.splendor_agents.greedy_heuristic
+import splendor.splendor_agents.core
+import alpacka.agents.callbacks.mcts_rendering
+import alpacka.agents.callbacks.informative_callback
+import splendor.networks.architectures.average_pooling_network
+
 # Parameters for Neptune:
 # ==============================================================================
 Experiment.name = 'One side Splendor, Deterministic MCTS'
@@ -9,10 +16,14 @@ Experiment.description = 'own action space'
 # ==============================================================================
 DeterministicMCTSAgent.avoid_loops = True
 DeterministicMCTSAgent.gamma = 0.99
-DeterministicMCTSAgent.n_passes = 10
+DeterministicMCTSAgent.n_passes = 3
 DeterministicMCTSAgent.value_traits_class = @alpacka.agents.deterministic_mcts.ScalarValueTraits
 DeterministicMCTSAgent.value_accumulator_class = @alpacka.agents.deterministic_mcts.ScalarValueAccumulator
-DeterministicMCTSAgent.callback_classes = (@alpacka.mcts_rendering.MCTSTreeCallback,)
+#DeterministicMCTSAgent.callback_classes = (@alpacka.agents.callbacks.mcts_rendering.MCTSTreeCallback,)
+
+#Parameters for MCTSTreeCallback:
+# ==============================================================================
+MCTSTreeCallback.show_unvisited_nodes = False
 
 # Parameters for KerasNetwork:
 # ==============================================================================
@@ -45,17 +56,12 @@ splendor_state_evaluator.full_player_dense2_dim = 256
 # ==============================================================================
 # None.
 
-# Parameters for Runner:
+
+
+# Parameters for OneSideSplendorEnv:
 # ==============================================================================
-Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
-Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
-Runner.env_class = @splendor.envs.core.OneSideSplendorEnv
-Runner.episode_time_limit = 500
-Runner.n_envs = 1
-Runner.n_epochs = 120
-Runner.n_precollect_epochs = 2
-Runner.network_class = @alpacka.networks.KerasNetwork
-Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
+OneSideSplendorEnv.splendor_agent_class = @splendor.splendor_agents.greedy_heuristic.GreedyHeuristicAgent
+OneSideSplendorEnv.real_player_name = 'MCTS'
 
 # Parameters for ScalarValueAccumulator:
 # ==============================================================================
@@ -65,8 +71,18 @@ Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 # ==============================================================================
 ScalarValueTraits.dead_end_value = 0
 
-# Parameters for CartPole:
+# Parameters for Runner:
 # ==============================================================================
+Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
+#Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
+Runner.env_class = @splendor.envs.core.OneSideSplendorEnv
+Runner.episode_time_limit = 500
+Runner.n_envs = 5
+Runner.n_epochs = 120
+Runner.n_precollect_epochs = 1
+Runner.network_class = @alpacka.networks.KerasNetwork
+Runner.trainer_class = @alpacka.trainers.SupervisedTrainer
 
 
 # Parameters for SupervisedTrainer:

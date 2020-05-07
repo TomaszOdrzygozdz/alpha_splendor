@@ -43,6 +43,8 @@ Episode = collections.namedtuple(
         'solved',
         # Whether the episode was truncated by the TimeLimitWrapper.
         'truncated',
+        # All additional information that agent may store
+        'additional_info'
     ]
 )
 Episode.__new__.__defaults__ = (None, None)  # solved, truncated

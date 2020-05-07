@@ -113,6 +113,29 @@ class Runner:
         ) / len(episodes)
         metrics['count'] = self._total_episodes
 
+        #Adding additional information:
+
+        additional_metrics_keys = set()
+        additional_metrics_counts = {}
+        additional_metrics_values = {}
+        for episode in episodes:
+            if episode.additional_info is not None:
+                print(f'Episode extra info = {episode.additional_info}')
+                for additional_metric in episode.additional_info:
+                    additional_metrics_keys.add(additional_metric)
+                    if additional_metric in metrics:
+                        metrics[additional_metric] += episode.additional_info[additional_metric]
+                    else:
+                        metrics[additional_metric] = episode.additional_info[additional_metric]
+                    if additional_metric in additional_metrics_counts:
+                        additional_metrics_counts[additional_metric] += 1
+                    else:
+                        additional_metrics_counts[additional_metric] = 1
+
+        for additional_metric in additional_metrics_keys:
+            metrics[additional_metric] /= additional_metrics_counts[additional_metric]
+        ####
+
         return metrics
 
     def _save_gin(self):

@@ -18,7 +18,7 @@ class MCTSTreeCallback(agents.AgentCallback):
     def __init__(self,
                  output_dir='/home/tomasz/ML_Research/alpha_splendor/own_testing/one_side_splendor/renders_new',
                  decimals = 3,
-                 show_unvisited_nodes=True):
+                 show_unvisited_nodes = False):
         self._original_root = None
         self.value_decimals = decimals
         self.level_separation = 3
@@ -28,10 +28,12 @@ class MCTSTreeCallback(agents.AgentCallback):
         self.color_of_simulated_node = '"#ADD8E6"'
         self._links = {}
         self._step_number = 0
-        self._episode_num = 0
+        self._epoch = 0
         self._real_vertices = set()
         self.renderer = SplendorToHtmlRenderer()
 
+    def on_episode_begin(self, env, observation, epoch):
+        self._epoch = epoch
 
     def on_real_step(self, agent_info, action, observation, reward, done):
         current_root = agent_info['node']
@@ -41,24 +43,21 @@ class MCTSTreeCallback(agents.AgentCallback):
             self._original_root = current_root
 
         nodes, edges, states = self.parse_tree(current_root)
-        file_name = f'episode_{self._episode_num}/step_{self._step_number}'
+        file_name = f'episode_{self._epoch}/step_{self._step_number}'
         self.create_one_step_html(nodes, edges, states, file_name)
-        nodes, edges, states = self.parse_tree(self._original_root)
-        self.create_one_step_html(nodes, edges, states, f'episode_{self._episode_num}/all')
         self._links[self._step_number] = file_name
         self._step_number += 1
-        self.create_summary_html(f'episode_{self._episode_num}')
+        self.create_summary_html(f'episode_{self._epoch}')
 
     def on_episode_end(self):
         nodes, edges, states = self.parse_tree(self._original_root)
-        self.create_one_step_html(nodes, edges, states, f'episode_{self._episode_num}/all')
+        self.create_one_step_html(nodes, edges, states, f'episode_{self._epoch}/all')
         self._original_root = None
-        self._episode_num += 1
+        self._epoch += 1
         self._links = {}
         self._step_number = 0
-        self._episode_num = 0
+        self._epoch = 0
         self._real_vertices = set()
-        assert False
 
     def parse_node(self, id, value, count, level,  real_step = False):
         color = self.color_of_real_node if real_step else self.color_of_simulated_node
@@ -86,7 +85,7 @@ class MCTSTreeCallback(agents.AgentCallback):
         while len(queue) > 0:
             node_to_eval = queue.pop(0)
             nodes_id[node_to_eval] = idx
-            if node_to_eval.value_acc.count() > 0 or self.show_unvisited_nodes == True:
+            if node_to_eval.value_acc.count() > 1 or self.show_unvisited_nodes == True:
                 for action in node_to_eval.children:
                     child = node_to_eval.children[action]
                     queue.append(child)
@@ -122,7 +121,7 @@ class MCTSTreeCallback(agents.AgentCallback):
         def states_to_str():
             return '\n states = [' + ','.join(parsed_states) + '] \n'
         combined = preamble + nodes_to_str() + edges_to_str() + states_to_str() +  postamble + '</body></html>'
-        os.makedirs(os.path.join(self.output_dir, f'episode_{self._episode_num}'), exist_ok=True)
+        os.makedirs(os.path.join(self.output_dir, f'episode_{self._epoch}'), exist_ok=True)
         with open(os.path.join(self.output_dir, file_name + '.html'), "w") as html_file:
             html_file.write(combined)
 
@@ -133,11 +132,11 @@ class MCTSTreeCallback(agents.AgentCallback):
             postamble = file.read()
 
         def parse_links():
-            links_as_str = f'<a href="episode_{self._episode_num}/all.html" target="mcts_tree_window">  ALL   </a>'
+            links_as_str = f'<a href="episode_{self._epoch}/all.html" target="mcts_tree_window">  ALL   </a>'
             for idx in self._links:
                 links_as_str += f'\n <a href="{self._links[idx]}.html" target="mcts_tree_window"> | {idx}  </a> \n'
             links_as_str += '<br>'
-            links_as_str += f'<iframe src="episode_{self._episode_num}/step_0.html" height="2000" width="1800" name="mcts_tree_window" ' \
+            links_as_str += f'<iframe src="episode_{self._epoch}/step_0.html" height="2000" width="1800" name="mcts_tree_window" ' \
                             'id="mcts_tree_window"></iframe>'
             return links_as_str
         combined = preamble + parse_links() +  postamble + '</body></html>'
@@ -179,7 +178,10 @@ class SplendorToHtmlRenderer:
             header_html += f'<font color={color} size=4> Discount: {player.discount()} </font> <br>'
             if len(player.cards_reserved)>0:
                 for card in player.cards_reserved:
-                    header_html += f'<font color={color} size=4> {card} </font> <br>'
+                    if player.can_afford_card(card):
+                        header_html += f'<font color={color} size=4> <b>+ {card} </b> </font><br>'
+                    else:
+                        header_html += f'<font color={color} size=4> <b>- {card} </b> </font> <br>'
             header_html += '<hr>'
             return header_html
 

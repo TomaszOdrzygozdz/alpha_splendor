@@ -265,11 +265,13 @@ class OnlineAgent(Agent):
         truncated = (info['TimeLimit.truncated']
                      if 'TimeLimit.truncated' in info else None)
         transition_batch = data.nested_stack(transitions)
+        additional_info = info['additional_info'] if 'additional_info' in info else None
         return data.Episode(
             transition_batch=transition_batch,
             return_=return_,
             solved=solved,
             truncated=truncated,
+            additional_info=additional_info
         )
 
 

@@ -65,6 +65,13 @@ class SplendorEnv(Env, ):
     def show_my_state(self):
         return (StateAsDict(self.internal_state))
 
+    def game_statistics(self):
+        game_statistics = {}
+        for player in self.internal_state.list_of_players_hands:
+            game_statistics[f'vp[{player.name}]'] = player.number_of_my_points()
+            game_statistics[f'cards[{player.name}]'] = len(player.cards_possessed)
+        return game_statistics
+
     def _step_env(self, action):
         """Performs the internal step on the environment"""
         assert not self.internal_state.is_done, 'Cannot take step on ended episode.'
@@ -103,6 +110,7 @@ class SplendorEnv(Env, ):
             self.internal_state.info['step'] = self.internal_state.steps_taken_so_far
             self.internal_state.info['stats'] =  statistics(self.internal_state)
             self.internal_state.steps_taken_so_far += 1
+        self.internal_state.info['additional_info'] = self.game_statistics()
 
     def _observation(self):
         return self.observation_space_generator.state_to_observation(self.internal_state)

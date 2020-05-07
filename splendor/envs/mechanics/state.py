@@ -36,7 +36,7 @@ class State():
         self.who_took_last_action = None #int describing id of the player or None
         self.winner = None #int describing id of the player or None
         self.is_done = False
-        self.info = {}
+        self.info = {'winner' : None}
         self.steps_taken_so_far = 0
 
         if prepare_state:
