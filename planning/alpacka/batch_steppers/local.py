@@ -61,6 +61,7 @@ class _PredictionRequestBatcher:
         # Stack instead of concatenate to ensure that all requests have
         # the same shape.
         self._batched_request = data.nested_stack(self._requests)
+
         # (n_agents, n_requests, ...) -> (n_agents * n_requests, ...)
         self._batched_request = data.nested_map(flatten_first_2_dims,
                                                 self._batched_request)

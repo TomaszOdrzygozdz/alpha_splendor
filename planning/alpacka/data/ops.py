@@ -51,8 +51,12 @@ def nested_map(f, x, stop_fn=_is_leaf):
     Returns:
         pytree: Result of mapping.
     """
+
     if stop_fn(x):
-        return f(x)
+        try:
+            return f(x)
+        except:
+            return f(x)
 
     if _is_namedtuple_instance(x):
         return type(x)(*nested_map(f, tuple(x), stop_fn=stop_fn))
@@ -158,7 +162,6 @@ def nested_stack(xs):
         nested_stack([(1, 2), (3, 4)]) == (np.array([1, 3]), np.array([2, 4]))
     """
     return nested_map(np.stack, nested_zip(xs), stop_fn=_is_last_level_nonempty)
-
 
 def nested_unstack(x):
     """Unstacks a pytree of numpy arrays.

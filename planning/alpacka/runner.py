@@ -120,7 +120,7 @@ class Runner:
         additional_metrics_values = {}
         for episode in episodes:
             if episode.additional_info is not None:
-                print(f'Episode extra info = {episode.additional_info}')
+                print(f'**** Episode extra info = {episode.additional_info} ****')
                 for additional_metric in episode.additional_info:
                     additional_metrics_keys.add(additional_metric)
                     if additional_metric in metrics:

@@ -1,3 +1,10 @@
+# Parameters for Neptune:
+# ==============================================================================
+Experiment.name = 'One side Splendor, Deterministic MCTS'
+Experiment.project_qualified_name = 'tomaszodrzygozdz/Sandbox'
+Experiment.tags = ['cartpole-ray']
+Experiment.description = 'cartopole ray'
+
 # Parameters for CartPole:
 # ==============================================================================
 CartPole.solved_at = 150
@@ -7,7 +14,7 @@ CartPole.solved_at = 150
 KerasNetwork.loss = 'mean_squared_error'
 KerasNetwork.loss_weights = None
 KerasNetwork.metrics = ['mae', 'mse']
-KerasNetwork.model_fn = @alpacka.networks.keras.mlp2
+KerasNetwork.model_fn = @alpacka.networks.keras.mlp
 KerasNetwork.optimizer = 'adam'
 KerasNetwork.weight_decay = 0.0
 KerasNetwork.train_callbacks = None
@@ -44,9 +51,9 @@ mlp.output_zero_init = True
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.StochasticMCTSAgent
-Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
+Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
 Runner.env_class = @alpacka.envs.CartPole
-Runner.n_envs = 1
+Runner.n_envs = 5
 Runner.episode_time_limit = 500
 Runner.n_epochs = None
 Runner.n_precollect_epochs = 0

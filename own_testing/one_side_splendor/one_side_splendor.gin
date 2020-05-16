@@ -8,8 +8,8 @@ import splendor.networks.architectures.average_pooling_network
 # Parameters for Neptune:
 # ==============================================================================
 Experiment.name = 'One side Splendor, Deterministic MCTS'
-Experiment.project_qualified_name = 'tomaszodrzygozdz/Splendor'
-Experiment.tags = ['one-side-splendor']
+Experiment.project_qualified_name = 'tomaszodrzygozdz/Sandbox'
+Experiment.tags = ['one-side-splendor', 'ray']
 Experiment.description = 'own action space'
 
 # Parameters for DeterministicMCTSAgent:
@@ -62,6 +62,9 @@ splendor_state_evaluator.full_player_dense2_dim = 256
 # ==============================================================================
 OneSideSplendorEnv.splendor_agent_class = @splendor.splendor_agents.greedy_heuristic.GreedyHeuristicAgent
 OneSideSplendorEnv.real_player_name = 'MCTS'
+OneSideSplendorEnv.allow_reservations = False
+OneSideSplendorEnv.max_number_of_steps = 100
+OneSideSplendorEnv.points_to_win=5
 
 # Parameters for ScalarValueAccumulator:
 # ==============================================================================
@@ -74,11 +77,10 @@ ScalarValueTraits.dead_end_value = 0
 # Parameters for Runner:
 # ==============================================================================
 Runner.agent_class = @alpacka.agents.DeterministicMCTSAgent
-#Runner.batch_stepper_class = @alpacka.batch_steppers.LocalBatchStepper
 Runner.batch_stepper_class = @alpacka.batch_steppers.RayBatchStepper
 Runner.env_class = @splendor.envs.core.OneSideSplendorEnv
 Runner.episode_time_limit = 500
-Runner.n_envs = 5
+Runner.n_envs = 3
 Runner.n_epochs = 120
 Runner.n_precollect_epochs = 1
 Runner.network_class = @alpacka.networks.KerasNetwork
